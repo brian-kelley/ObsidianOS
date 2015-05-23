@@ -1,0 +1,289 @@
+#include "video.h"
+
+/* Next try notes
+//12h settings
+unsigned char g_640x480x16[] =
+{
+* MISC *
+	0xE3,
+* SEQ *
+	0x03, 0x01, 0x08, 0x00, 0x06,
+* CRTC *
+	0x5F, 0x4F, 0x50, 0x82, 0x54, 0x80, 0x0B, 0x3E,
+	0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0xEA, 0x0C, 0xDF, 0x28, 0x00, 0xE7, 0x04, 0xE3,
+	0xFF,
+* GC *
+	0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x05, 0x0F,
+	0xFF,
+* AC *
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x14, 0x07,
+	0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+	0x01, 0x00, 0x0F, 0x00, 0x00
+};
+
+
+#define	VGA_AC_INDEX		0x3C0
+#define	VGA_AC_WRITE		0x3C0
+#define	VGA_AC_READ		0x3C1
+#define	VGA_MISC_WRITE		0x3C2
+#define VGA_SEQ_INDEX		0x3C4
+#define VGA_SEQ_DATA		0x3C5
+#define	VGA_DAC_READ_INDEX	0x3C7
+#define	VGA_DAC_WRITE_INDEX	0x3C8
+#define	VGA_DAC_DATA		0x3C9
+#define	VGA_MISC_READ		0x3CC
+#define VGA_GC_INDEX 		0x3CE
+#define VGA_GC_DATA 		0x3CF
+			COLOR emulation	
+#define VGA_CRTC_INDEX		0x3D4
+#define VGA_CRTC_DATA		0x3D5
+#define	VGA_INSTAT_READ		0x3DA
+
+void write_regs(unsigned char *regs)
+{
+	unsigned i;
+
+* write MISCELLANEOUS reg *
+	outportb(VGA_MISC_WRITE, *regs);
+	regs++;
+* write SEQUENCER regs *
+	for(i = 0; i < VGA_NUM_SEQ_REGS; i++)
+	{
+		outportb(VGA_SEQ_INDEX, i);
+		outportb(VGA_SEQ_DATA, *regs);
+		regs++;
+	}
+* unlock CRTC registers *
+	outportb(VGA_CRTC_INDEX, 0x03);
+	outportb(VGA_CRTC_DATA, inportb(VGA_CRTC_DATA) | 0x80);
+	outportb(VGA_CRTC_INDEX, 0x11);
+	outportb(VGA_CRTC_DATA, inportb(VGA_CRTC_DATA) & ~0x80);
+* make sure they remain unlocked *
+	regs[0x03] |= 0x80;
+	regs[0x11] &= ~0x80;
+* write CRTC regs *
+	for(i = 0; i < VGA_NUM_CRTC_REGS; i++)
+	{
+		outportb(VGA_CRTC_INDEX, i);
+		outportb(VGA_CRTC_DATA, *regs);
+		regs++;
+	}
+* write GRAPHICS CONTROLLER regs *
+	for(i = 0; i < VGA_NUM_GC_REGS; i++)
+	{
+		outportb(VGA_GC_INDEX, i);
+		outportb(VGA_GC_DATA, *regs);
+		regs++;
+	}
+* write ATTRIBUTE CONTROLLER regs *
+	for(i = 0; i < VGA_NUM_AC_REGS; i++)
+	{
+		(void)inportb(VGA_INSTAT_READ);
+		outportb(VGA_AC_INDEX, i);
+		outportb(VGA_AC_WRITE, *regs);
+		regs++;
+	}
+* lock 16-color palette and unblank display *
+	(void)inportb(VGA_INSTAT_READ);
+	outportb(VGA_AC_INDEX, 0x20);
+}
+
+*/
+
+void writeAttributeReg(dword index, dword value)
+{
+	readport(0x3DA);
+	writeport(0x3C0, index);
+	writeport(0x3C0, value);
+}
+
+void enterMode12H()
+{
+	//write misc reg
+	writeport(0x3C2, 0xE3);
+	//write seq regs
+	writeport(0x3C4, 0x0);
+	writeport(0x3C5, 0x3);
+	writeport(0x3C4, 0x1);
+	writeport(0x3C5, 0x1);
+	writeport(0x3C4, 0x2);
+	writeport(0x3C5, 0x8);
+	writeport(0x3C4, 0x3);
+	writeport(0x3C5, 0x0);
+	writeport(0x3C4, 0x4);
+	writeport(0x3C5, 0x6);
+	//unlock CRTC registers
+	writeport(0x3D4, 0x3);
+	writeport(0x3D5, readport(0x3D5) | 0x80);
+	writeport(0x3D4, 0x11);
+	writeport(0x3D5, readport(0x3D5) & ~0x80);
+	//note: in future make sure the 0x80 bit is set @ 0x3 and unset @ 0x11
+	//write CRTC regs
+	writeport(0x3D4, 0x0);
+	writeport(0x3D5, 0x5F);
+	writeport(0x3D4, 0x1);
+	writeport(0x3D5, 0x4F);
+	writeport(0x3D4, 0x2);
+	writeport(0x3D5, 0x50);
+	writeport(0x3D4, 0x3);
+	writeport(0x3D5, 0x82 | 0x80);
+	writeport(0x3D4, 0x4);
+	writeport(0x3D5, 0x54);
+	writeport(0x3D4, 0x5);
+	writeport(0x3D5, 0x80);
+	writeport(0x3D4, 0x6);
+	writeport(0x3D5, 0x0B);
+	writeport(0x3D4, 0x7);
+	writeport(0x3D5, 0x3E);
+	writeport(0x3D4, 0x8);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0x9);
+	writeport(0x3D5, 0x40);
+	writeport(0x3D4, 0xA);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0xB);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0xC);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0xD);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0xE);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0xF);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0x10);
+	writeport(0x3D5, 0xEA);
+	writeport(0x3D4, 0x11 & ~0x80);
+	writeport(0x3D5, 0x0C);
+	writeport(0x3D4, 0x12);
+	writeport(0x3D5, 0xDF);
+	writeport(0x3D4, 0x13);
+	writeport(0x3D5, 0x28);
+	writeport(0x3D4, 0x14);
+	writeport(0x3D5, 0x00);
+	writeport(0x3D4, 0x15);
+	writeport(0x3D5, 0xE7);
+	writeport(0x3D4, 0x16);
+	writeport(0x3D5, 0x04);
+	writeport(0x3D4, 0x17);
+	writeport(0x3D5, 0xE3);
+	writeport(0x3D4, 0x18);
+	writeport(0x3D5, 0xFF);
+	//Graphics controller regs
+	writeport(0x3CE, 0x0);
+	writeport(0x3CF, 0x00);
+	writeport(0x3CE, 0x1);
+	writeport(0x3CF, 0x00);
+	writeport(0x3CE, 0x2);
+	writeport(0x3CF, 0x00);
+	writeport(0x3CE, 0x3);
+	writeport(0x3CF, 0x00);
+	writeport(0x3CE, 0x4);
+	writeport(0x3CF, 0x03);
+	writeport(0x3CE, 0x5);
+	writeport(0x3CF, 0x00);
+	writeport(0x3CE, 0x6);
+	writeport(0x3CF, 0x05);
+	writeport(0x3CE, 0x7);
+	writeport(0x3CF, 0x0F);
+	writeport(0x3CE, 0x8);
+	writeport(0x3CF, 0xFF);
+	//Attribute controller regs
+	writeAttributeReg(0x0, 0x00);
+	writeAttributeReg(0x1, 0x01);
+	writeAttributeReg(0x2, 0x02);
+	writeAttributeReg(0x3, 0x03);
+	writeAttributeReg(0x4, 0x04);
+	writeAttributeReg(0x5, 0x05);
+	writeAttributeReg(0x6, 0x14);
+	writeAttributeReg(0x7, 0x07);
+	writeAttributeReg(0x8, 0x38);
+	writeAttributeReg(0x9, 0x39);
+	writeAttributeReg(0xA, 0x3A);
+	writeAttributeReg(0xB, 0x3B);
+	writeAttributeReg(0xC, 0x3C);
+	writeAttributeReg(0xD, 0x3D);
+	writeAttributeReg(0xE, 0x3E);
+	writeAttributeReg(0xF, 0x3F);
+	writeAttributeReg(0x10, 0x01);
+	writeAttributeReg(0x11, 0x00);
+	writeAttributeReg(0x12, 0x0F);
+	writeAttributeReg(0x13, 0x00);
+	writeAttributeReg(0x14, 0x00);
+	//Might as well leave CRTC regs unlocked but need to restart refreshes
+	readport(0x3DA);
+	writeport(0x3C0, 0x20);
+}
+/*
+	Mode 12h info from SeaBIOS source
+	width: 640
+	height: 480
+	pelm: 0xFF
+	misc: 0xE3
+	
+	reg value below
+	
+	Procedure to change mode (from SeaBIOS)
+	1. Write the first 20 (0-19 offsets) ACTL regs @ 0x3D4/5
+	2. Write 0 to the 20th offset ACTL reg
+	3. Write 3 to the 0th SEQ reg @ 0x3C4/5
+	4. Write the 1st-4th SEQ regs
+	5. Write 9 GRDC regs @ 0x3CE/F
+	6. Make a variable to hold the CRTC address (defaults to 0x3D4/5)
+		miscreg value is 0xE3 for mode 12h, bit 1 is set, so use VGA not MDA for CRTC address
+	7. Write 0 to the 17th CRTC reg (0x3D4, just address select)
+	8. Write the 25 CRTC regs to 0x3D4/5
+	9. Write 0xE3 to the misc reg
+	10. Re-enable output by reading from 0x3DA (do nothing with value), and writing 0x20 to 0x3C0
+	
+	Done
+	
+
+    {0x12, { MM_PLANAR, 640, 480, 4, 8, 16, SEG_GRAPH }
+     , 0xFF, PAL(palette2), sequ_0e, 0xe3, crtc_11, actl_10, grdc_0d},
+     
+     static u8 sequ_0e[] VAR16 = { 0x01, 0x0f, 0x00, 0x06 };
+     
+     static u8 crtc_11[] VAR16 = {
+    0x5f, 0x4f, 0x50, 0x82, 0x54, 0x80, 0x0b, 0x3e,
+    0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xea, 0x8c, 0xdf, 0x28, 0x00, 0xe7, 0x04, 0xe3,
+    0xff };
+    
+    static u8 actl_10[] VAR16 = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x14, 0x07,
+    0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+    0x01, 0x00, 0x0f, 0x00 };
+    
+    static u8 grdc_0d[] VAR16 = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x0f, 0xff };
+    
+    How SB handles port 3C0
+    
+	stdvga_attr_read(u8 index)
+	{
+		inb(VGAREG_ACTL_RESET);		// 3DA
+		u8 orig = inb(VGAREG_ACTL_ADDRESS);	//3C0
+		outb(index, VGAREG_ACTL_ADDRESS);	//3C0
+		u8 v = inb(VGAREG_ACTL_READ_DATA);	//3C1
+		inb(VGAREG_ACTL_RESET);				//3DA
+		outb(orig, VGAREG_ACTL_ADDRESS);	//3C0
+		return v;
+	}
+
+	void
+	stdvga_attr_write(u8 index, u8 value)
+	{
+		inb(VGAREG_ACTL_RESET);				//3DA 
+		u8 orig = inb(VGAREG_ACTL_ADDRESS); //3C0
+		outb(index, VGAREG_ACTL_ADDRESS);   //3C0
+		outb(value, VGAREG_ACTL_WRITE_DATA);//3C0
+		outb(orig, VGAREG_ACTL_ADDRESS);	//3C0
+	}     
+*/  
+
+void putPixel(uint16_t x, uint16_t y, uint8_t color)
+{
+	
+}
