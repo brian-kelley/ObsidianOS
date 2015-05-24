@@ -1,12 +1,12 @@
 CC=i386-elf-gcc
-CFLAGS=-c -Wall -Wextra -ffreestanding -std=gnu99 -O2 
+CFLAGS=-c -Wall -Wextra -ffreestanding -std=gnu99 
 OSNAME=os
 
 CSOURCES=$(wildcard *.c)
 ASOURCES=$(wildcard *.s)
 
 COBJECTS=$(CSOURCES:.c=.o) 
-AOBJECTS=$(ASOURCES:.s=.o) 
+AOBJECTS=$(ASOURCES:.s=.o)
 
 EXECUTABLE=$(OSNAME).bin
 

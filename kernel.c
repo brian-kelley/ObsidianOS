@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include "video.h"
 
-extern word passthru(dword);
-
 char hexFromBits(byte bits)	//put in low 4
 {
 	switch(bits & 0xF)
@@ -83,12 +81,8 @@ void kernel_main()
 			textbuf[i + j * WIDTH] = blank;
 		}
 	}
-	int row = 0;
-	for(int i = 0; i < 0x7FFFFFFF; i++)
-	{
-		row = row > 25 ? 0 : row;
-		drawNum(i, row);
-		row++;
-	}
-	//initVideo();
+	enterMode12H();
+	clearScreen(0xB);
+	byte* fb = (byte*) 0xA0000;
+	fb[5] = 10;
 }

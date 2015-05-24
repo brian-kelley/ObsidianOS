@@ -283,7 +283,50 @@ void enterMode12H()
 	}     
 */  
 
-void putPixel(uint16_t x, uint16_t y, uint8_t color)
+void clearScreen(byte color)
 {
+	color &= 0xF;
+	byte* vram = (byte*) 0xA0000;
+	writeport(0x3C4, 2);
+	//select plane 0
+	writeport(0x3C5, 0x1);
+	byte plane0 = color & 1 ? 0xFF : 0x0;
+	for(int i = 0; i < 0x9600; i++)
+	{
+		vram[i] = plane0;
+	}
+	//plane 1
+	writeport(0x3C4, 2);
+	writeport(0x3C5, 0x2);
+	byte plane1 = color & 0x2 ? 0xFF : 0x0;
+	for(int i = 0; i < 0x9600; i++)
+	{
+		vram[i] = plane1;
+	}
+	//plane 2
+	writeport(0x3C4, 2);
+	writeport(0x3C5, 0x4);
+	byte plane2 = color & 0x4 ? 0xFF : 0x0;
+	for(int i = 0; i < 0x9600; i++)
+	{
+		vram[i] = plane2;
+	}
+	//plane 3
+	writeport(0x3C4, 2);
+	writeport(0x3C5, 0x8);
+	byte plane3 = color & 0x8 ? 0xFF : 0x0;
+	for(int i = 0; i < 0x9600; i++)
+	{
+		vram[i] = plane3;
+	}
+}
+
+void putPixel(word x, word y, byte color)
+{
+	int offset = y * 640 + x;
+	writeport(0x3C4, 2);
+	writeport(0x3C5, 1);
+	writeport(0x3CE, 4);
+	writeport(0x3CF, 0);
 	
 }

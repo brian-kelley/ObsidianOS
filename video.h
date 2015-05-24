@@ -9,4 +9,5 @@ extern void writeport(dword portNum, dword value);
 extern byte readport(dword portNum);
 
 void enterMode12H();
-void putPixel(uint16_t x, uint16_t y, uint8_t color);
+void putPixel(word x, word y, byte color);
+void clearScreen(byte color);
