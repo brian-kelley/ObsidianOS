@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "video.h"
 
+extern byte getFontVal();
+
 char hexFromBits(byte bits)	//put in low 4
 {
 	switch(bits & 0xF)
@@ -65,24 +67,23 @@ void drawNum(dword num, int row)
 	}
 }
 
+void puts(const char* str, int x, int y)
+{
+	int i = 0;
+	while(str[i])
+	{
+		drawChar(str[i], x + i, y, 0xF, 0x1);
+		i++;
+	}
+}
+
 void kernel_main()
 {
-	const int WIDTH = 80;
-	const int HEIGHT = 25;
-	int cursorX = 0;
-	int cursorY = 0;
-	uint16_t* textbuf = (uint16_t*) 0xB8000;
-	uint8_t textColor = 0x00;
-	uint16_t blank = textColor << 8 | (uint16_t) ' ';
-	for(uint16_t i = 0; i < WIDTH; i++)
-	{
-		for(uint16_t j = 0; j < HEIGHT; j++)
-		{
-			textbuf[i + j * WIDTH] = blank;
-		}
-	}
 	enterMode12H();
-	clearScreen(0xB);
-	byte* fb = (byte*) 0xA0000;
-	fb[5] = 10;
+	clearScreen(0x1);
+	const char* str = "Hello world!";
+	for(int i = 0; i < 30; i++)
+	{
+		puts(str, i, i);
+	}
 }
