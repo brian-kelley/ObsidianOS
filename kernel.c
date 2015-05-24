@@ -2,6 +2,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "video.h"
+#include "asmTypes.h"
+#include "input.h"
 
 extern byte getFontVal();
 
@@ -46,27 +48,6 @@ char hexFromBits(byte bits)	//put in low 4
 	}
 }
 
-void drawNum(dword num, int row)
-{
-	byte color = 0x0F;
-	char* mystr = "0x........";	//all dots will be filled in
-	for(int i = 0; i < 8; i++)
-	{
-		mystr[9 - i] = hexFromBits(num >> (i * 4));
-	}
-	int cursorX = 0;
-	int cursorY = row;
-	char* iter = (char*) mystr;
-	dword* textbuf = (dword*) 0xB8000;
-	while(*iter != '\0')
-	{
-		dword entry = ((dword) color) << 8 | (dword) (*iter);
-		textbuf[cursorX + cursorY * 80] = entry;
-		cursorX++;
-		iter++;
-	}
-}
-
 void puts(const char* str, int x, int y)
 {
 	int i = 0;
@@ -77,6 +58,21 @@ void puts(const char* str, int x, int y)
 	}
 }
 
+void drawNum(dword num, int row)
+{
+	char* mystr = "0x........";	//all dots will be filled in
+	for(int i = 0; i < 8; i++)
+	{
+		mystr[9 - i] = hexFromBits(num >> (i * 4));
+	}
+	puts((const char*) mystr, 0, row);
+}
+
+void keyPressed(byte keycode)
+{
+	drawNum(keycode, 0);
+}
+
 void kernel_main()
 {
 	enterMode12H();
@@ -84,6 +80,6 @@ void kernel_main()
 	const char* str = "Hello world!";
 	for(int i = 0; i < 30; i++)
 	{
-		puts(str, i, i);
+		drawNum(i, i);
 	}
 }

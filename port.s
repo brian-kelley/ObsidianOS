@@ -2,7 +2,6 @@
 
 .global readport
 .global writeport
-.extern drawNum
 
 readport:		//byte readport(dword portNum)
 	movl $0, %edx

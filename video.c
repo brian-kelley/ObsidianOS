@@ -182,12 +182,7 @@ void clearScreen(byte color)
 	}
 }
 
-void putPixel(word x, word y, byte color)
-{
-	
-}
-
-void drawChar(char c, word x, word y, byte fg, byte bg)
+void drawChar(char c, int x, int y, byte fg, byte bg)
 {
 	//Bounds checking
 	if(x < 0 || x >= 80 || y < 0 || y >= 30)
@@ -205,7 +200,7 @@ void drawChar(char c, word x, word y, byte fg, byte bg)
 		//Use bits from foreground where font bit is set, and bits from bg when font bit is clear
 		//In plane, 80 bytes (1 bit per pixel, 640 pixels) across per pixel row
 		//Each char has 16 rows, i represents this from 0 to 15
-		fb[80 * (16 * y + i) + x] = fgbits & reverseTable[glyph[i]] | bgbits & ~reverseTable[glyph[i]];
+		fb[80 * (16 * y + i) + x] = (fgbits & reverseTable[glyph[i]]) | (bgbits & ~reverseTable[glyph[i]]);
 	}
 	//Plane 1
 	writeport(0x3C4, 2);
@@ -215,7 +210,7 @@ void drawChar(char c, word x, word y, byte fg, byte bg)
 	for(int i = 0; i < 16; i++)
 	{
 		//Use bits from foreground where font bit is set, and bits from bg when font bit is clear
-		fb[80 * (16 * y + i) + x] = fgbits & reverseTable[glyph[i]] | bgbits & ~reverseTable[glyph[i]];
+		fb[80 * (16 * y + i) + x] = (fgbits & reverseTable[glyph[i]]) | (bgbits & ~reverseTable[glyph[i]]);
 	}
 	//Plane 2
 	writeport(0x3C4, 2);
@@ -225,7 +220,7 @@ void drawChar(char c, word x, word y, byte fg, byte bg)
 	for(int i = 0; i < 16; i++)
 	{
 		//Use bits from foreground where font bit is set, and bits from bg when font bit is clear
-		fb[80 * (16 * y + i) + x] = fgbits & reverseTable[glyph[i]] | bgbits & ~reverseTable[glyph[i]];
+		fb[80 * (16 * y + i) + x] = (fgbits & reverseTable[glyph[i]]) | (bgbits & ~reverseTable[glyph[i]]);
 	}
 	//Plane 3
 	writeport(0x3C4, 2);
@@ -235,6 +230,6 @@ void drawChar(char c, word x, word y, byte fg, byte bg)
 	for(int i = 0; i < 16; i++)
 	{
 		//Use bits from foreground where font bit is set, and bits from bg when font bit is clear
-		fb[80 * (16 * y + i) + x] = fgbits & reverseTable[glyph[i]] | bgbits & ~reverseTable[glyph[i]];
+		fb[80 * (16 * y + i) + x] = (fgbits & reverseTable[glyph[i]]) | (bgbits & ~reverseTable[glyph[i]]);
 	}
 }
