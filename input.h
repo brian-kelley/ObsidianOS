@@ -2,12 +2,13 @@
 #define INPUT_H
 #include "asmTypes.h"
 
-extern void keyboardHandler();
+void keyboardHandler();
+extern void keyboardInterrupt();
 extern void loadIDT(dword* idtPtr);
-extern void setupIDT();
-extern void enableKeyboard();
+extern void drawNum(dword num, int row);
+extern void keyPressed(byte scancode);
 
-void initIDT();
+void initKeyboard();
 
 typedef struct
 {
@@ -16,7 +17,6 @@ typedef struct
 	byte zero;
 	byte type_attr;
 	word offsetHigher;
-} idtEntry;
+} idtEntry __attribute__((packed));
 
-idtEntry idt[256];
 #endif

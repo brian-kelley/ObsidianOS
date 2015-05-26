@@ -77,9 +77,6 @@ void kernel_main()
 {
 	enterMode12H();
 	clearScreen(0x1);
-	const char* str = "Hello world!";
-	for(int i = 0; i < 30; i++)
-	{
-		drawNum(i, i);
-	}
+	initKeyboard();
+	while(1);
 }
