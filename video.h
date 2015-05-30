@@ -14,5 +14,7 @@ void clearScreen(byte color);
 //Draw a character in Liberation Mono anywhere on screen, with foreground and background colors given
 //Note: x and y are on text grid, 8x16 pixels
 void drawChar(char c, int x, int y, byte fg, byte bg);
+void vsync();
+void puts(const char* str, int x, int y);
 
 #endif

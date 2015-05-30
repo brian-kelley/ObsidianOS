@@ -47,17 +47,6 @@ char hexFromBits(byte bits)	//put in low 4
 			return '?';
 	}
 }
-
-void puts(const char* str, int x, int y)
-{
-	int i = 0;
-	while(str[i])
-	{
-		drawChar(str[i], x + i, y, 0xF, 0x1);
-		i++;
-	}
-}
-
 void drawNum(dword num, int row)
 {
 	char* mystr = "0x........";	//all dots will be filled in
@@ -68,9 +57,9 @@ void drawNum(dword num, int row)
 	puts((const char*) mystr, 0, row);
 }
 
-void keyPressed(byte keycode)
+void keyPressed(byte keycode, byte pressed)
 {
-	drawNum(keycode, 0);
+	//Keyboard interrupts send data here. Send data to user applications etc.
 }
 
 void kernel_main()

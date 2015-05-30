@@ -12,5 +12,11 @@ loadIDT:
 	ret
 
 keyboardInterrupt:
+	cli
+	pusha
+	mov %esp, %ebp
+	cld
 	call keyboardHandler
+	popa
+	sti
 	iret

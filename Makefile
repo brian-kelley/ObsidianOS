@@ -1,5 +1,5 @@
 CC=i386-elf-gcc
-CFLAGS=-c -Wall -Wextra -ffreestanding -std=gnu99 
+CFLAGS=-c -Wall -Wextra -ffreestanding -std=gnu99 -O0
 OSNAME=os
 
 CSOURCES=$(wildcard *.c)
@@ -11,9 +11,8 @@ AOBJECTS=$(ASOURCES:.s=.o)
 EXECUTABLE=$(OSNAME).bin
 
 all: $(COBJECTS) $(AOBJECTS) $(EXECUTABLE)
-
-test: 
 	qemu-system-i386 -cdrom $(OSNAME).iso
+
 clean:
 	rm *.o
 	rm $(OSNAME).bin

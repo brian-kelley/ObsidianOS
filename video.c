@@ -234,3 +234,19 @@ void drawChar(char c, int x, int y, byte fg, byte bg)
 		fb[80 * (16 * y + i) + x] = (fgbits & reverseTable[glyph[i]]) | (bgbits & ~reverseTable[glyph[i]]);
 	}
 }
+
+void vsync()
+{
+	while(readport(0x3DA) & 8 == 0);	//Wait to enter vertical refresh interval
+	while(readport(0x3DA) & 8 == 1);			//Wait for vertical refresh interval to end
+}
+
+void puts(const char* str, int x, int y)
+{
+	int i = 0;
+	while(str[i])
+	{
+		drawChar(str[i], x + i, y, 0xF, 0x1);
+		i++;
+	}
+}
