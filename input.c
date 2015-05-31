@@ -118,7 +118,7 @@ void initKeyboard()
 	enableKeyboardScancodes();
 	keyboardCommand(0xAE);
 	if(resetKeyboard())
-		puts("Keyboard reset failed.     ", 0, 0);
+		puts("ERROR: Keyboard reset failed.", 0, 0);
 	writeport(0x20, 0x11);
 	writeport(0xA0, 0x11);
 	writeport(0x21, 0x20);
@@ -189,8 +189,6 @@ void keyboardHandler()
 			break;
 		default:;
 	}
-	drawNum(KEY_CAPSLOCK, 28);
-	drawNum(dataIn, 29);
 	keyPressed(dataIn, pressed);
 	//signal EOI
 	writeport(0x20, 0x20);
@@ -210,7 +208,7 @@ char getASCII(byte scancode)
 	//If alphabetical, capitalization depends on capslock state:
 	if(charVals[scancode] >= 'a' && charVals[scancode] <= 'z')
 	{
-		if((capsLockOn && !shiftPressed) || (!capsLockOn && shiftPressed))
+		if((capsLockOn == 1 && shiftPressed == 0) || (capsLockOn == 0 && shiftPressed == 1))
 			return charVals[scancode + NUMKEYS];
 		else
 			return charVals[scancode];

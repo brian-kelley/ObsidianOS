@@ -44,6 +44,8 @@ void initTerminal()
 
 void terminalKeyListener(byte scancode)
 {
+	if(ctrlPressed || altPressed)
+		return;
 	Scancode code = (Scancode) scancode;
 	switch(code)
 	{
@@ -53,8 +55,12 @@ void terminalKeyListener(byte scancode)
 			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
 			if(TERM_W - cursorX < 4)
 			{
-				//commandLen now divisible by TERM_W so set it to ceil(commandLen / TERM_W) * TERM_W
-				commandLen = (commandLen % TERM_W) == 0 ? commandLen : (1 + commandLen / TERM_W) * TERM_W;
+				//Snap commandLen to take up the remainder of this line, or do nothing if was already at the end of the line
+				if((commandLen + promptLen) % TERM_W != 0)
+				{
+					commandLen = (1 + (commandLen + promptLen) / TERM_W) * TERM_W - promptLen;
+				}
+				//Put cursor at start of next line
 				cursorY++;
 				cursorX = 0;
 				if(cursorY == TERM_H)
