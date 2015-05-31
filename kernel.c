@@ -4,8 +4,10 @@
 #include "video.h"
 #include "asmTypes.h"
 #include "input.h"
+#include "terminal.h"
 
 extern byte getFontVal();
+byte userProc = 0;	//0 if in terminal and 1 if running user program
 
 char hexFromBits(byte bits)	//put in low 4
 {
@@ -57,9 +59,20 @@ void drawNum(dword num, int row)
 	puts((const char*) mystr, 0, row);
 }
 
-void keyPressed(byte keycode, byte pressed)
+void keyPressed(byte scancode, byte pressed)
 {
 	//Keyboard interrupts send data here. Send data to user applications etc.
+	if(userProc)
+	{
+		//give event to user key listeners...
+	}
+	else
+	{
+		//terminal is the current focus
+		//terminal doesn't care about key releases
+		if(pressed)
+			terminalKeyListener(scancode);
+	}
 }
 
 void kernel_main()
@@ -67,5 +80,6 @@ void kernel_main()
 	enterMode12H();
 	clearScreen(0x1);
 	initKeyboard();
+	initTerminal();
 	while(1);
 }
