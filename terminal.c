@@ -6,40 +6,25 @@
 static char buffer[TERM_H][TERM_W];		//30 rows of 80 characters
 static int cursorX = 0;
 static int cursorY = 0;
+static char* const welcomeStr = "Welcome to GoldOS!\n";
 static char* const prompt = ">> ";
 static const char cursor = '_';
 static const int promptLen = 3;	//column to put cursor in at prompt
-static byte fgColor = 0xF;	//white	text
-static byte bgColor = 0x1;	//dark blue background
+static byte fgColor = 0xF;	//foreground
+static byte bgColor = 0x4;	//background
 static const int TAB_WIDTH = 4;
 static int commandLen = 0;	//number of chars in command being typed, starting from promptLen++. Div by TERM_W to get # of rows.
 
 void initTerminal()
 {
-	for(int i = 0; i < TERM_H; i++)
-	{
-		for(int j = 0; j < TERM_W; j++)
-		{
-			buffer[i][j] = ' ';
-		}
-	}
-	char* const welcome = "Welcome to GoldOS!";
-	for(int i = 0;; i++)
-	{
-		if(welcome[i] == 0)
-			break;
-		buffer[0][i] = welcome[i];
-	}
-	for(int i = 0;; i++)
-	{
-		if(prompt[i] == 0)
-			break;
-		buffer[1][i] = prompt[i];
-	}
-	//Set initial cursor position
+	clearTerminal(0);
+	cursorX = 0;
+	cursorY = 0;
+	printString(welcomeStr);
+	printString(prompt);
 	cursorX = promptLen;
-	cursorY = 1;
-	terminalUpdateScreen();
+	drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
+	//terminalUpdateScreen();
 }
 
 void terminalKeyListener(byte scancode)
@@ -49,40 +34,27 @@ void terminalKeyListener(byte scancode)
 	Scancode code = (Scancode) scancode;
 	switch(code)
 	{
-		case KEY_TAB:
-		{
-			//Erase cursor
-			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
-			if(TERM_W - cursorX < 4)
-			{
-				//Snap commandLen to take up the remainder of this line, or do nothing if was already at the end of the line
-				if((commandLen + promptLen) % TERM_W != 0)
-				{
-					commandLen = (1 + (commandLen + promptLen) / TERM_W) * TERM_W - promptLen;
-				}
-				//Put cursor at start of next line
-				cursorY++;
-				cursorX = 0;
-				if(cursorY == TERM_H)
-				{
-					shiftUp();
-					//If the tab forces the buffer to shift up, start cursor at start of bottom line
-					cursorY--;
-				}
-			}
-			else
-			{
-				cursorX += TAB_WIDTH;
-				commandLen += TAB_WIDTH;
-			}
-			drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
-			break;
-		}
 		case KEY_ENTER:
 		{
+			buffer[cursorY][cursorX] = ' ';
+			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
+			//Immediately run the command
+			//Get cursor on a new line before running command
+			cursorX = 0;
+			int cmdStart = -1 + cursorY - ((commandLen + promptLen) / TERM_W);
+			cursorY++;
+			cmdStart++;
+			if(cursorY == TERM_H)
+			{
+				shiftUp();
+				cursorY--;
+				cmdStart--;
+			}
+			parseCommand(cmdStart);	//Would normally load a program into RAM, invoke the runtime and jump execution to the program.
 			//carriage return and newline
 			//Erase cursor
 			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
+			buffer[cursorY][cursorX] = ' ';
 			cursorX = promptLen;
 			cursorY++;
 			if(cursorY == TERM_H)
@@ -90,7 +62,6 @@ void terminalKeyListener(byte scancode)
 				shiftUp();
 				cursorY--;
 			}
-			parseCommand();	//Would normally load a program into RAM, invoke the runtime and jump execution to the program.
 			//Does not do that yet.
 			//Draw prompt string on cursor's new row
 			for(int i = 0;; i++)
@@ -98,9 +69,11 @@ void terminalKeyListener(byte scancode)
 				if(prompt[i] == 0)
 					break;
 				drawChar(prompt[i], i, cursorY, fgColor, bgColor);
+				buffer[cursorY][i] = prompt[i];
 			}
 			//Redraw cursor
 			drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
+			buffer[cursorY][cursorX] = cursor;
 			commandLen = 0;
 			break;
 		}
@@ -110,6 +83,7 @@ void terminalKeyListener(byte scancode)
 				break;
 			//Erase cursor, back up, redraw cursor
 			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
+			buffer[cursorY][cursorX] = ' ';
 			commandLen--;
 			if(cursorX == 0)
 			{
@@ -121,6 +95,7 @@ void terminalKeyListener(byte scancode)
 				cursorX--;
 			}
 			drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
+			buffer[cursorY][cursorX] = cursor;
 			break;
 		}
 		default:
@@ -130,6 +105,7 @@ void terminalKeyListener(byte scancode)
 			if(other)
 			{
 				drawChar(other, cursorX, cursorY, fgColor, bgColor);
+				buffer[cursorY][cursorX] = other;
 				cursorX++;
 				commandLen++;
 				if(cursorX == TERM_W)
@@ -144,6 +120,7 @@ void terminalKeyListener(byte scancode)
 					}
 				}
 				drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
+				buffer[cursorY][cursorX] = cursor;
 			}
 		}
 	}
@@ -160,9 +137,72 @@ void terminalUpdateScreen()
 	}
 }
 
+//Prints the string at the cursor position
 void printString(char* const str)
 {
-	
+	for(int i = 0;; i++)
+	{
+		switch(str[i])
+		{
+			case '\0':
+				return;
+			case '\t':	//tab
+				//round X up to a TAB_WIDTH-column boundary
+				if(cursorX % TAB_WIDTH == 0)
+					cursorX += TAB_WIDTH;
+				else
+					cursorX = (1 + (cursorX / TAB_WIDTH)) * TAB_WIDTH;
+				//put cursor at start of next line if past end of line
+				if(cursorX >= TERM_W)
+				{
+					cursorX = 0;
+					cursorY++;
+					if(cursorY == TERM_H)
+					{
+						cursorY--;
+						shiftUp();
+					}
+				}
+				break;
+			case '\n':	//newline
+				cursorX = 0;
+				cursorY++;
+				if(cursorY == TERM_H)
+				{
+					cursorY--;
+					shiftUp();
+				}
+				break;
+			case '\b': //backspace
+				if(cursorX > 0)
+				{
+					buffer[cursorY][cursorX] = ' ';
+					drawChar(' ', cursorX, cursorY, fgColor, bgColor);
+					cursorX--;
+				}
+				break;
+			case '\r':	//Carriage return, go back to start of line
+				cursorX = 0;
+				break;
+			case '\f':	//Form feed
+				clearScreen(0);
+				break;
+			default:
+				//Just draw the ASCII char
+				drawChar(str[i], cursorX, cursorY, fgColor, bgColor);
+				cursorX++;
+				if(cursorX == TERM_W)
+				{
+					cursorX = 0;
+					cursorY++;
+					if(cursorY == TERM_H)
+					{
+						cursorY--;
+						shiftUp();
+					}
+				}
+		}
+	}
 }
 
 void shiftUp()
@@ -180,7 +220,43 @@ void shiftUp()
 	terminalUpdateScreen();
 }
 
-void parseCommand()
+void parseCommand(int row)
 {
-	
+	//Stop drawing the cursor while the command is running
+	//Figure out exactly where the command starts
+	//commandLen gives the number of characters in command string, so (commandLen + promptLen) / TERM_W gives the number of complete lines in command
+	//that means that command starts in the buffer at x = promptLen, y = cursorY - (commandLen + promptLen) / TERM_W
+	//Rows stored contiguously.
+	//When Enter is pressed, parseCommand is the first thing the terminal does so that cursor position preserved
+	char* commandStart = (char*) &buffer[row][promptLen];
+	commandStart[commandLen] = 0;	//Add a null-terminator in the buffer 
+	printString(commandStart);
+}
+
+void clearTerminal(byte commandMode)
+{
+	//Clear buffer
+	for(int i = 0; i < TERM_H; i++)
+	{
+		for(int j = 0; j < TERM_W; j++)
+		{
+			buffer[i][j] = ' ';
+		}
+	}
+	cursorY = 0;
+	if(commandMode)
+	{
+		for(int i = 0;; i++)
+		{
+			if(prompt[i] == 0)
+				break;
+			drawChar(prompt[i], i, 0, fgColor, bgColor);
+		}
+		cursorX = promptLen;
+	}
+	else
+	{
+		cursorX = 0;
+	}
+	terminalUpdateScreen();
 }

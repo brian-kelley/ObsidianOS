@@ -10,6 +10,7 @@ void terminalKeyListener(byte scancode);
 void terminalUpdateScreen();
 void printString(char* const str);
 void shiftUp();	//Shift the buffer contents up one line
-void parseCommand();
+void parseCommand(int startRow);	//Command parser needs to know which row in buffer command starts
+void clearTerminal(byte commandMode);	//commandMode: 1 if should draw cursor/prompt after clear, 0 otherwise
 
 #endif

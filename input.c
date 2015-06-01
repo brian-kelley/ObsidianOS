@@ -190,6 +190,7 @@ void keyboardHandler()
 		default:;
 	}
 	keyPressed(dataIn, pressed);
+	//drawNum(dataIn, 28);
 	//signal EOI
 	writeport(0x20, 0x20);
 	writeport(0xA0, 0x20);
