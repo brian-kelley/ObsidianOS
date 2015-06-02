@@ -5,6 +5,11 @@ typedef unsigned short word;
 typedef unsigned int dword;
 typedef unsigned long int qword;
 
+#include "string.h"
+#include "math.h"
+#include "stdio.h"
+#include "stdlib.h"
+
 static char* lastTok;	//used to store the \0 where last token ended
 
 //memcpy implementation that does work with overlapping src/dst arrays
@@ -278,28 +283,261 @@ char* strstr(const char* str1, const char* str2)
 
 char* strtok(char* str, const char* delimiters)
 {
-	if(str == NULL)
+	if(str == NULL && lastTok == NULL)
+		return NULL
+	//Scan to start of token
+	char* tokSearchBegin = str == NULL ? lastTok : str;
+	char* tokStart = NULL;
+	for(int i = 0;; i++)
 	{
-		//Must use "lastTok" to begin looking for next token
-		char* tokBegin = str;
-		for(;; tokBegin++)
+		if(tokSearchBegin[i] == 0)
+			return NULL;
+		byte isDelim = 0;
+		for(int j = 0;; j++)
 		{
-			if(
-			bool endOfToken = 0;
-			for(int j = 0;; j++)
+			if(delimiters[j] == 0)
+				break;
+			if(tokSearchBegin[i] == delimiters[j])
 			{
-				if(delimiters[j] == 0)
-					break;
-				if(*tokBegin == delimiters[j])
-					endOfToken = 1;
+				isDelim = 1;
+				break;
+			}
+		}
+		if(!isDelim)
+		{
+			//token starts here
+			tokStart = tokSearchBegin + i;
+		}
+	}
+	//if here then tokStart points to start of token
+	//scan for end of token, if reached before \0 then put \0 at end of tok
+	for(int i = 0;; i++)
+	{
+		//check for delimiter in token
+		if(tokStart[i] == 0)
+			break;
+		byte isDelim = 0;
+		for(int j = 0;; j++)
+		{
+			if(delimiters[j] == 0)
+				break;
+			if(tokStart[i] == delimiters[j])
+			{
+				isDelim = 1;
+				tokStart[i] = 0;
+				break;
 			}
 		}
 	}
-	else
-	{
-		//if lastTok was NULL, no more tokens for this string
-		if(lastTok == NULL)
-			return NULL;
-		//use str to start search
-	}
+	return tokStart;
 }
+
+void* memset(void* ptr, int value, size_t num)
+{
+	byte* bptr = (byte*) ptr;
+	for(int i = 0; i < (int) num; i++)
+	{
+		bptr[i] = (byte) value;
+	}
+	return ptr;
+}
+
+size_t strlen(const char* str)
+{
+	for(int i = 0;; i++)
+	{
+		if(str[i] == 0)
+			return i;
+	}
+	return 0;
+}
+
+/* Math functions */
+
+//Proportion between sum to n - 1 and sum n in taylor series
+//must be between (1 - CONV_TOL) and (1 + CONV_TOL)
+
+#define FLOAT_CONV_TOL 1e-8
+#define DOUBLE_CONV_TOL 1e-12
+#define LONG_DOUBLE_CONV_TOL 1e-16
+
+//locally defined factorial function, needed for Taylor series evaluation
+int factorial(int num)
+{
+	if(num & 1 == num)
+		return 1;
+	int rv = 1;
+	for(int mult = num; mult > 1; mult--)
+		rv *= mult;
+	return rv;
+}
+
+//simpler, faster version of pow for nonnegative integer powers
+//used a lot with the Taylor series
+double intpow(double base, int exponent)
+{
+	if(exponent == 0)
+		return base;
+	double rv = 1;
+	for(int i = 0; i < exponent; i++)
+		rv *= base;
+	return rv;
+}
+
+float intpowf(float base, int exponent)
+{
+	if(exponent == 0)
+		return base;
+	float rv = 1;
+	for(int i = 0; i < exponent; i++)
+		rv *= base;
+	return rv;
+}
+
+long double intpowl(long double base, int exponent)
+{
+	if(exponent == 0)
+		return base;
+	long double rv = 1;
+	for(int i = 0; i < exponent; i++)
+		rv *= base;
+	return rv;
+}
+
+double sin(double x)
+{
+	//get domain into (-2pi, 2pi) to improve accuracy
+	x -= PI * ((int) (x / PI));
+	double rv = 0;
+	for(int i = 0;; i++)
+	{
+		double termIndex = (double) i;
+		//(i * 4 + 1) gives sequence 1, 5, 9, ... (added terms)
+		//(i * 4 + 3) gives sequence 3, 7, 11 ... (subtracted terms)
+		double term1 = intpow(x, i * 4 + 1) / factorial(i * 4 + 1);
+		double term2 = intpow(x, i * 4 + 3) / factorial(i * 4 + 3);
+		//check for convergence if have already done ~6 terms
+		double termDiff = term1 - term2;
+		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
+			break;
+		rv += term1;
+		rv -= term2;
+	}
+	return rv;
+}
+
+float sinf(float x)
+{
+	x -= (float) PI * ((int) (x / (float)PI));
+	float rv = 0;
+	for(int i = 0;; i++)
+	{
+		float termIndex = (float) i;
+		float term1 = intpowf(x, i * 4 + 1) / factorial(i * 4 + 1);
+		float term2 = intpowf(x, i * 4 + 3) / factorial(i * 3 + 1);
+		float termDiff = term1 - term2;
+		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
+			break;
+		rv += term1;
+		rv -= term2;
+	}
+	return rv;
+}
+
+long double sinl(long double x)
+{
+	x -= (long double) PI * ((int) (x / (long double) PI));
+	float rv = 0;
+	for(int i = 0;; i++)
+	{
+		long double termIndex = (long double) i;
+		long double term1 = intpowl(x, i * 4 + 1) / factorial(i * 4 + 1);
+		long double term2 = intpowl(x, i * 4 + 3) / factorial(i * 4 + 3);
+		long double termDiff = term1 - term2;
+		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
+			break;
+		rv += term1;
+		rv -= term2;
+	}
+	return rv;
+}
+
+double cos(double x)
+{
+	x -= PI * ((int) (x / PI));
+	double rv = 1;
+	for(int i = 0;; i++)
+	{
+		double termIndex = (double) i;
+		double term1 = intpow(x, i * 4 + 2) / factorial(i * 4 + 2);
+		double term2 = intpow(x, i * 4 + 4) / factorial(i * 4 + 4);
+		double termDiff = term1 - term2;
+		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
+			break;
+		rv -= term1;
+		rv += term2;
+	}
+	return rv;
+}
+
+float cosf(float x)
+{
+	x -= (float) PI * ((int) (x / PI));
+	float rv = 1;
+	for(int i = 0;; i++)
+	{
+		float termIndex = (float) i;
+		float term1 = intpowf(x, i * 4 + 2) / factorial(i * 4 + 2);
+		float term2 = intpowf(x, i * 4 + 4) / factorial(i * 4 + 4);
+		float termDiff = term1 - term2;
+		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
+			break;
+		rv -= term1;
+		rv += term2;
+	}
+	return rv;
+}
+
+long double cosl(long double x)
+{
+	x -= (long double) PI * ((int) (x / (long double) PI));
+	long double rv = 1;
+	for(int i = 0;; i++)
+	{
+		long double termIndex = (long double) i;
+		long double term1 = intpowl(x, i * 4 + 2) / factorial(i * 4 + 2);
+		long double term2 = intpowl(x, i * 4 + 4) / factorial(i * 4 + 4);
+		long double termDiff = term1 - term2;
+		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
+			break;
+		rv -= term1;
+		rv += term2;
+	}
+	return rv;
+}
+
+double tan(double x)
+{
+	double cosine = cos(x);
+	if(-DOUBLE_CONV_TOL < cosine && cosine < DOUBLE_CONV_TOL)
+		return NAN;
+	return sin(x) / cosine;
+}
+
+float tanf(float x)
+{
+	float cosine = cosf(x);
+	if(-FLOAT_CONV_TOL < cosine && cosine < DOUBLUE_CONV_TOL)
+		return NAN;
+	return sinf(x) / cosine;
+}
+
+long double tanl(long double x)
+{
+	long double cosine = cosl(x);
+	if(-LONG_DOUBLE_CONV_TOL < cosine && cosine < LONG_DOUBLE_CONV_TOL)
+		return NAN;
+	return sinl(x) / cosine;
+}
+
+

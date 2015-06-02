@@ -13,7 +13,7 @@ static const int promptLen = 3;	//column to put cursor in at prompt
 static byte fgColor = 0xF;	//foreground
 static byte bgColor = 0x4;	//background
 static const int TAB_WIDTH = 4;
-static int commandLen = 0;	//number of chars in command being typed, starting from promptLen++. Div by TERM_W to get # of rows.
+static int commandLen = 0;	//number of chars in command being typed, starting from promptLen. 								//Div by TERM_W to get # of rows.
 
 void initTerminal()
 {

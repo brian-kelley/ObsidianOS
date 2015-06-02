@@ -6,6 +6,16 @@
 #include "input.h"
 #include "terminal.h"
 
+/* Note on GCC for i386 types:
+
+short: 16 bits
+int: 32 bits
+long int: 32 bits
+long long int: 64 bits
+float: 32 bits
+double: 64 bits
+long double: 96 bits in memory for alignment but is actually 80 bit precision
+
 extern byte getFontVal();
 byte userProc = 0;	//0 if in terminal and 1 if running user program
 
@@ -78,8 +88,16 @@ void keyPressed(byte scancode, byte pressed)
 void kernel_main()
 {
 	enterMode12H();
-	clearScreen(0x1);
-	initKeyboard();
-	initTerminal();
+	clearScreen(4);
+	//initKeyboard();
+	//initTerminal();
+	puts("Size of short:", 0, 0);
+	drawNum(sizeof(short), 1);
+	puts("Size of int:", 0, 2);
+	drawNum(sizeof(int), 3);
+	puts("Size of long int:", 0, 4);
+	drawNum(sizeof(long int), 5);
+	puts("Size of long long int:", 0, 6);
+	drawNum(sizeof(long long int), 7);
 	while(1);
 }
