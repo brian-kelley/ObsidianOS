@@ -411,7 +411,6 @@ double sin(double x)
 	double rv = 0;
 	for(int i = 0;; i++)
 	{
-		double termIndex = (double) i;
 		//(i * 4 + 1) gives sequence 1, 5, 9, ... (added terms)
 		//(i * 4 + 3) gives sequence 3, 7, 11 ... (subtracted terms)
 		double term1 = intpow(x, i * 4 + 1) / factorial(i * 4 + 1);
@@ -432,7 +431,6 @@ float sinf(float x)
 	float rv = 0;
 	for(int i = 0;; i++)
 	{
-		float termIndex = (float) i;
 		float term1 = intpowf(x, i * 4 + 1) / factorial(i * 4 + 1);
 		float term2 = intpowf(x, i * 4 + 3) / factorial(i * 3 + 1);
 		float termDiff = term1 - term2;
@@ -450,7 +448,6 @@ long double sinl(long double x)
 	float rv = 0;
 	for(int i = 0;; i++)
 	{
-		long double termIndex = (long double) i;
 		long double term1 = intpowl(x, i * 4 + 1) / factorial(i * 4 + 1);
 		long double term2 = intpowl(x, i * 4 + 3) / factorial(i * 4 + 3);
 		long double termDiff = term1 - term2;
@@ -468,7 +465,6 @@ double cos(double x)
 	double rv = 1;
 	for(int i = 0;; i++)
 	{
-		double termIndex = (double) i;
 		double term1 = intpow(x, i * 4 + 2) / factorial(i * 4 + 2);
 		double term2 = intpow(x, i * 4 + 4) / factorial(i * 4 + 4);
 		double termDiff = term1 - term2;
@@ -486,7 +482,6 @@ float cosf(float x)
 	float rv = 1;
 	for(int i = 0;; i++)
 	{
-		float termIndex = (float) i;
 		float term1 = intpowf(x, i * 4 + 2) / factorial(i * 4 + 2);
 		float term2 = intpowf(x, i * 4 + 4) / factorial(i * 4 + 4);
 		float termDiff = term1 - term2;
@@ -504,7 +499,6 @@ long double cosl(long double x)
 	long double rv = 1;
 	for(int i = 0;; i++)
 	{
-		long double termIndex = (long double) i;
 		long double term1 = intpowl(x, i * 4 + 2) / factorial(i * 4 + 2);
 		long double term2 = intpowl(x, i * 4 + 4) / factorial(i * 4 + 4);
 		long double termDiff = term1 - term2;
@@ -540,4 +534,150 @@ long double tanl(long double x)
 	return sinl(x) / cosine;
 }
 
+double asin(double x)
+{
+	//Check for valid input
+	if(x > 1.0 || x < -1.0)
+		return NAN;
+	double rv = x;
+	for(int i = 0;; i++)
+	{
+		//Numerator and denominator for the (2n choose n) factor, terms 1 & 2
+		long long int chooseTermNumer1 = 1;
+		long long int chooseTermDenom1 = 1;
+		for(int j = 0; j < (2 * i + 1); j++)	//# of times thru loop 1, 3, 5
+		{
+			chooseTermNumer1 *= (j * 2 + 1);
+			chooseTermDenom1 *= (j * 2 + 2);
+		}
+		//Calculate these based on term 1 numer/denom, since numer is just
+		//multiplied by next odd and denom is multiplied by next even
+		long long int chooseTermNumer2 = chooseTermNumer1 * ((i * 2 + 2) * 2 + 1);
+		long long int chooseTermDenom2 = chooseTermDenom1 * ((i * 2 + 2) * 2 + 2);
+		double chooseTerm1 = (long double) chooseTermNumer1 / chooseTermDenom1;
+		double chooseTerm2 = (long double) chooseTermNumer2 / chooseTermDenom2;
+		double term1 = chooseTerm1 * intpow(x, i * 4 + 3) / (i * 4 + 3);
+		double term2 = chooseTerm2 * intpow(x, i * 4 + 5) / (i * 4 + 5);
+		//See if converged
+		double termDiff = term1 - term2;
+		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
+			break;
+		rv += term1;
+		rv += term2;
+	}
+	return rv;
+}
 
+float asinf(float x)
+{
+	//Check for valid input
+	if(x > 1.0f || x < -1.0f)
+		return NAN;
+	double rv = x;
+	for(int i = 0;; i++)
+	{
+		//Numerator and denominator for the (2n choose n) factor, terms 1 & 2
+		long long int chooseTermNumer1 = 1;
+		long long int chooseTermDenom1 = 1;
+		for(int j = 0; j < (2 * i + 1); j++)	//# of times thru loop 1, 3, 5
+		{
+			chooseTermNumer1 *= (j * 2 + 1);
+			chooseTermDenom1 *= (j * 2 + 2);
+		}
+		//Calculate these based on term 1 numer/denom, since numer is just
+		//multiplied by next odd and denom is multiplied by next even
+		long long int chooseTermNumer2 = chooseTermNumer1 * ((i * 2 + 2) * 2 + 1);
+		long long int chooseTermDenom2 = chooseTermDenom1 * ((i * 2 + 2) * 2 + 2);
+		float chooseTerm1 = (long double) chooseTermNumer1 / chooseTermDenom1;
+		float chooseTerm2 = (long double) chooseTermNumer2 / chooseTermDenom2;
+		float term1 = chooseTerm1 * intpow(x, i * 4 + 3) / (i * 4 + 3);
+		float term2 = chooseTerm2 * intpow(x, i * 4 + 5) / (i * 4 + 5);
+		//See if converged
+		float termDiff = term1 - term2;
+		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
+			break;
+		rv += term1;
+		rv += term2;
+	}
+	return rv;
+}
+
+long double asinl(long double x)
+{
+	//Check for valid input
+	if(x > 1.0 || x < -1.0)
+		return NAN;
+	double rv = x;
+	for(int i = 0;; i++)
+	{
+		//Numerator and denominator for the (2n choose n) factor, terms 1 & 2
+		long long int chooseTermNumer1 = 1;
+		long long int chooseTermDenom1 = 1;
+		for(int j = 0; j < (2 * i + 1); j++)	//# of times thru loop 1, 3, 5
+		{
+			chooseTermNumer1 *= (j * 2 + 1);
+			chooseTermDenom1 *= (j * 2 + 2);
+		}
+		//Calculate these based on term 1 numer/denom, since numer is just
+		//multiplied by next odd and denom is multiplied by next even
+		long long int chooseTermNumer2 = chooseTermNumer1 * ((i * 2 + 2) * 2 + 1);
+		long long int chooseTermDenom2 = chooseTermDenom1 * ((i * 2 + 2) * 2 + 2);
+		long double chooseTerm1 = (long double) chooseTermNumer1 / chooseTermDenom1;
+		long double chooseTerm2 = (long double) chooseTermNumer2 / chooseTermDenom2;
+		long double term1 = chooseTerm1 * intpow(x, i * 4 + 3) / (i * 4 + 3);
+		long double term2 = chooseTerm2 * intpow(x, i * 4 + 5) / (i * 4 + 5);
+		//See if converged
+		long double termDiff = term1 - term2;
+		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
+			break;
+		rv += term1;
+		rv += term2;
+	}
+	return rv;
+}
+
+double acos(double x)
+{
+	if(x < -1.0 || x > 1.0)
+		return NAN;
+}
+
+float acosf(float x)
+{
+	
+}
+
+long double acosl(long double x)
+{
+	
+}
+
+double atan(double x)
+{
+	
+}
+
+float atanf(float x)
+{
+	
+}
+
+long double atanl(long double x)
+{
+	
+}
+
+double atan2(double y, double x)
+{
+	
+}
+
+float atan2f(float y, float x)
+{
+	
+}
+
+long double atan2l(long double y, long double x)
+{
+	
+}
