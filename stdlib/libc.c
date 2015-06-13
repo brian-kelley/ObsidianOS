@@ -357,8 +357,8 @@ size_t strlen(const char* str)
 //Proportion between sum to n - 1 and sum n in taylor series
 //must be between (1 - CONV_TOL) and (1 + CONV_TOL)
 
-#define FLOAT_CONV_TOL 1e-8
-#define DOUBLE_CONV_TOL 1e-12
+#define FLOAT_CONV_TOL 1e-7
+#define DOUBLE_CONV_TOL 1e-10
 #define LONG_DOUBLE_CONV_TOL 1e-16
 
 //locally defined factorial function, needed for Taylor series evaluation
@@ -372,8 +372,8 @@ int factorial(int num)
 	return rv;
 }
 
-//simpler, faster version of pow for nonnegative integer powers
-//used a lot with the Taylor series
+//Math utility functions (not in header)
+//(simpler, faster version of pow for nonnegative integer powers)
 double intpow(double base, int exponent)
 {
 	if(exponent == 0)
@@ -404,8 +404,12 @@ long double intpowl(long double base, int exponent)
 	return rv;
 }
 
+//Trig functions
+
 double sin(double x)
 {
+	if(x == NAN)
+		return NAN;
 	//get domain into (-2pi, 2pi) to improve accuracy
 	x -= PI * ((int) (x / PI));
 	double rv = 0;
@@ -427,6 +431,8 @@ double sin(double x)
 
 float sinf(float x)
 {
+	if(x == NAN)
+		return NAN;
 	x -= (float) PI * ((int) (x / (float)PI));
 	float rv = 0;
 	for(int i = 0;; i++)
@@ -444,6 +450,8 @@ float sinf(float x)
 
 long double sinl(long double x)
 {
+	if(x == NAN)
+		return NAN;
 	x -= (long double) PI * ((int) (x / (long double) PI));
 	float rv = 0;
 	for(int i = 0;; i++)
@@ -461,6 +469,8 @@ long double sinl(long double x)
 
 double cos(double x)
 {
+	if(x == NAN)
+		return NAN;
 	x -= PI * ((int) (x / PI));
 	double rv = 1;
 	for(int i = 0;; i++)
@@ -478,6 +488,8 @@ double cos(double x)
 
 float cosf(float x)
 {
+	if(x == NAN)
+		return NAN;
 	x -= (float) PI * ((int) (x / PI));
 	float rv = 1;
 	for(int i = 0;; i++)
@@ -495,6 +507,8 @@ float cosf(float x)
 
 long double cosl(long double x)
 {
+	if(x == NAN)
+		return NAN;
 	x -= (long double) PI * ((int) (x / (long double) PI));
 	long double rv = 1;
 	for(int i = 0;; i++)
@@ -512,6 +526,8 @@ long double cosl(long double x)
 
 double tan(double x)
 {
+	if(x == NAN)
+		return NAN;
 	double cosine = cos(x);
 	if(-DOUBLE_CONV_TOL < cosine && cosine < DOUBLE_CONV_TOL)
 		return NAN;
@@ -520,6 +536,8 @@ double tan(double x)
 
 float tanf(float x)
 {
+	if(x == NAN)
+		return NAN;
 	float cosine = cosf(x);
 	if(-FLOAT_CONV_TOL < cosine && cosine < DOUBLUE_CONV_TOL)
 		return NAN;
@@ -528,6 +546,8 @@ float tanf(float x)
 
 long double tanl(long double x)
 {
+	if(x == NAN)
+		return NAN;
 	long double cosine = cosl(x);
 	if(-LONG_DOUBLE_CONV_TOL < cosine && cosine < LONG_DOUBLE_CONV_TOL)
 		return NAN;
@@ -537,7 +557,7 @@ long double tanl(long double x)
 double asin(double x)
 {
 	//Check for valid input
-	if(x > 1.0 || x < -1.0)
+	if(x > 1.0 || x < -1.0 || x == NAN)
 		return NAN;
 	double rv = x;
 	for(int i = 0;; i++)
@@ -570,8 +590,7 @@ double asin(double x)
 
 float asinf(float x)
 {
-	//Check for valid input
-	if(x > 1.0f || x < -1.0f)
+	if(x > 1.0 || x < -1.0 || x == NAN)
 		return NAN;
 	double rv = x;
 	for(int i = 0;; i++)
@@ -604,8 +623,7 @@ float asinf(float x)
 
 long double asinl(long double x)
 {
-	//Check for valid input
-	if(x > 1.0 || x < -1.0)
+	if(x > 1.0 || x < -1.0 || x == NAN)
 		return NAN;
 	double rv = x;
 	for(int i = 0;; i++)
@@ -638,46 +656,329 @@ long double asinl(long double x)
 
 double acos(double x)
 {
-	if(x < -1.0 || x > 1.0)
+	if(x < -1.0 || x > 1.0 || x == NAN)
 		return NAN;
+	return PI / 2.0 - asin(x);
 }
 
 float acosf(float x)
 {
-	
+	if(x < -1.0 || x > 1.0 || x == NAN)
+		return NAN;
+	return PI / 2.0 - asinf(x);
 }
 
 long double acosl(long double x)
 {
-	
+	if(x < -1.0 || x > 1.0 || x == NAN)
+		return NAN;
+	return PI / 2.0 - asinl(x);
 }
 
 double atan(double x)
 {
-	
+	double rv = 0;
+	for(int i = 0;; i++)
+	{
+		double term1 = intpow(x, i * 4 + 1) / (i * 4 + 1);
+		double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
+		double termDiff = term1 - term2;
+		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
+			break;
+		rv += term1;
+		rv -= term2;
+	}
+	return rv;
 }
 
 float atanf(float x)
 {
-	
+	float rv = 0;
+	for(int i = 0;; i++)
+	{
+		float term1 = intpowf(x, i * 4 + 1) / (i * 4 + 1);
+		float term2 = intpowf(x, i * 4 + 3) / (i * 4 + 3);
+		float termDiff = term1 - term2;
+		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
+			break;
+		rv += term1;
+		rv -= term2;
+	}
+	return rv;
 }
 
 long double atanl(long double x)
 {
-	
+	long double rv = 0;
+	for(int i = 0;; i++)
+	{
+		long double term1 = intpow(x, i * 4 + 1) / (i * 4 + 1);
+		long double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
+		long double termDiff = term1 - term2;
+		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
+			break;
+		rv += term1;
+		rv -= term2;
+	}
+	return rv;
 }
 
 double atan2(double y, double x)
 {
-	
+	if(y == NAN || x == NAN)
+		return NAN;
+	byte yIsZero = -DOUBLE_CONV_TOL < y && y < DOUBLE_CONV_TOL ? 1 : 0;
+	byte xIsZero = -DOUBLE_CONV_TOL < x && x < DOUBLE_CONV_TOL ? 1 : 0;
+	//if x is ~0 and y is not, just return -PI/2 or PI/2 depending on sign of y
+	//if both x and y 0 or either NAN, return NAN
+	if(yIsZero && xIsZero)
+		return NAN;
+	else if(!yIsZero && xIsZero)
+	{
+		if(y > 0)
+			return PI / 2;
+		else
+			return -PI / 2;
+	}
+	//if here, then y / x meaningful and just use atan Taylor
+	return atan(y / x);
 }
 
 float atan2f(float y, float x)
 {
-	
+	if(y == NAN || x == NAN)
+		return NAN;
+	byte yIsZero = -FLOAT_CONV_TOL < y && y < FLOAT_CONV_TOL ? 1 : 0;
+	byte xIsZero = -FLOAT_CONV_TOL < x && x < FLOAT_CONV_TOL ? 1 : 0;
+	//if x is ~0 and y is not, just return -PI/2 or PI/2 depending on sign of y
+	//if both x and y 0 or either NAN, return NAN
+	if(yIsZero && xIsZero)
+		return NAN;
+	else if(!yIsZero && xIsZero)
+	{
+		if(y > 0)
+			return PI / 2;
+		else
+			return -PI / 2;
+	}
+	return atanf(y / x);
 }
 
 long double atan2l(long double y, long double x)
 {
+	if(y == NAN || x == NAN)
+		return NAN;
+	byte yIsZero = -LONG_DOUBLE_CONV_TOL < y && y < LONG_DOUBLE_CONV_TOL ? 1 : 0;
+	byte xIsZero = -LONG_DOUBLE_CONV_TOL < x && x < LONG_DOUBLE_CONV_TOL ? 1 : 0;
+	//if x is ~0 and y is not, just return -PI/2 or PI/2 depending on sign of y
+	//if both x and y 0 or either NAN, return NAN
+	if(yIsZero && xIsZero)
+		return NAN;
+	else if(!yIsZero && xIsZero)
+	{
+		if(y > 0)
+			return PI / 2;
+		else
+			return -PI / 2;
+	}
+	return atanl(y / x);
+}
+
+//Hyperbolic trig functions
+double sinh(double x)
+{
+	if(x == NAN)
+		return NAN;
+	double eX = exp(x);	//save this to avoid doing exp twice, worse than mult
+	if(-DOUBLE_CONV_TOL < eX && eX < DOUBLE_CONV_TOL) //x so small that would get div by 0
+		return NAN;
+	return (eX * eX - 1) / 2 * eX;
+}
+
+float sinhf(float x)
+{
+	if(x == NAN)
+		return NAN;
+	float eX = expf(x);
+	if(-FLOAT_CONV_TOL < eX && eX < FLOAT_CONV_TOL)
+		return NAN;
+	return (eX * eX - 1) / 2 * eX;
+}
+
+long double sinhl(long double x)
+{
+	if(x == NAN)
+		return NAN;
+	long double eX = expl(x);
+	if(-LONG_DOUBLE_CONV_TOL < eX && eX < LONG_DOUBLE_CONV_TOL)
+		return NAN;
+	return (eX * eX - 1) / 2 * eX;
+}
+
+double cosh(double x)
+{
+	if(x == NAN)
+		return NAN;
+	double eX = exp(x);
+	if(-DOUBLE_CONV_TOL < eX && eX < DOUBLE_CONV_TOL)
+		return NAN;
+	return (eX * eX + 1) / 2 * eX;
+}
+
+float coshf(float x)
+{
+	if(x == NAN)
+		return NAN;
+	float eX = expf(x);
+	if(-FLOAT_CONV_TOL < eX && eX < FLOAT_CONV_TOL)
+		return NAN;
+	return (eX * eX + 1) / 2 * eX;
+}
+
+long double coshl(long double x)
+{
+	if(x == NAN)
+		return NAN;
+	long double eX = expl(x);
+	if(-LONG_DOUBLE_CONV_TOL < eX && eX < LONG_DOUBLE_CONV_TOL)
+		return NAN;
+	return (eX * eX + 1) / 2 * eX;
+}
+
+double tanh(double x)
+{
+	if(x == NAN)
+		return NAN;
+	double e2X = exp(x);
+	if(-DOUBLE_CONV_TOL < e2X && e2X < DOUBLE_CONV_TOL)
+		return -1;	//if |x| big, automatically converges to +-1
+	else if(e2X == HUGE_VAL)
+		return 1;
+	e2X *= e2X;
+	return (e2X + 1) / (e2X - 1);
+}
+
+float tanhf(float x)
+{
+	if(x == NAN)
+		return NAN;
+	float e2X = expf(x);
+	if(-FLOAT_CONV_TOL < e2X && e2X < FLOAT_CONV_TOL)
+		return -1;	//if |x| big, automatically converges to +-1
+	else if(e2X == HUGE_VAL)
+		return 1;
+	e2X *= e2X;
+	return (e2X + 1) / (e2X - 1);
+}
+
+long double tanhl(long double x)
+{
+	if(x == NAN)
+		return NAN;
+	long double e2X = expl(x);
+	if(-LONG_DOUBLE_CONV_TOL < e2X && e2X < LONG_DOUBLE_CONV_TOL)
+		return -1;	//if |x| big, automatically converges to +-1
+	else if(e2X == HUGE_VAL)
+		return 1;
+	e2X *= e2X;
+	return (e2X + 1) / (e2X - 1);
+}
+
+//Exponential and logarithmic functions
+double exp(double x)
+{
+	double rv = 0;
+	for(int i = 0;; i++)
+	{
+		double term = intpow(x, i) / factorial(i);
+		if(-DOUBLE_CONV_TOL < term && term < DOUBLE_CONV_TOL)
+			break;
+		rv += term;
+	}
+	return rv;
+}
+
+float expf(float x)
+{
+	float rv = 0;
+	for(int i = 0;; i++)
+	{
+		float term = intpowf(x, i) / factorial(i);
+		if(-FLOAT_CONV_TOL < term && term < FLOAT_CONV_TOL)
+			break;
+		rv += term;
+	}
+	return rv;
+}
+
+long double expl(long double x)
+{
+	long double rv = 0;
+	for(int i = 0;; i++)
+	{
+		long double term = intpowl(x, i) / factorial(i);
+		if(-LONG_DOUBLE_CONV_TOL < term && term < LONG_DOUBLE_CONV_TOL)
+			break;
+		rv += term;
+	}
+	return rv;
+}
+
+double frexp(double x, int* exponent)
+{
+	if(x == NAN)
+	{
+		*exponent = 0;
+		return NAN;
+	}
+	//64-bit type, bit 63 = sign, next 11 = exp, last 52 = mant
+	unsigned long long int binRep = *((unsigned long long int*) &x);
+	//Isolate exponent
+	unsigned long long int expBits = 0x7FF;	//that's 11 one bits
+	*exponent = (binRep >> 52) & expBits;
+	binRep &= (~expBits << 52);				//clear all exponent bits, sign/mant stay
+	double rv = *((double*) binRep);
+	return rv;
+}
+
+float frexpf(float x, int* exponent)
+{
+	if(x == NAN)
+	{
+		*exponent = 0;
+		return NAN;
+	}
+	unsigned int binRep = *((unsigned int*) &x);
+	unsigned int expBits = 0xFF;
+	*exponent = (binRep >> 23) & expBits;
+	binRep &= (~expBits << 23);
+	float rv = *((float*) binRep);
+	return rv;
+}
+
+long double frexpl(long double x, int* exponent)
+{
+	if(x == NAN)
+	{
+		*exponent = 0;
+		return NAN;
+	}
+	byte* binRep = (byte*) &x;	//little endian, so first 8 bytes of this is the mant
+	unsigned long long int mant = *((unsigned long long int*) &x);
+	unsigned short top16 = *((unsigned short) &xbinRep[8]);
+	*exponent = (top16 & 0x7FFF) - 16383;	//endianness-independent least-significant 15 bits of top16
 	
 }
+
+double ldexp(double x, int exp);			//build float out of significand
+float ldexpf(float x, int exp);				//and exponent
+long double ldexpl(long double x, int exponent);
+double log(double x);						//ln(x)
+float logf(float x);
+long double logl(long double x);
+double log10(double x);						//log(x), base 10
+float log10f(float x);
+long double log10l(long double x);
+double modf(double x, double* intpart);		//returns fractional part, integer
+float modff(float x, float* intpart);		//part in intpart. Both parts w/
+long double modfl(long double x, long double* intpart);	//same sign as x.
