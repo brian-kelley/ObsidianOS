@@ -8,10 +8,18 @@ ASOURCES=$(wildcard *.s)
 COBJECTS=$(CSOURCES:.c=.o) 
 AOBJECTS=$(ASOURCES:.s=.o)
 
+STDCSRC=$(wildcard stdlib/*.c)
+STDASRC=$(wildcard stdlib/*.s)
+STDCOBJ=$(STDCSRC:.c=.o)
+STDAOBJ=$(STDASRC:.s=.o)
+
 EXECUTABLE=$(OSNAME).bin
 
 all: $(EXECUTABLE)
 	qemu-system-i386 -cdrom $(OSNAME).iso
+
+libc: $(STDCSRC) $(STDASRC) $(STDCOBJ) $(STDAOBJ)
+	ar rcs libc.a $(STDCOBJ) $(STDAOBJ)
 
 clean:
 	rm *.o
