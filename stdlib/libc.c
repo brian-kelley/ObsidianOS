@@ -965,20 +965,430 @@ long double frexpl(long double x, int* exponent)
 	}
 	byte* binRep = (byte*) &x;	//little endian, so first 8 bytes of this is the mant
 	unsigned long long int mant = *((unsigned long long int*) &x);
-	unsigned short top16 = *((unsigned short) &xbinRep[8]);
+z	unsigned short top16 = *((unsigned short) &binRep[8]);
 	*exponent = (top16 & 0x7FFF) - 16383;	//endianness-independent least-significant 15 bits of top16
-	
+	*((unsigned short) &binRep[8]) &= 0x7FFF;	//clear exp bits in place
+	return x;
 }
 
-double ldexp(double x, int exp);			//build float out of significand
-float ldexpf(float x, int exp);				//and exponent
-long double ldexpl(long double x, int exponent);
-double log(double x);						//ln(x)
-float logf(float x);
-long double logl(long double x);
-double log10(double x);						//log(x), base 10
-float log10f(float x);
-long double log10l(long double x);
-double modf(double x, double* intpart);		//returns fractional part, integer
-float modff(float x, float* intpart);		//part in intpart. Both parts w/
-long double modfl(long double x, long double* intpart);	//same sign as x.
+double ldexp(double x, int exponent)
+{
+	unsigned long long int binRep = *((unsigned long long int) &x);
+	unsigned long long int expMask = 0x7FF;
+	exponent &= expMask;
+	binRep &= ~(expMask << 52);	//clear bits 62-52
+	binRep |= (exponent << 52);	//put in given exponent
+	double rv = *((double*) &binRep);
+	return rv;
+}
+
+float ldexpf(float x, int exponent)
+{
+	unsigned int binRep = *((unsigned int*) &x;
+	unsigned int expMask = 0xFF;
+	binRep &= ~(expMask << 23);
+	exponent &= expMask;
+	binRep |= exponent << 23;
+	float rv = *((float*) &binRep);
+	return rv;
+}
+
+long double ldexpl(long double x, int exponent)
+{
+	x *= intpow(2, exponent);
+	return x;
+}
+
+double log(double x)
+{
+	if(x < DOUBLE_CONV_TOL)
+		return NAN;
+	double rv = 0;
+	x -= 1.0;
+	//now get x in range (0, 1) so Taylor applies correctly
+	while(x < 1)
+	{
+		x /= E;
+		rv += 1;
+	}
+	for(int i = 0;; i++)
+	{
+		double term1 = intpow(x, i * 2 + 1) / (i * 2 + 1);
+		double term2 = intpow(x, i * 2 + 2) / (i * 2 + 2);
+		double termDiff = term1 - term2;
+		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
+		{
+			break;
+		}
+		rv += termDiff;
+	}
+	return rv;
+}
+
+float logf(float x)
+{
+	if(x < FLOAT_CONV_TOL)
+		return NAN;
+	float rv = 0;
+	x -= 1.0;
+	while(x < 1)
+	{
+		x /= E;
+		rv += 1;
+	}
+	for(int i = 0;; i++)
+	{
+		float term1 = intpowf(x, i * 2 + 1) / (i * 2 + 1);
+		float term2 = intpowf(x, i * 2 + 2) / (i * 2 + 2);
+		float termDiff = term1 - term2;
+		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
+		{
+			break;
+		}
+		rv += termDiff;
+	}
+	return rv;
+}
+
+long double logl(long double x)
+{
+	if(x < LONG_DOUBLE_CONV_TOL)
+		return NAN;
+	long double rv = 0;
+	x -= 1.0;
+	while(x < 1)
+	{
+		x /= E;
+		rv += 1;
+	}
+	for(int i = 0;; i++)
+	{
+		long double term1 = intpow(x, i * 2 + 1) / (i * 2 + 1);
+		long double term2 = intpow(x, i * 2 + 2) / (i * 2 + 2);
+		long double termDiff = term1 - term2;
+		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
+		{
+			break;
+		}
+		rv += termDiff;
+	}
+	return rv;
+}
+
+double log10(double x)
+{
+	return log(x) / 2.30258509299;
+}
+
+float log10f(float x)
+{
+	return logf(x) / 2.30258509299f;
+}
+
+long double log10l(long double x)
+{
+	return logl(x) / 2.30258509299;
+}
+
+double modf(double x, double* intpart)
+{
+	*intpart = (double) ((unsigned long long int) x);
+	return x - *intpart;
+}
+
+float modff(float x, float* intpart)
+{
+	*intpart = (float) ((unsigned long long int) x);
+	return x - *intpart;
+}
+
+long double modfl(long double x, long double* intpart)
+{
+	*intpart = (long double) ((unsigned long long int) x);
+	return x - *intpart;
+}
+
+double pow(double base, double exponent)
+{
+	if(base == 0 && exponent == 0)
+		return NAN;
+	if(base == 0)
+		return 0;
+	if(exponent == 0)
+		return 1;
+	byte isExpInt = 0;
+	int expIPart;
+	modf(exponent, &ipart);
+	if((double) expIPart == exponent)
+		isExpInt = 1;
+	if(base < 0)
+	{
+		if(isExpInt)
+		{
+			//negative base, integer exponent
+			if(exponent > 0)
+			{
+				//negative base, integer positive exp
+				//(-5.2)^4
+				if(exponent % 2 == 0)
+				{
+					//exp even, result is positive
+					return intpow(-base, exponent);
+				}
+				else
+				{
+					//exp odd, result is negative
+					return -intpow(-base, exponent);
+				}
+			}
+			else
+			{
+				//negative base, integer negative exp
+				//same as when exponent is positive, except take reciprocal
+				if((-exponent) % 2 == 0)
+				{
+					return 1.0 / intpow(-base, exponent);
+				}
+				else
+				{
+					return -1.0 / intpow(-base, exponent);
+				}
+			}
+		}
+		else
+			return NAN;
+	}
+	else
+	{
+		//use faster routine for integer exponents
+		if(isExpInt)
+			return intpow(base, (int) exponent);
+		else
+			return exp(exponent * log(base));
+	}
+}
+
+float powf(float base, float exponent)
+{
+	if(base == 0 && exponent == 0)
+		return NAN;
+	if(base == 0)
+		return 0;
+	if(exponent == 0)
+		return 1;
+	byte isExpInt = 0;
+	int expIPart;
+	modff(exponent, &ipart);
+	if((float) expIPart == exponent)
+		isExpInt = 1;
+	if(base < 0)
+	{
+		if(isExpInt)
+		{
+			//negative base, integer exponent
+			if(exponent > 0)
+			{
+				//negative base, integer positive exp
+				//(-5.2)^4
+				if(exponent % 2 == 0)
+				{
+					//exp even, result is positive
+					return intpowf(-base, exponent);
+				}
+				else
+				{
+					//exp odd, result is negative
+					return -intpowf(-base, exponent);
+				}
+			}
+			else
+			{
+				//negative base, integer negative exp
+				//same as when exponent is positive, except take reciprocal
+				if((-exponent) % 2 == 0)
+				{
+					return 1.0 / intpowf(-base, exponent);
+				}
+				else
+				{
+					return -1.0 / intpowf(-base, exponent);
+				}
+			}
+		}
+		else
+			return NAN;
+	}
+	else
+	{
+		//use faster routine for integer exponents
+		if(isExpInt)
+			return intpowf(base, (int) exponent);
+		else
+			return expf(exponent * logf(base));
+	}
+}
+
+long double powl(long double base, long double exponent)
+{
+	if(base == 0 && exponent == 0)
+		return NAN;
+	if(base == 0)
+		return 0;
+	if(exponent == 0)
+		return 1;
+	byte isExpInt = 0;
+	int expIPart;
+	modfl(exponent, &ipart);
+	if((long double) expIPart == exponent)
+		isExpInt = 1;
+	if(base < 0)
+	{
+		if(isExpInt)
+		{
+			//negative base, integer exponent
+			if(exponent > 0)
+			{
+				//negative base, integer positive exp
+				//(-5.2)^4
+				if(exponent % 2 == 0)
+				{
+					//exp even, result is positive
+					return intpowl(-base, exponent);
+				}
+				else
+				{
+					//exp odd, result is negative
+					return -intpowl(-base, exponent);
+				}
+			}
+			else
+			{
+				//negative base, integer negative exp
+				//same as when exponent is positive, except take reciprocal
+				if((-exponent) % 2 == 0)
+				{
+					return 1.0 / intpowl(-base, exponent);
+				}
+				else
+				{
+					return -1.0 / intpowl(-base, exponent);
+				}
+			}
+		}
+		else
+			return NAN;
+	}
+	else
+	{
+		//use faster routine for integer exponents
+		if(isExpInt)
+			return intpowl(base, (int) exponent);
+		else
+			return expl(exponent * logl(base));
+	}
+}
+
+double sqrt(double x)
+{
+	if(x < 0)
+		return NAN;
+	return exp(0.5 * log(x));
+}
+
+float sqrtf(float x)
+{
+	if(x < 0)
+		return NAN;
+	return expf(0.5f * logf(x));
+}
+
+long double sqrtl(long double x)
+{
+	if(x < 0)
+		return NAN;
+	return expl(0.5 * logl(x));
+}
+
+double ceil(double x)
+{
+	double ipart;
+	double fpart = modf(x, &ipart);
+	if(ipart == x)
+		return x;
+	else
+		return (double) ((unsigned long long int) x + 1);
+}
+
+float ceilf(float x)
+{
+	float ipart;
+	float fpart = modff(x, &ipart);
+	if(ipart == x)
+		return x;
+	else
+		return (float) ((unsigned long long int) x + 1);
+}
+
+long double ceill(long double x)
+{
+	long double ipart;
+	long double fpart = modf(x, &ipart);
+	if(ipart == x)
+		return x;
+	else
+		return (long double) ((unsigned long long int) x + 1);
+}
+
+double floor(double x)
+{
+	return (double) ((unsigned long long int) x);
+}
+
+float floorf(float x)
+{
+	return (float) ((unsigned long long int) x)
+}
+
+long double floorl(long double x)
+{
+	return (long double) ((unsigned long long int) x)
+}
+
+double fmod(double numer, double denom)
+{
+	if(denom == 0)
+		return NAN;
+	int quotient = numer / denom;
+	return numer - (denom * quotient);
+}
+
+float fmodf(float numer, float denom)
+{
+	if(denom == 0)
+		return NAN;
+	int quotient = numer / denom;
+	return numer - (denom * quotient);
+}
+
+long double fmodl(long double numer, long double denom)
+{
+	if(denom == 0)
+		return NAN;
+	int quotient = numer / denom;
+	return numer - (denom * quotient);
+}
+
+double fabs(double x)
+{
+	return x < 0 ? -x : x;
+}
+
+float fabsf(float x)
+{
+	return x < 0 ? -x : x;
+}
+
+long double fabsl(long double x)
+{
+	return x < 0 ? -x : x;
+}
