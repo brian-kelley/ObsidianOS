@@ -1392,3 +1392,12 @@ long double fabsl(long double x)
 {
 	return x < 0 ? -x : x;
 }
+
+///////////////////////
+//  stdio functions  //
+///////////////////////
+
+//need port i/o for this, makefile links libc.o to port.o
+extern void writeport(dword portNum, dword value);
+extern byte readport(dword portNum);
+

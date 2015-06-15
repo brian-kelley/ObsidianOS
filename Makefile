@@ -19,7 +19,7 @@ all: $(EXECUTABLE)
 	qemu-system-i386 -cdrom $(OSNAME).iso
 
 libc: $(STDCSRC) $(STDASRC) $(STDCOBJ) $(STDAOBJ)
-	ar rcs libc.a $(STDCOBJ) $(STDAOBJ)
+	ar rcs libc.a port.o $(STDCOBJ) $(STDAOBJ)
 
 clean:
 	rm *.o
