@@ -72,7 +72,7 @@ void drawNum(dword num, int row)
 
 void keyPressed(byte scancode, byte pressed)
 {
-	//Keyboard interrupts send data here. Send data to user applications etc.
+    //Keyboard interrupts send data here. Send data to user applications etc.
 	if(userProc)
 	{
 		//give event to user key listeners...
