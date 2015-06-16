@@ -25,5 +25,4 @@ int vsprintf(char* s, const char* format, va_list arg);
 int fgetc(FILE* stream);
 char* fgets(char* str, int num, FILE* stream);
 
-
 #endif
