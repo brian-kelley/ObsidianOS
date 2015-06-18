@@ -1,8 +1,11 @@
+#include "atadrv.h"
+
 int ataInit()
 {
     //todo: reset drive
     //select master drive
     writeport(0x1F6, 0xA0);
+    return 0;	//TODO: Return 1 if something goes wrong
 }
 
 //ATA PIO driver functions (reset, read sector, write sector)
@@ -22,8 +25,9 @@ int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 	    ataInit();	//reset drive
 	    timeoutCounter = 10000; //try again
 	}
+    }
     while(!(status & (1 << 6)) || (status & (1 << 7)));
-    writeport(0x1F6, 0xE0 | sector >> 24 & 0xF);
+    writeport(0x1F6, 0xE0 | ((sector >> 24) & 0xF));
     writeport(0x1F1, 0);
     writeport(0x1F2, 1);    //only read 1 sector
     writeport(0x1F3, sector & 0xFF);
@@ -41,7 +45,7 @@ int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 int writesector(dword sector, byte* buf)
 {
     sector &= 0x0FFFFFFF;
-    writeport(0x1F6, 0xE0 | sector >> 24 & 0xF);
+    writeport(0x1F6, 0xE0 | ((sector >> 24) & 0xF));
     writeport(0x1F1, 0);
     writeport(0x1F2, 1);    //only read 1 sector
     writeport(0x1F3, sector & 0xFF);
