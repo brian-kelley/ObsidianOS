@@ -1,37 +1,33 @@
 CC=i386-elf-gcc
 CFLAGS=-c -Wall -Wextra -ffreestanding -std=gnu99 -O2
-OSNAME=os
+OSNAME=goldos
 
-CSOURCES=$(wildcard *.c)
-ASOURCES=$(wildcard *.s)
+#Kernel sources/objects
+KCS=$(wildcard kernel/*.c)
+KAS=$(wildcard kernel/*.s)
+KCO=kernel/build/$(KCS:.c=.o)
+KAO=kernel/build/$(KAS:.asm=.o)
 
-COBJECTS=$(CSOURCES:.c=.o) 
-AOBJECTS=$(ASOURCES:.s=.o)
+SAS=$(wildcard stdlib/src/*.s)
+SCS=$(wildcard stdlib/src/*.c)
+SAO=$(SAS:.asm=.o)
+SCO=$(SCS:.c=.o)
 
-STDCSRC=$(wildcard stdlib/*.c)
-STDASRC=$(wildcard stdlib/*.s)
-STDCOBJ=$(STDCSRC:.c=.o)
-STDAOBJ=$(STDASRC:.s=.o)
-
-EXECUTABLE=$(OSNAME).bin
-
-all: $(EXECUTABLE)
+all: kernel
 	qemu-system-i386 -cdrom $(OSNAME).iso
 
-libc: $(STDCSRC) $(STDASRC) $(STDCOBJ) $(STDAOBJ)
-	ar rcs libc.a port.o $(STDCOBJ) $(STDAOBJ)
+kernel: libc
+	$(CC) -T linker.ld -o $(OSNAME).bin -ffreestanding -std=gnu99 -nostdlib $(KAO) $(KCO) -lc -lgcc
+	mv $(OSNAME).bin isodir/boot
+	grub-mkrescue -o $(OSNAME) isodir
+	
+libc: $(SCS) $(SAS) $(SCO) $(SAO)
+	ar rcs libc.a $(SAO) $(SCO)
 
 clean:
-	rm *.o
-	rm $(OSNAME).bin
 	rm $(OSNAME).iso
 
-$(EXECUTABLE): $(CSOURCES) $(ASOURCES) $(AOBJECTS) $(COBJECTS)
-	$(CC) -T linker.ld -o $(OSNAME).bin -ffreestanding -std=gnu99 -nostdlib $(AOBJECTS) $(COBJECTS) -lgcc
-	cp $(OSNAME).bin isodir/boot/$(OSNAME).bin
-	grub-mkrescue -o $(OSNAME).iso isodir	
-
 .c.o:
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) -Istdlib/include $< -o $@ 
 .s.o:
-	i386-elf-as $< -o $@
+	nasm -f elf32 $< -o $@
