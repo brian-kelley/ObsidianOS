@@ -1,5 +1,5 @@
 CC=i386-elf-gcc
-CFLAGS=-c -Wall -Wextra -ffreestanding -std=gnu99 -O2
+CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -ffreestanding -std=gnu99 -O2
 OSNAME=goldos
 
 #Kernel sources/objects

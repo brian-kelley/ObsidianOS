@@ -1,15 +1,14 @@
 #ifndef __STD_MATH_H__
 #define __STD_MATH_H__
 
+#include "asmTypes.h"
+
 //Constants (as doubles, but written with more than double precision)
 #define PI 3.1415926535897932384626
 #define E  2.7182818284523536028747
 
-static const unsigned int __nanVal__ = 0x7FC00000;
-static const unsigned long long int __hugeNumberVal__ = 0x7FFFFFFFFFFFFFFF;
-
-const float NAN = *((float*) &__nanVal__);
-const double HUGE_VAL = *((double*) &__hugeNumberVal__)
+#define NAN (0.0 / 0.0)
+#define HUGE_VAL (1.0 / 0.0)
 
 //Trig functions
 double sin(double x);

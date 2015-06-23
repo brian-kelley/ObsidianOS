@@ -1,3 +1,5 @@
+#include "math.h"
+
 #define FLOAT_CONV_TOL 1e-7
 #define DOUBLE_CONV_TOL 1e-10
 #define LONG_DOUBLE_CONV_TOL 1e-16
@@ -5,7 +7,7 @@
 //locally defined factorial function, needed for Taylor series evaluation
 int factorial(int num)
 {
-	if(num & 1 == num)
+	if((num & 1) == num)
 		return 1;
 	int rv = 1;
 	for(int mult = num; mult > 1; mult--)
@@ -180,7 +182,7 @@ float tanf(float x)
 	if(x == NAN)
 		return NAN;
 	float cosine = cosf(x);
-	if(-FLOAT_CONV_TOL < cosine && cosine < DOUBLUE_CONV_TOL)
+	if(-FLOAT_CONV_TOL < cosine && cosine < DOUBLE_CONV_TOL)
 		return NAN;
 	return sinf(x) / cosine;
 }
@@ -578,7 +580,7 @@ double frexp(double x, int* exponent)
 	unsigned long long int expBits = 0x7FF;	//that's 11 one bits
 	*exponent = (binRep >> 52) & expBits;
 	binRep &= (~expBits << 52);				//clear all exponent bits, sign/mant stay
-	double rv = *((double*) binRep);
+	double rv = *((double*) &binRep);
 	return rv;
 }
 
@@ -605,27 +607,26 @@ long double frexpl(long double x, int* exponent)
 		return NAN;
 	}
 	byte* binRep = (byte*) &x;	//little endian, so first 8 bytes of this is the mant
-	unsigned long long int mant = *((unsigned long long int*) &x);
-z	unsigned short top16 = *((unsigned short) &binRep[8]);
+	unsigned short top16 = *((unsigned short*) &binRep[8]);
 	*exponent = (top16 & 0x7FFF) - 16383;	//endianness-independent least-significant 15 bits of top16
-	*((unsigned short) &binRep[8]) &= 0x7FFF;	//clear exp bits in place
+	*((unsigned short*) &binRep[8]) &= 0x7FFF;	//clear exp bits in place
 	return x;
 }
 
 double ldexp(double x, int exponent)
 {
-	unsigned long long int binRep = *((unsigned long long int) &x);
+	unsigned long long int binRep = *((unsigned long long int*) &x);
 	unsigned long long int expMask = 0x7FF;
 	exponent &= expMask;
 	binRep &= ~(expMask << 52);	//clear bits 62-52
-	binRep |= (exponent << 52);	//put in given exponent
+	binRep |= (((unsigned long long int) exponent) << 52);	//put in given exponent
 	double rv = *((double*) &binRep);
 	return rv;
 }
 
 float ldexpf(float x, int exponent)
 {
-	unsigned int binRep = *((unsigned int*) &x;
+	unsigned int binRep = *((unsigned int*) &x);
 	unsigned int expMask = 0xFF;
 	binRep &= ~(expMask << 23);
 	exponent &= expMask;
@@ -758,8 +759,8 @@ double pow(double base, double exponent)
 	if(exponent == 0)
 		return 1;
 	byte isExpInt = 0;
-	int expIPart;
-	modf(exponent, &ipart);
+	double expIPart;
+	modf(exponent, &expIPart);
 	if((double) expIPart == exponent)
 		isExpInt = 1;
 	if(base < 0)
@@ -771,7 +772,7 @@ double pow(double base, double exponent)
 			{
 				//negative base, integer positive exp
 				//(-5.2)^4
-				if(exponent % 2 == 0)
+				if((int) exponent % 2 == 0)
 				{
 					//exp even, result is positive
 					return intpow(-base, exponent);
@@ -786,7 +787,7 @@ double pow(double base, double exponent)
 			{
 				//negative base, integer negative exp
 				//same as when exponent is positive, except take reciprocal
-				if((-exponent) % 2 == 0)
+				if((int) -exponent % 2 == 0)
 				{
 					return 1.0 / intpow(-base, exponent);
 				}
@@ -818,8 +819,8 @@ float powf(float base, float exponent)
 	if(exponent == 0)
 		return 1;
 	byte isExpInt = 0;
-	int expIPart;
-	modff(exponent, &ipart);
+	float expIPart;
+	modff(exponent, &expIPart);
 	if((float) expIPart == exponent)
 		isExpInt = 1;
 	if(base < 0)
@@ -831,7 +832,7 @@ float powf(float base, float exponent)
 			{
 				//negative base, integer positive exp
 				//(-5.2)^4
-				if(exponent % 2 == 0)
+				if((int) exponent % 2 == 0)
 				{
 					//exp even, result is positive
 					return intpowf(-base, exponent);
@@ -846,7 +847,7 @@ float powf(float base, float exponent)
 			{
 				//negative base, integer negative exp
 				//same as when exponent is positive, except take reciprocal
-				if((-exponent) % 2 == 0)
+				if((int) -exponent % 2 == 0)
 				{
 					return 1.0 / intpowf(-base, exponent);
 				}
@@ -878,8 +879,8 @@ long double powl(long double base, long double exponent)
 	if(exponent == 0)
 		return 1;
 	byte isExpInt = 0;
-	int expIPart;
-	modfl(exponent, &ipart);
+	long double expIPart;
+	modfl(exponent, &expIPart);
 	if((long double) expIPart == exponent)
 		isExpInt = 1;
 	if(base < 0)
@@ -887,11 +888,11 @@ long double powl(long double base, long double exponent)
 		if(isExpInt)
 		{
 			//negative base, integer exponent
-			if(exponent > 0)
+			if((int) exponent > 0)
 			{
 				//negative base, integer positive exp
 				//(-5.2)^4
-				if(exponent % 2 == 0)
+				if((int) exponent % 2 == 0)
 				{
 					//exp even, result is positive
 					return intpowl(-base, exponent);
@@ -906,7 +907,7 @@ long double powl(long double base, long double exponent)
 			{
 				//negative base, integer negative exp
 				//same as when exponent is positive, except take reciprocal
-				if((-exponent) % 2 == 0)
+				if((int) -exponent % 2 == 0)
 				{
 					return 1.0 / intpowl(-base, exponent);
 				}
@@ -953,7 +954,7 @@ long double sqrtl(long double x)
 double ceil(double x)
 {
 	double ipart;
-	double fpart = modf(x, &ipart);
+	modf(x, &ipart);
 	if(ipart == x)
 		return x;
 	else
@@ -963,7 +964,7 @@ double ceil(double x)
 float ceilf(float x)
 {
 	float ipart;
-	float fpart = modff(x, &ipart);
+	modff(x, &ipart);
 	if(ipart == x)
 		return x;
 	else
@@ -973,7 +974,7 @@ float ceilf(float x)
 long double ceill(long double x)
 {
 	long double ipart;
-	long double fpart = modf(x, &ipart);
+	modfl(x, &ipart);
 	if(ipart == x)
 		return x;
 	else
@@ -987,12 +988,12 @@ double floor(double x)
 
 float floorf(float x)
 {
-	return (float) ((unsigned long long int) x)
+	return (float) ((unsigned long long int) x);
 }
 
 long double floorl(long double x)
 {
-	return (long double) ((unsigned long long int) x)
+	return (long double) ((unsigned long long int) x);
 }
 
 double fmod(double numer, double denom)
