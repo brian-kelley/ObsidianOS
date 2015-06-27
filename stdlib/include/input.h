@@ -1,6 +1,7 @@
 #ifndef INPUT_H
 #define INPUT_H
-#include "asmTypes.h"
+
+#include "globalDefines.h"
 #include "video.h"
 
 void keyboardHandler();

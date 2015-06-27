@@ -1,8 +1,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
-#include <stdint.h>
-#include "asmTypes.h"
+#include "globalDefines.h"
 
 extern void writeport(dword portNum, dword value);
 extern byte readport(dword portNum);

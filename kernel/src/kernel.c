@@ -2,9 +2,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "video.h"
-#include "asmTypes.h"
+#include "globalDefines.h"
 #include "input.h"
 #include "terminal.h"
+#include "atadrv.h"
 
 /* Note on GCC for i386 types:
 
@@ -92,5 +93,18 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
+/*
+	byte bootSector[512];
+	readsector(0, bootSector);
+	for(int i = 1; i < 512; i++)
+	{
+	    bootSector[i] = i & 0xFF;
+	    char mybyte = (char) bootSector[i];
+	    if(('a' <= mybyte && mybyte <= 'z') || ('A' <= mybyte && mybyte <= 'Z'))
+		buffer[i / 80][i % 80] = mybyte;
+	    else
+		buffer[i / 80][i % 80] = '.';
+	}
+*/
 	while(1);
 }

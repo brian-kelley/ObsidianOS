@@ -1,6 +1,9 @@
 #ifndef __STD_STRING_H__
 #define __STD_STRING_H__
 
+#include <stddef.h>
+#include "globalDefines.h"
+
 void* memcpy(void* dst, const void* src, size_t num);
 void* memmove(void* dst, const void* src, size_t num);
 char* strcpy(char* dst, const char* src);

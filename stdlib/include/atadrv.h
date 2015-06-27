@@ -1,7 +1,7 @@
 #ifndef __ATA_DRV_H__
 #define __ATA_DRV_H__
 
-#include "asmTypes.h"
+#include "globalDefines.h"
 
 //need port i/o for this, makefile links libc.o to port.o
 extern void writeport(dword portNum, dword value);

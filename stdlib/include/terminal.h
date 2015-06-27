@@ -1,9 +1,14 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
-#include "asmTypes.h"
+#include "globalDefines.h"
 #include "video.h"
 #include "input.h"
+
+#define TERM_W 80
+#define TERM_H 30
+
+static char buffer[TERM_H][TERM_W];
 
 void initTerminal();
 void terminalKeyListener(byte scancode);

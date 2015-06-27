@@ -1,10 +1,7 @@
 #include "terminal.h"
 
-#define TERM_W 80
-#define TERM_H 30
-#define STDIN_BUF_SIZE 512;
+#define STDIN_BUF_SIZE 512
 
-static char buffer[TERM_H][TERM_W];        //30 rows of 80 characters
 static char stdinBuf[STDIN_BUF_SIZE];      //linear buffer of cstrings that are typed in
 static int cursorX = 0;
 static int cursorY = 0;
@@ -56,7 +53,7 @@ void terminalKeyListener(byte scancode)
 			if(stdinWait)
 			{
 			    stdinWait = 0;  //if here then in loop to read string for stdin
-		            char* commandStart = (char*) &buffer[row][promptLen];
+		            char* commandStart = (char*) &buffer[cmdStart][promptLen];
 			    if(commandLen > STDIN_BUF_SIZE - 1)
 				commandLen = STDIN_BUF_SIZE - 1;
 			    for(int i = 0; i < commandLen; i++)

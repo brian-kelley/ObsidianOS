@@ -1,8 +1,9 @@
 #ifndef __STDIO_H__
 #define __STDIO_H__
 
+#include <stddef.h>
 #include "stdarg.h"
-#include "asmTypes.h"
+#include "globalDefines.h"
 
 typedef size_t fpos_t;
 

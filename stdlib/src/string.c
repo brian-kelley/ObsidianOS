@@ -21,7 +21,7 @@ void* memcpy(void* dst, const void* src, size_t num)
 			dstArr[i] = srcArr[i];
 		}
 	}
-	return destination;
+	return dst;
 }
 
 void* memmove(void* dst, const void* src, size_t num)
@@ -42,7 +42,7 @@ char* strcpy(char* dst, const char* src)
 
 char* strncpy(char* dst, const char* src, size_t num)
 {
-	for(int i = 0; i < num; i++)
+	for(int i = 0; i < (int) num; i++)
 	{
 		if(src[i] == 0)
 			break;
@@ -111,7 +111,7 @@ int memcmp(const void* ptr1, const void* ptr2, size_t num)
 {	
 	const byte* arr1 = (const byte*) ptr1;
 	const byte* arr2 = (const byte*) ptr2;
-	for(int i = 0; i < num; i++)
+	for(int i = 0; i < (int) num; i++)
 	{
 		if(arr1[i] < arr2[i])
 			return -1;
@@ -152,7 +152,7 @@ int strncmp(const char* str1, const char* str2, size_t num)
 void* memchr(void* ptr, int value, size_t num)
 {
 	byte* arr = (byte*) ptr;
-	byte search = (byte*) value;
+	byte search = (byte) value;
 	for(int i = 0; i < (int) num; i++)
 	{
 		if(arr[i] == search)
@@ -184,8 +184,10 @@ size_t strcspn(const char* str1, const char* str2)
 		}
 		for(size_t j = 0;; j++)
 		{
-			if(str[i] == str[j])
-				return i;
+		    if(str2[j] == 0)
+			return 0;
+		    if(str1[i] == str2[j])
+			return i;
 		}
 	}
 	return strLength;
@@ -231,7 +233,7 @@ size_t strspn(const char* str1, const char* str2)
 	for(;; rv++)
 	{
 		if(str1[rv] == 0)
-			return NULL;
+			return rv;
 		byte found = 0;
 		for(int j = 0;; j++)
 		{
@@ -254,7 +256,7 @@ char* strstr(const char* str1, const char* str2)
 		if(str1[i] == 0)
 			break;
 		//check if str2 is part of str1 starting at str1[i]
-		bool matches = 1;
+		byte matches = 1;
 		for(int j = 0;; j++)
 		{
 			if(str2[j] == 0)
@@ -266,7 +268,7 @@ char* strstr(const char* str1, const char* str2)
 			}
 		}
 		if(matches)
-			return str1 + i;
+		    return (char*) str1 + i;
 	}
 	return NULL;
 }
@@ -274,7 +276,7 @@ char* strstr(const char* str1, const char* str2)
 char* strtok(char* str, const char* delimiters)
 {
 	if(str == NULL && lastTok == NULL)
-		return NULL
+		return NULL;
 	//Scan to start of token
 	char* tokSearchBegin = str == NULL ? lastTok : str;
 	char* tokStart = NULL;
@@ -306,14 +308,12 @@ char* strtok(char* str, const char* delimiters)
 		//check for delimiter in token
 		if(tokStart[i] == 0)
 			break;
-		byte isDelim = 0;
 		for(int j = 0;; j++)
 		{
 			if(delimiters[j] == 0)
 				break;
 			if(tokStart[i] == delimiters[j])
 			{
-				isDelim = 1;
 				tokStart[i] = 0;
 				break;
 			}

@@ -1,10 +1,9 @@
 .global getFontPtr
-.global getFontVal
 .section .data
 .type fontbin, @object
 .align 4
 fontbin:
-.incbin "font.bin"
+.incbin "stdlib/src/font.bin"
 
 .section .text
 getFontPtr:

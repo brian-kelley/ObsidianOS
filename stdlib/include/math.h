@@ -1,7 +1,7 @@
 #ifndef __STD_MATH_H__
 #define __STD_MATH_H__
 
-#include "asmTypes.h"
+#include "globalDefines.h"
 
 //Constants (as doubles, but written with more than double precision)
 #define PI 3.1415926535897932384626

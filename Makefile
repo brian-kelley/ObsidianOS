@@ -1,33 +1,48 @@
 CC=i386-elf-gcc
-CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -ffreestanding -std=gnu99 -O2
+CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -ffreestanding -std=gnu99 -Os
 OSNAME=goldos
 
-#Kernel sources/objects
-KCS=$(wildcard kernel/*.c)
-KAS=$(wildcard kernel/*.s)
-KCO=kernel/build/$(KCS:.c=.o)
-KAO=kernel/build/$(KAS:.asm=.o)
+#K = kernel
+#S = stdlib
+#C = c language
+#A = assembly (NASM, .asm extension)
+#G = GNU assembly (GAS, .s extension)
+#S = source
+#O = object file
 
-SAS=$(wildcard stdlib/src/*.s)
+KCS=$(wildcard kernel/src/*.c)
+KAS=$(wildcard kernel/src/*.asm)
+KGS=$(wildcard kernel/src/*.s)
+KCO=$(KCS:.c=.o)
+KAO=$(KAS:.asm=.o)
+KGO=$(KGS:.s=.o)
+
+SAS=$(wildcard stdlib/src/*.asm)
 SCS=$(wildcard stdlib/src/*.c)
+SGS=$(wildcard stdlib/src/*.s)
 SAO=$(SAS:.asm=.o)
 SCO=$(SCS:.c=.o)
+SGO=$(SGS:.s=.o)
 
 all: kernel
 	qemu-system-i386 -cdrom $(OSNAME).iso
 
-kernel: libc
-	$(CC) -T linker.ld -o $(OSNAME).bin -ffreestanding -std=gnu99 -nostdlib $(KAO) $(KCO) -lc -lgcc
+kernel: libc $(KCS) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
+	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lgcc
 	mv $(OSNAME).bin isodir/boot
-	grub-mkrescue -o $(OSNAME) isodir
+	grub-mkrescue -o $(OSNAME).iso isodir
 	
-libc: $(SCS) $(SAS) $(SCO) $(SAO)
-	ar rcs libc.a $(SAO) $(SCO)
+libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO)
+	ar rcs libc.a $(SAO) $(SCO) $(SGO)
 
 clean:
-	rm $(OSNAME).iso
+	rm -f $(OSNAME).iso
+	rm -f stdlib/src/*.o
+	rm -f kernel/src/*.o
 
 .c.o:
 	$(CC) $(CFLAGS) -Istdlib/include $< -o $@ 
-.s.o:
+.asm.o:
 	nasm -f elf32 $< -o $@
+.s.o:
+	i386-elf-as $< -o $@

@@ -1,7 +1,7 @@
 #ifndef __FAT_DRV_H__
 #define __FAT_DRV_H__
 
-#include "asmTypes.h"
+#include "globalDefines.h"
 #include "atadrv.h"
 
 void loatFatInfo();		 //initialize the fatInfo struct from boot sector
