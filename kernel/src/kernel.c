@@ -93,25 +93,5 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
-	/*
-	byte bootSector[512];
-	readsector(212, bootSector);
-	char datastr[80];
-	datastr[79] = 0;
-	for(int i = 0; i < 512; i++)
-	{
-	    char mybyte = (char) bootSector[i];
-	    if('!' <= mybyte && mybyte <= '~')
-		datastr[i % 79] = mybyte;
-	    else
-		datastr[i % 79] = '.';
-	    if(i % 79 == 78)
-		printString(datastr);
-	}
-	//Now test write function
-       	for(int i = 0; i < 512; i++)
-	    bootSector[i] = '!' + i % ((int) '~' - (int) '!' + 1);
-	writesector(212, bootSector);
-	*/
 	while(1);
 }

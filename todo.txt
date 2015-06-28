@@ -1,0 +1,26 @@
+GoldOS Todo list
+
+- (high) Modify makefile (grub-mkrescue line) to initialize FAT16 filesystem in MBR partition 1
+- (high) Memory manager in kernel
+- (high) stdlib.h function implementations
+- (high) stdio.h functions
+- (low) ctype.h functions
+- (high) ELF32 executable loader 
+- (high) Editor (built-in to kernel for now)
+- (low) foreground and background color customization
+- (low) only move cursor down one line when valid process is started AND it writes to stdout
+- (low) PS/2 mouse driver, cursor drawing
+- (low) have the keyboard interrupt only place a stroke in a circular queue instead of actually calling the key listener from the interrupt handler
+- (high) vertical sync (read from 0x3DA, bit 3)
+- (high) graphics library (2D primitives, then textures, then matrices for 3D, depth buffer, and simple lighting. Also put keyboard/mouse input functions.
+- (med) double buffering
+- (high) change 256-color palette at initialization to be RGB-323
+- (low) make graphics support mode 12h also, make the entire API work the same in modes 12h and 13h, and use dithering to simulate more colors
+- (high) Assembler (support just int operations first, then x87 FPU instructions and immediate float/double values
+- (high) C compiler
+- (high) ELF32 linker to build libraries and executables to make self-hosted
+----------------Self-hosted!----------------
+- (low) change core utilities to standalone executables, compiled in the OS. (ls, mkdir, cd, etc.)
+- (high) basic UX customizations
+- (high) games! (pong, snake, platformers, etc.)
+- (low) python-like interpreted language
