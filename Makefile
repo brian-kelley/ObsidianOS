@@ -9,8 +9,10 @@ OSNAME=goldos
 #G = GNU assembly (GAS, .s extension)
 #S = source
 #O = object file
+#H = header
 
 KCS=$(wildcard kernel/src/*.c)
+KCH=$(wildcard kernel/src/*.h)
 KAS=$(wildcard kernel/src/*.asm)
 KGS=$(wildcard kernel/src/*.s)
 KCO=$(KCS:.c=.o)
@@ -27,7 +29,7 @@ SGO=$(SGS:.s=.o)
 all: kernel
 	qemu-system-i386 -cdrom $(OSNAME).iso
 
-kernel: libc $(KCS) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
+kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
 	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lgcc
 	mv $(OSNAME).bin isodir/boot
 	grub-mkrescue -o $(OSNAME).iso isodir
@@ -36,9 +38,9 @@ libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO)
 	ar rcs libc.a $(SAO) $(SCO) $(SGO)
 
 clean:
-	rm -f $(OSNAME).iso
 	rm -f stdlib/src/*.o
 	rm -f kernel/src/*.o
+	rm -f $(OSNAME).iso
 
 .c.o:
 	$(CC) $(CFLAGS) -Istdlib/include $< -o $@ 
