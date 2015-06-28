@@ -2,6 +2,7 @@
 
 #define STDIN_BUF_SIZE 512
 
+static char buffer[TERM_H][TERM_W];
 static char stdinBuf[STDIN_BUF_SIZE];      //linear buffer of cstrings that are typed in
 static int cursorX = 0;
 static int cursorY = 0;

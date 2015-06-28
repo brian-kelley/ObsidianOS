@@ -27,7 +27,7 @@ SCO=$(SCS:.c=.o)
 SGO=$(SGS:.s=.o)
 
 all: kernel
-	qemu-system-i386 -cdrom $(OSNAME).iso
+	qemu-system-i386 $(OSNAME).iso
 
 kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
 	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lgcc

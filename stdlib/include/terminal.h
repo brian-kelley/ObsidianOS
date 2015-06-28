@@ -8,8 +8,6 @@
 #define TERM_W 80
 #define TERM_H 30
 
-static char buffer[TERM_H][TERM_W];
-
 void initTerminal();
 void terminalKeyListener(byte scancode);
 void terminalUpdateScreen();
