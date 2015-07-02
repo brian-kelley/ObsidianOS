@@ -1,6 +1,6 @@
 GoldOS Todo list
 
-- (high) Modify makefile (grub-mkrescue line) to initialize FAT16 filesystem in MBR partition 1
+DONE (high) Modify makefile (grub-mkrescue line) to initialize FAT16 filesystem in MBR partition 1
 - (high) Memory manager in kernel
 - (high) stdlib.h function implementations
 - (high) stdio.h functions
