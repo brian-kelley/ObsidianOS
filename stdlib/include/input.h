@@ -3,6 +3,7 @@
 
 #include "globalDefines.h"
 #include "video.h"
+#include "terminal.h"
 
 void keyboardHandler();
 void initKeyboard();

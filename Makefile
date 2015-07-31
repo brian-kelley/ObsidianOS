@@ -43,6 +43,9 @@ clean:
 	rm -f kernel/src/*.o
 	rm -f $(OSNAME).iso
 
+checkDiskUtils:
+	scripts/checkPrograms.sh
+
 .c.o:
 	$(CC) $(CFLAGS) -Istdlib/include $< -o $@ 
 .asm.o:

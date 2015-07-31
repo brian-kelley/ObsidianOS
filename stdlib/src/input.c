@@ -118,7 +118,7 @@ void initKeyboard()
 	enableKeyboardScancodes();
 	keyboardCommand(0xAE);
 	if(resetKeyboard())
-		puts("ERROR: Keyboard reset failed.", 0, 0);
+		printString("ERROR: Keyboard reset failed.");
 	writeport(0x20, 0x11);
 	writeport(0xA0, 0x11);
 	writeport(0x21, 0x20);

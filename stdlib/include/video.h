@@ -14,6 +14,5 @@ void clearScreen(byte color);
 //Note: x and y are on text grid, 8x16 pixels
 void drawChar(char c, int x, int y, byte fg, byte bg);
 void vsync();
-void puts(const char* str, int x, int y);
 
 #endif

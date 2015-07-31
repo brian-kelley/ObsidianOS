@@ -11,6 +11,8 @@ int ataInit()
 //ATA PIO driver functions (reset, read sector, write sector)
 int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 {
+    //sector is relative to partition, so add partition start sector
+    sector += PARTITION_SEC;
     //wait for BSY to clear and RDY to set
     byte status;
     int timeoutCounter = 10000;
@@ -49,6 +51,7 @@ int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 
 int writesector(dword sector, byte* buf)
 {
+    sector += PARTITION_SEC;
     byte status;
     int timeoutCounter = 10000;
     do

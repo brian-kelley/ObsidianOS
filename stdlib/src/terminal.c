@@ -71,21 +71,34 @@ void terminalKeyListener(byte scancode)
 				cursorY--;
 			    }
 			    cursorX = 0;
-			    break;          //setting that to false is signal to return there
+			    break;
 			}
-			parseCommand(cmdStart);	//Would normally load a program into RAM, invoke the runtime and jump execution to the program.
-			//carriage return and newline
-			//Erase cursor
-			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
-			buffer[cursorY][cursorX] = ' ';
-			cursorX = promptLen;
-			cursorY++;
-			if(cursorY == TERM_H)
+			if(commandLen == 0)
 			{
-				shiftUp();
-				cursorY--;
+			    cursorX = promptLen;
+			    break;
+      			}
+			parseCommand(cmdStart);	//Would normally load a program into RAM, invoke the runtime and jump execution to the program. So treat that line as an arbitrary program running.
+			//Leave the cursor on the current line if that line is empty.
+			if(cursorX = 0)
+			{
+			    cursorX = promptLen;
+			    drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
+			    buffer[cursorY][cursorX] = cursor;
 			}
-			//Does not do that yet.
+			//Otherwise, go to a fresh line
+			else
+			{
+			    cursorX = promptLen;
+			    cursorY++;
+			    if(cursorY == TERM_H)
+			    {
+			    	shiftUp();
+		    		cursorY--;
+			    }
+			    buffer[cursorY][cursorX] = cursor;
+			    drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
+		    	}
 			//Draw prompt string on cursor's new row
 			for(int i = 0;; i++)
 			{
@@ -94,10 +107,6 @@ void terminalKeyListener(byte scancode)
 				drawChar(prompt[i], i, cursorY, fgColor, bgColor);
 				buffer[cursorY][i] = prompt[i];
 			}
-			//Redraw cursor
-			drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
-			buffer[cursorY][cursorX] = cursor;
-			commandLen = 0;
 			break;
 		}
 		case KEY_BACKSPACE:
@@ -160,73 +169,90 @@ void terminalUpdateScreen()
 	}
 }
 
+//Print a single character or do escape code
+void printChar(char ch)
+{
+    switch(ch)
+    {
+	case '\0':
+		return;
+	case '\t':	//tab
+		//round X up to a TAB_WIDTH-column boundary
+		if(cursorX % TAB_WIDTH == 0)
+			cursorX += TAB_WIDTH;
+		else
+			cursorX = (1 + (cursorX / TAB_WIDTH)) * TAB_WIDTH;
+		//put cursor at start of next line if past end of line
+		if(cursorX >= TERM_W)
+		{
+			cursorX = 0;
+			cursorY++;
+			if(cursorY == TERM_H)
+			{
+				cursorY--;
+				shiftUp();
+			}
+		}
+		break;
+	case '\n':	//newline
+		cursorX = 0;
+		cursorY++;
+		if(cursorY == TERM_H)
+		{
+			cursorY--;
+			shiftUp();
+		}
+		break;
+	case '\b': //backspace
+		if(cursorX > 0)
+		{
+			buffer[cursorY][cursorX] = ' ';
+			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
+			cursorX--;
+		}
+		break;
+	case '\r':	//Carriage return, go back to start of line
+		cursorX = 0;
+		break;
+	case '\f':	//Form feed
+		clearScreen(0);
+		break;
+	default:
+		//if character is not drawable, return
+		if(ch < '!' || ch > '~')
+		    return;
+		drawChar(ch, cursorX, cursorY, fgColor, bgColor);
+		buffer[cursorY][cursorX] = ch;
+		cursorX++;
+		if(cursorX == TERM_W)
+		{
+			cursorX = 0;
+			cursorY++;
+			if(cursorY == TERM_H)
+			{
+				cursorY--;
+				shiftUp();
+			}
+		}
+    }
+}
+
 //Prints the string at the cursor position
 //Does NOT automatically newline, that needs to be in the string
-void printString(char* const str)
+void printString(const char* str)
 {
-	for(int i = 0;; i++)
-	{
-		switch(str[i])
-		{
-			case '\0':
-				return;
-			case '\t':	//tab
-				//round X up to a TAB_WIDTH-column boundary
-				if(cursorX % TAB_WIDTH == 0)
-					cursorX += TAB_WIDTH;
-				else
-					cursorX = (1 + (cursorX / TAB_WIDTH)) * TAB_WIDTH;
-				//put cursor at start of next line if past end of line
-				if(cursorX >= TERM_W)
-				{
-					cursorX = 0;
-					cursorY++;
-					if(cursorY == TERM_H)
-					{
-						cursorY--;
-						shiftUp();
-					}
-				}
-				break;
-			case '\n':	//newline
-				cursorX = 0;
-				cursorY++;
-				if(cursorY == TERM_H)
-				{
-					cursorY--;
-					shiftUp();
-				}
-				break;
-			case '\b': //backspace
-				if(cursorX > 0)
-				{
-					buffer[cursorY][cursorX] = ' ';
-					drawChar(' ', cursorX, cursorY, fgColor, bgColor);
-					cursorX--;
-				}
-				break;
-			case '\r':	//Carriage return, go back to start of line
-				cursorX = 0;
-				break;
-			case '\f':	//Form feed
-				clearScreen(0);
-				break;
-			default:
-				//Just draw the ASCII char
-				drawChar(str[i], cursorX, cursorY, fgColor, bgColor);
-				cursorX++;
-				if(cursorX == TERM_W)
-				{
-					cursorX = 0;
-					cursorY++;
-					if(cursorY == TERM_H)
-					{
-						cursorY--;
-						shiftUp();
-					}
-				}
-		}
-	}
+    char* iter = (char*) str;
+    while(*iter != 0)
+    {
+	printChar(*iter);
+	iter++;
+    }
+}
+
+void printChars(const char* str, size_t numChars)
+{
+    for(int i = 0; i < (int) numChars; i++)
+	printChar(str[i]);
 }
 
 void shiftUp()
@@ -254,7 +280,6 @@ void parseCommand(int row)
 	//When Enter is pressed, parseCommand is the first thing the terminal does so that cursor position preserved
 	char* commandStart = (char*) &buffer[row][promptLen];
 	commandStart[commandLen] = 0;	//Add a null-terminator in the buffer 
-	printString(commandStart);
 }
 
 void clearTerminal(byte commandMode)

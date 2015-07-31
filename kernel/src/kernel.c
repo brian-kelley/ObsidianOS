@@ -61,15 +61,6 @@ char hexFromBits(byte bits)	//put in low 4
 			return '?';
 	}
 }
-void drawNum(dword num, int row)
-{
-	char* mystr = "0x........";	//all dots will be filled in
-	for(int i = 0; i < 8; i++)
-	{
-		mystr[9 - i] = hexFromBits(num >> (i * 4));
-	}
-	puts((const char*) mystr, 0, row);
-}
 
 void keyPressed(byte scancode, byte pressed)
 {

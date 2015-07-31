@@ -3,6 +3,7 @@
 
 #include "globalDefines.h"
 #include "atadrv.h"
+#include "stdio.h"
 
 void loatFatInfo();		 //initialize the fatInfo struct from boot sector
 int createDir(const char* path); //these are recursive, creating creates all folders
