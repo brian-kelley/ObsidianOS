@@ -3,8 +3,10 @@
 
 #include "globalDefines.h"
 
-//Sector offset of primary partition (1 MB)
-#define PARTITION_SEC 0x800
+typedef struct
+{
+    byte data[512];
+} Sector;
 
 int ataInit();
 int readsector(dword sector, byte* buf);

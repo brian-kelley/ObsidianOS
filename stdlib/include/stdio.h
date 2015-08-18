@@ -14,7 +14,6 @@ typedef struct
     int kernelID;      //every stream will have an ID in the kernel
     byte isBuffered;   //1 if buffer points 
     size_t pos;        //position in file/stream, if applicable
-    size_t bufSize;    //size of buffer in bytes
     void* buffer;      //buffer, either NULL or a block of memory
 } FILE;
 
@@ -22,8 +21,8 @@ typedef struct
 #define EOF -1
 #define FILENAME_MAX 8
 #define FOPEN_MAX 64
-#define L_tmpnam 3
-#define TMP_MAX 26 * 26 * 26; //3 letters, starting AAA, then AAB, to ZZZ
+#define L_tmpnam 1
+#define TMP_MAX 26; //a...z
 
 int remove(const char* filename);
 int rename(const char* oldname, const char* newname);

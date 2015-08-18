@@ -1,18 +1,23 @@
 #include "atadrv.h"
 
+static dword partitionStart; //first sector of partition
+
 int ataInit()
 {
-    //todo: reset drive
     //select master drive
     writeport(0x1F6, 0xA0);
-    return 0;	//TODO: Return 1 if something goes wrong
+    //load MBR and find first sector of first partition
+    char buf[512];
+    readsector(0, buf);
+    partitionStart = *((dword*) &buf[0x1BE + 8]);
+    return 0; //TODO: detect errors and return -1 if fail
 }
 
 //ATA PIO driver functions (reset, read sector, write sector)
 int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 {
     //sector is relative to partition, so add partition start sector
-    sector += PARTITION_SEC;
+    sector += partitionStart;
     //wait for BSY to clear and RDY to set
     byte status;
     int timeoutCounter = 10000;
@@ -51,7 +56,7 @@ int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 
 int writesector(dword sector, byte* buf)
 {
-    sector += PARTITION_SEC;
+    sector += partitionStart;
     byte status;
     int timeoutCounter = 10000;
     do
