@@ -17,7 +17,7 @@ void* memchr(void* ptr, int value, size_t num);
 char* strchr(char* str, int character);
 size_t strcspn(const char* str1, const char* str2);
 char* strpbrk(char* str1, const char* str2);
-char* strrchr(char* str, int character);
+const char* strrchr(const char* str, int character);
 size_t strspn(const char* str1, const char* str2);
 char* strstr(const char* str1, const char* str2);
 char* strtok(char* str, const char* delimiters);

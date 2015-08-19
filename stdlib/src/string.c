@@ -210,7 +210,7 @@ char* strpbrk(char* str1, const char* str2)
 	return NULL;
 }
 
-char* strrchr(char* str, int character)
+const char* strrchr(const char* str, int character)
 {
 	//first find end of string
 	int stringLen = 0;

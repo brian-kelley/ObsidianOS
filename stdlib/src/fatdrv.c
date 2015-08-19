@@ -54,29 +54,43 @@ void initFatDriver()
     //load a copy into both buffers
     for(int i = 0; i < fatInfo.sectorsPerFat; i++)
     {
-	readsector(fat1 + i, ((byte*) actualFatBuf) + i * 512; 
+	readsector(fat1 + i, sectorBuf);
+	for(int j = 0; j < 256; j++)
+	{
+	    if(i * 256 + j < numClusters)
+		logicalFatBuf[i * 256 + j] = *((word*) &sectorBuf[j * 2]);
+	    else
+		break;
+	}
     }
-    memcpy(logicalFatBuf, actualFatBuf, fatInfo.sectorsPerFat * 512);
+    memcpy(logicalFatBuf, actualFatBuf, 2 * numClusters);
+    //set attribute masks in FILE_ATTRIB
+    FILE_ATTRIB.READONLY = 1;
+    FILE_ATTRIB.HIDDEN = 2;
+    FILE_ATTRIB.SYSTEM = 4;
+    FILE_ATTRIB.VOLUME_LABEL = 8;
+    FILE_ATTRIB.DIRECTORY = 16;
 }
 
-int createDir(const char* path)
+bool createDir(const char* path)
 {
     
+    return true;
 }
 
-int createFile(const char* path)
+bool createFile(const char* path)
 {
-    
+    return true;
 }
 
-int deleteDir(const char* path)
+bool deleteDir(const char* path)
 {
-    
+    return true;
 }
 
-int deleteFile(const char* path)
+bool deleteFile(const char* path)
 {
-    
+    return true;
 }
 
 void setPermission(DirEntry* entry, byte flags)
@@ -105,14 +119,14 @@ qword getFreeSpace()
 
 word getNextCluster(word cluster)
 {
-    return logicalSectorBuf[cluster - 2];
+    return logicalFatBuf[cluster - 2];
 }
 
-void allocCluster(word last, bool first)
+word allocCluster(word last, bool first)
 {
     //scan through FAT and find first free cluster
     int dest = -1;
-    for(int i = 0; i < numClusters; i++)
+    for(int i = 0; i < (int) numClusters; i++)
     {
 	if(logicalFatBuf[i] == 0)
 	{
@@ -127,7 +141,8 @@ void allocCluster(word last, bool first)
     }
     logicalFatBuf[dest] = 0xFFFF;
     if(!first)
-        logicalFatBuf[last - 2] = dest + 2;
+        logicalFatBuf[last - 2] = (word) (dest + 2);
+    return dest + 2;
 }
 
 int fatDiff()
@@ -150,26 +165,26 @@ void flushFat()
     while(1)
     {
 	diff = fatDiff();
-	if(diff = -1)
+	if(diff == -1)
 	    break;
-        writeSector(fat1 + diff, logicalFatBuf[diff * 256]);
-	writeSector(fat2 + diff, logicalFatBuf[diff * 256]);
-	memcpy(logicalFatBuf[diff * 256], actualFatBuf[diff * 256], 512);
+        writesector(fat1 + diff, (byte*) &logicalFatBuf[diff * 256]);
+	writesector(fat2 + diff, (byte*) &logicalFatBuf[diff * 256]);
+	memcpy(&logicalFatBuf[diff * 256], &actualFatBuf[diff * 256], 512);
     }
 }
 
 void reallocChain(word first, size_t newSize)
 {
     size_t bytesPerCluster = 512 * fatInfo.sectorsPerCluster;
-    size_t newClusters = newSize / bytesPerCluster;
+    word newClusters = (word) (newSize / bytesPerCluster);
     if(newSize % bytesPerCluster)
 	newClusters++;
     //find the current length of the chain, to see if it will grow, shrink or not change
-    int curClusters = 1;
+    word curClusters = 1;
     word iter = first;
     while(logicalFatBuf[iter - 2] != 0xFFFF)
     {
-	iter = logicalFatBuf[iter = 2];
+	iter = logicalFatBuf[iter - 2];
 	curClusters++;
     }
     //iter now holds last cluster
@@ -180,17 +195,16 @@ void reallocChain(word first, size_t newSize)
     else if(curClusters < newClusters)
     {
 	//allocate new clusters
-	word newLast; //keep track of last cluster as chain grows
 	for(int i = 0; i < newClusters - curClusters; i++)
 	{
-	    newLast = allocCluster(iter, false);
+	    iter = allocCluster(iter, false);
 	}
     }
     else
     {
 	//free clusters
 	iter = first;
-	for(int i = 0; i < curClusters - newClusters - 1; i++)
+	for(word i = 0; i < curClusters - newClusters - 1; i++)
 	{
 	    iter = logicalFatBuf[iter - 2];
 	}
@@ -204,14 +218,14 @@ void reallocChain(word first, size_t newSize)
 word allocChain(size_t size)
 {
     size_t bytesPerCluster = 512 * fatInfo.sectorsPerCluster;
-    size_t numClusters = size / bytesPerCluster;
+    word numClusters = (word) (size / bytesPerCluster);
     if(size % bytesPerCluster)
 	numClusters++;
     if(numClusters == 0)
 	numClusters = 1;
     word first = allocCluster(0, true);
     word iter = first;
-    for(int i = 0; i < numClusters - 1; i++)
+    for(word i = 0; i < numClusters - 1; i++)
     {
 	iter = allocCluster(iter, false);
     }
@@ -331,19 +345,21 @@ bool findFile(DirEntry* result, DirEntry* dir, const char* name, bool allowDir)
     //now have name to search for
     //use cluster # of search dir to get entries
     word dirCluster = dir->firstCluster;
+    Sector sec;
     while(1)
     {
 	//process this cluster
 	for(int i = 0; i < fatInfo.sectorsPerCluster; i++)
 	{
 	    //process this sector
-	    Sector sec = getSectorForCluster(dirCluster, i);
+	    readClusterSec(dirCluster, i, &sec);
 	    for(int j = 0; j < 512; j += 32) //bytes
 	    {
 		//process this dir entry
 		DirEntry* thisEntry = (DirEntry*) &sec.data[j];
-		char det = thisEntry->filename[0];
-		if(det == 0 || det == 0xE5 || det == 0x2E)
+		byte det = thisEntry->filename[0];
+		if(!entryExists(thisEntry))
+
 		    continue;
 		//compare filename
 		if(strncmp(searchName, thisEntry->filename, 11) == 0)
@@ -364,20 +380,233 @@ bool findFile(DirEntry* result, DirEntry* dir, const char* name, bool allowDir)
     return false;
 }
 
-Sector getSectorForCluster(word cluster, int n)
+bool readClusterSec(word cluster, int n, Sector* sec)
 {
-    Sector rv;
+    //bounds check the given cluster/sector #
+    if(cluster < 2 || cluster > numClusters + 2)
+	return false;
+    if(n < 0 || n > fatInfo.sectorsPerCluster)
+	return false;
     dword sectorToRead = dataStart;
     sectorToRead += (dword) (cluster - 2) * fatInfo.sectorsPerCluster;
     sectorToRead += n;
-    readsector(sectorToRead, rv.data);
-    return rv;
+    readsector(sectorToRead, sec->data);
+    return true;
+}
+
+bool writeClusterSec(word cluster, int n, Sector* sec)
+{
+    if(cluster < 2 || cluster > numClusters + 2)
+	return false;
+    if(n < 0 || n > fatInfo.sectorsPerCluster)
+	return false;
+    dword sectorToWrite = dataStart;
+    sectorToWrite += (dword) (cluster - 2) * fatInfo.sectorsPerCluster;
+    sectorToWrite += n;
+    writesector(sectorToWrite, sec->data);
+    return true;
 }
 
 bool isValidFilename(const char* name)
 {
-    char* nameBegin = name;
     if(strpbrk(name, ".\"*+,/:;<=>?\\[]|"))
 	return false;
-    if(strlen
+    return true;
+}
+
+int numFilesInEntry(DirEntry* dir)
+{
+    if(!entryExists(dir) || !isDirectory(dir))
+	return 0;
+    //find cluster
+    word cluster = dir->firstCluster;
+    Sector sec;
+    int num = 0;
+    while(1)
+    {
+	for(int i = 0; i < fatInfo.sectorsPerCluster; i++)
+	{
+	    readClusterSec(cluster, i, &sec);
+	    for(int j = 0; j < 512; j += 32)
+	    {
+		DirEntry* entry = (DirEntry*) &sec[j];
+		if(entryExists(entry))
+		    num++;
+	    }
+	}
+	//decide if there is another cluster to search
+	if(logicalFatBuf[cluster - 2] != 0xFFFF)
+	    cluster = logicalFatBuf[cluster - 2];
+	else
+	    break;
+    }
+    return num;
+}
+
+int numFilesInDir(const char* path)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, path))
+	return 0;
+    return numFilesInEntry(&dir);
+}
+
+int fileSecond(const char* name)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, name))
+	return -1;
+    return ((int) dir->time & 0b11111) * 2;
+}
+
+int fileMinute(const char* name)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, name))
+	return -1;
+    return ((int) dir->time & 0b11111100000) >> 5;
+}
+
+int fileHour(const char* name)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, name))
+	return -1;
+    return ((int) dir->time & 0b1111100000000000) >> 11;
+}
+
+int fileDay(const char* name)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, name))
+	return -1;
+    return (int) dir->date & 0b11111;
+}
+
+int fileMonth(const char* name)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, name))
+	return -1;
+    return ((int) dir->date & 0b111100000) >> 5;
+}
+
+int fileYear(const char* name)
+{
+    DirEntry dir;
+    if(!walkPath(&dir, name))
+	return -1;
+    return 1980 + ((int) dir->date & 0b1111111000000000);
+}
+
+bool entryExists(DirEntry* entry)
+{
+    byte det = entry->filename[0];
+    if(det == 0 || det == 0xE5 || det == 0x2E)
+	return false;
+    return true;
+}
+
+void compressDir(DirEntry* dir)
+{
+    //first, see if a cluster could be saved (if not, don't do anything)
+    if(!entryExists(dir) || !isDirectory(dir))
+	return;
+    int numClusters = 1;
+    word cluster = dir->firstCluster;
+    while(1)
+    {
+	if(logicalFatBuf[cluster - 2] != 0xFFFF)
+	{
+	    cluster = logicalFatBuf[cluster - 2];
+	    numClusters++;
+	}
+	else
+	    break;
+    }
+    //now get the smallest possible size, in bytes
+    size_t idealSize = numFilesInEntry(dir) * 32;
+    int bytesPerCluster = 512 * fatInfo.sectorsPerCluster;
+    int idealClusters = idealSize / bytesPerCluster;
+    if(idealSize % bytesPerCluster)
+	idealClusters++;
+    if(idealClusters == numClusters)
+	return; //no space will be saved
+    //actually do the compression
+    //make a copy of numClusters (curClusters)
+    //while the last cluster is not empty, take DirEntries from the last cluster and move them into empty slots found in the first clusters.
+    //decrement curClusters
+    //if curClusters is still greater than idealClusters, repeat process for new last cluster
+    //call reallocChain to remove the freed sectors (given by numClusters - curClusters)
+    //flush FAT so clusters can't be 'leaked' in case of power loss etc
+    int curClusters = numClusters;
+    DirEntry entryToCopy; //hold space for entries being moved into other clusters
+    Sector srcSec; //sector in cluster that will be freed
+    Sector origSrcSec; //copy of src as it is on disk, compare to see if updated
+    Sector dstSec; //sector in cluster earlier in chain with free slots
+    while(curClusters > idealClusters)
+    {
+	//seek to last cluster
+	word lastCluster = dir->firstCluster;
+	while(logicalFatBuf[lastCluster - 2] != 0xFFFF)
+	    lastCluster = logicalFatBuf[lastCluster - 2];
+	for(int i = 0; i < fatInfo.sectorsPerCluster; i++)
+	{
+	    readClusterSec(lastCluster, i, &srcSec);
+	    memcpy(origSrcSec.data, srcSec.data, 512);
+	    for(int j = 0; j < 512; j += 32)
+	    {
+		DirEntry* thisEntry = (DirEntry*) &srcSec.data[j];
+		if(entryExists(thisEntry))
+		{
+		    //now start at first cluster again, and find free entry slot
+		    EntrySlot slot;
+		    if(!findFreeSlot(dir, &slot))
+			return; //this shouldn't happen, but abort if it does
+		    //load the dest sector, and copy the entry
+		    readClusterSec(slot.cluster, slot.sector, &dstSec);
+		    memcpy((void*) &dstSec[slot.index * 16], (void*) thisEntry, 32);
+		    //write back the dest sector (TODO: cache it in case it's the same for multiple entries?)
+		    writeClusterSec(slot.cluster, slot.sector, &dstSec);
+		    //zero out the slot in the src sector
+		    memset((void*) thisEntry, 0, 32);
+		}
+	    }
+	    //done with cluster, write it back if it changed at all
+	    if(!memcmp(srcSec.data, origSrcSec.data, 512))
+		writeClusterSec(lastCluster, i, &srcSec);
+        }
+	curClusters--;
+    }
+}
+
+bool findFreeSlot(DirEntry* dir, EntrySlot* result)
+{
+    if(!entryExists(dir) || !isDirectory(dir))
+	return false;
+    word cluster = dir->firstCluster;
+    Sector sec;
+    while(1)
+    {
+	for(word i = 0; i < (word) fatInfo.sectorsPerCluster; i++)
+	{
+	    readClusterSec(cluster, i, &sec);
+	    for(int j = 0; j < 512; j += 32)
+	    {
+		DirEntry* thisDest = (DirEntry*) &sec.data[j];
+		if(!entryExists(thisDest))
+		{
+		    result->cluster = cluster;
+		    result->sector = (word) i;
+		    result->index = (word) (j / 32);
+		    return true;
+		}
+	    }
+	}
+	if(logicalFatBuf[cluster - 2] == 0xFFFF)
+	    return false;
+	else
+	    cluster = logicalFatBuf[cluster - 2];
+    }
+    return false;
 }

@@ -7,7 +7,7 @@ int ataInit()
     //select master drive
     writeport(0x1F6, 0xA0);
     //load MBR and find first sector of first partition
-    char buf[512];
+    byte buf[512];
     readsector(0, buf);
     partitionStart = *((dword*) &buf[0x1BE + 8]);
     return 0; //TODO: detect errors and return -1 if fail

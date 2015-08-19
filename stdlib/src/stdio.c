@@ -19,6 +19,8 @@ static void byteToStream(FILE* stream, byte b)
 	if(bufPos == 512)
 	{
 	    //flush sector
+	}
+    }
 }
 
 static char hexToChar(int digit)

@@ -4,15 +4,17 @@
 #include "globalDefines.h"
 #include "atadrv.h"
 #include "string.h"
+#include "terminal.h"
+#include "stdlib.h"
 
-struct FILE_ATTRIB
+struct
 {
-    const byte READONLY = 1;
-    const byte HIDDEN = 2;
-    const byte SYSTEM = 4;
-    const byte VOLUME_LABEL = 8;
-    const byte DIRECTORY = 16;
-};
+    byte READONLY;
+    byte HIDDEN;
+    byte SYSTEM;
+    byte VOLUME_LABEL;
+    byte DIRECTORY;
+} FILE_ATTRIB;
 
 typedef struct //32 byte struct exactly matching layout on disk
 {
@@ -28,30 +30,42 @@ typedef struct //32 byte struct exactly matching layout on disk
 
 typedef struct
 {
-    byte data[512];
-} Sector;
-
+    word cluster;
+    word sector;
+    word index;
+} EntrySlot;
 void initFatDriver();		 //initialize the fatInfo struct from boot sector
 bool createDir(const char* path); //not recursive
 bool createFile(const char* path);
 bool deleteFile(const char* path);
 bool deleteDir(const char* path);
 void setPermission(DirEntry* entry, byte flags);  //set the FAT16 attribute flags on a file
-dword getFreeSpace();
-int numFilesInDir(const char* path); //get number of files and directories
+qword getFreeSpace();
+int numFilesInEntry(DirEntry* dir);  //get number of entries in dir
+int numFilesInDir(const char* path);
 DirEntry getRootDirEntry(int index); //get info about the nth root directory entry
 bool walkPath(DirEntry* result, const char* path);
 bool findFile(DirEntry* result, DirEntry* dir, const char* name, bool allowDir);
-Sector getSectorForCluster(word cluster, int n); //load the nth sector
+bool readClusterSec(word cluster, int n, Sector* sec); //load the nth sector
+bool writeClusterSec(word cluster, int n, Sector* sec); //write out nth sector
 bool isDirectory(DirEntry* entry);
 qword getFreeSpace(); //get free disk space in bytes
 word getNextCluster(word cluster); //read sector in fat and follow cluster chain
-void allocCluster(word last, bool first); //mark a cluster as used and EOF, set previous last to point to new
+word allocCluster(word last, bool first); //mark a cluster as used and EOF, set previous last to point to new
 void reallocChain(word first, size_t newSize); //add or remove clusters at end of file to get new size (bytes)
 word allocChain(size_t size);
 void deleteChain(word first);  //mark all clusters in chain as free (don't modify corresponding directory entry)
 void flushFat(); //update FAT(s) on disk to reflect memory copy
 int fatDiff();   //find the first difference (in sectors) between logical and acual, or -1 if they are the same
 bool isValidFilename(const char* name); //does it fit in 8-3 filename? (include dot)
+bool entryExists(DirEntry* entry); //is the entry a file or directory?
+void compressDir(DirEntry* dir);
+bool findFreeSlot(DirEntry* dir, EntrySlot* result);
+int fileSecond(const char* name);
+int fileMinute(const char* name);
+int fileHour(const char* name);
+int fileDay(const char* name);
+int fileMonth(const char* name);
+int fileYear(const char* name);
 
 #endif
