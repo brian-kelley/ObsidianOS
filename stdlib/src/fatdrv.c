@@ -74,11 +74,10 @@ void initFatDriver()
 
 bool createDir(const char* path)
 {
-    
     return true;
 }
 
-bool createFile(const char* path)
+bool createFile(const char* path, size_t size)
 {
     return true;
 }

@@ -36,7 +36,7 @@ typedef struct
 } EntrySlot;
 void initFatDriver();		 //initialize the fatInfo struct from boot sector
 bool createDir(const char* path); //not recursive
-bool createFile(const char* path);
+bool createFile(const char* path, size_t size = 0);
 bool deleteFile(const char* path);
 bool deleteDir(const char* path);
 void setPermission(DirEntry* entry, byte flags);  //set the FAT16 attribute flags on a file
@@ -61,6 +61,7 @@ bool isValidFilename(const char* name); //does it fit in 8-3 filename? (include 
 bool entryExists(DirEntry* entry); //is the entry a file or directory?
 void compressDir(DirEntry* dir);
 bool findFreeSlot(DirEntry* dir, EntrySlot* result);
+
 int fileSecond(const char* name);
 int fileMinute(const char* name);
 int fileHour(const char* name);
