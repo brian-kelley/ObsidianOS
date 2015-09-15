@@ -8,10 +8,10 @@
 #define RAND_MAX 0xAFFFFFFF
 #endif
 #ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS 0
+#define EXIT_SUCCESS (0)
 #endif
 #ifndef EXIT_FAILURE
-#define EXIT_FAILURE -1
+#define EXIT_FAILURE (-1)
 #endif
 
 typedef struct
@@ -49,5 +49,10 @@ int system(const char* command);
 
 void* bsearch(void* key, void* base, size_t num, size_t size, int (*compare) (const void*, const void*));
 void* qsort(void* base, size_t num, size_t size, int (*compare) (const void*, const void*));
+
+int abs(int n);
+div_t div(int numer, int denom);
+long int labs(long int n);
+ldiv_t ldiv(long int numer, long int denom);
 
 #endif

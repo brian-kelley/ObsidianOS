@@ -28,3 +28,8 @@ double atof(const char* str)
     }
 }
 
+=======
+void* malloc(size_t size)
+{
+    
+}
