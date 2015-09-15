@@ -28,7 +28,7 @@ static char hexToChar(int digit)
     else if(digit >= 10 && digit < 16)
 	return 'a' + (digit - 10);
     else
-	puts("Error: invalid hex digit!");
+	fputs("Error: invalid hex digit!");
         return '!';
 }
 

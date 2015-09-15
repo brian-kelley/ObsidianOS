@@ -61,7 +61,8 @@ void initFatDriver()
 
 int createDir(const char* path)
 {
-    
+    //walk components of path and create subdirectories that don't exist
+    char* tok = strtok(path, NULL);
 }
 
 int createFile(const char* path)
