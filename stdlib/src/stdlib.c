@@ -1,4 +1,35 @@
 #include "stdlib.h"
+#include "memory.h"
+
+void* malloc(size_t size)
+{
+	return mmAlloc(size);
+}
+
+void* calloc(size_t num, size_t size)
+{
+	void* ptr = alloc(num * size);
+	if(ptr != NULL)
+	{
+		for(size_t i = 0; i < num * size; i++)
+		{
+			ptr[i] = 0;
+		}
+	}
+	return ptr;
+}
+
+//for now just to the trivial thing - free and reallocate
+void* realloc(void* ptr, size_t newSize)
+{
+	free(ptr);
+	return alloc(newSize);
+}
+
+void free(void* ptr)
+{
+	mmFree(ptr);
+}
 
 double atof(const char* str)
 {
@@ -17,19 +48,13 @@ double atof(const char* str)
     while(digIt <= start)
     {
         int digit = digIt - '0';
-	mantissa += digit * pot;
-	pot *= 10;
-	digIt--;
+		mantissa += digit * pot;
+		pot *= 10;
+		digIt--;
     }
     manEnd++;
     if(tolower(*manEnd) == 'e')
     {
-	if(
+		
     }
-}
-
-=======
-void* malloc(size_t size)
-{
-    
 }
