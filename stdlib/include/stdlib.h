@@ -1,18 +1,7 @@
 #ifndef __STDLIB_H__
 #define __STDLIB_H__
 
-#ifndef NULL
-#define NULL ((void*) 0);
-#endif
-#ifndef RAND_MAX
-#define RAND_MAX 0xAFFFFFFF
-#endif
-#ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS (0)
-#endif
-#ifndef EXIT_FAILURE
-#define EXIT_FAILURE (-1)
-#endif
+#include "globalDefines.h"
 
 typedef struct
 {
@@ -42,7 +31,7 @@ void* realloc(void* ptr, size_t newSize);
 void free(void* ptr);
 
 void abort();
-int atexit(void (*func) void);
+int atexit(void (*func) (void));
 void exit(int status);
 char* getenv(const char* name);
 int system(const char* command);

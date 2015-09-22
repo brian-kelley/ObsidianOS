@@ -75,7 +75,7 @@ void initFatDriver()
 bool createDir(const char* path)
 {
     //walk components of path and create subdirectories that don't exist
-    char* tok = strtok(path, NULL);
+    char* tok = strtok((char*) path, NULL);
     return true;
 }
 
@@ -410,7 +410,7 @@ bool writeClusterSec(word cluster, int n, Sector* sec)
 
 bool isValidFilename(const char* name)
 {
-    if(strpbrk(name, ".\"*+,/:;<=>?\\[]|"))
+    if(strpbrk((char*) name, ".\"*+,/:;<=>?\\[]|"))
 	return false;
     return true;
 }
@@ -430,7 +430,7 @@ int numFilesInEntry(DirEntry* dir)
 	    readClusterSec(cluster, i, &sec);
 	    for(int j = 0; j < 512; j += 32)
 	    {
-		DirEntry* entry = (DirEntry*) &sec[j];
+		DirEntry* entry = (DirEntry*) &sec.data[j];
 		if(entryExists(entry))
 		    num++;
 	    }
@@ -457,7 +457,7 @@ int fileSecond(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
 	return -1;
-    return ((int) dir->time & 0b11111) * 2;
+    return ((int) dir.time & 0b11111) * 2;
 }
 
 int fileMinute(const char* name)
@@ -465,7 +465,7 @@ int fileMinute(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
 	return -1;
-    return ((int) dir->time & 0b11111100000) >> 5;
+    return ((int) dir.time & 0b11111100000) >> 5;
 }
 
 int fileHour(const char* name)
@@ -473,7 +473,7 @@ int fileHour(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
 	return -1;
-    return ((int) dir->time & 0b1111100000000000) >> 11;
+    return ((int) dir.time & 0b1111100000000000) >> 11;
 }
 
 int fileDay(const char* name)
@@ -481,7 +481,7 @@ int fileDay(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
 	return -1;
-    return (int) dir->date & 0b11111;
+    return (int) dir.date & 0b11111;
 }
 
 int fileMonth(const char* name)
@@ -489,7 +489,7 @@ int fileMonth(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
 	return -1;
-    return ((int) dir->date & 0b111100000) >> 5;
+    return ((int) dir.date & 0b111100000) >> 5;
 }
 
 int fileYear(const char* name)
@@ -497,7 +497,7 @@ int fileYear(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
 	return -1;
-    return 1980 + ((int) dir->date & 0b1111111000000000);
+    return 1980 + ((int) dir.date & 0b1111111000000000);
 }
 
 bool entryExists(DirEntry* entry)
@@ -566,7 +566,7 @@ void compressDir(DirEntry* dir)
 			return; //this shouldn't happen, but abort if it does
 		    //load the dest sector, and copy the entry
 		    readClusterSec(slot.cluster, slot.sector, &dstSec);
-		    memcpy((void*) &dstSec[slot.index * 16], (void*) thisEntry, 32);
+		    memcpy((void*) &dstSec.data[slot.index * 16], (void*) thisEntry, 32);
 		    //write back the dest sector (TODO: cache it in case it's the same for multiple entries?)
 		    writeClusterSec(slot.cluster, slot.sector, &dstSec);
 		    //zero out the slot in the src sector

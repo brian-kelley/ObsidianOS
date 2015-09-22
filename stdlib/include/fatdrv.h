@@ -36,7 +36,7 @@ typedef struct
 } EntrySlot;
 void initFatDriver();		 //initialize the fatInfo struct from boot sector
 bool createDir(const char* path); //not recursive
-bool createFile(const char* path, size_t size = 0);
+bool createFile(const char* path, size_t size);
 bool deleteFile(const char* path);
 bool deleteDir(const char* path);
 void setPermission(DirEntry* entry, byte flags);  //set the FAT16 attribute flags on a file

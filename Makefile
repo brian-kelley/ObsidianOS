@@ -1,5 +1,5 @@
 CC=i386-elf-gcc
-CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -ffreestanding -std=gnu99 -Os
+CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-parameter -ffreestanding -std=gnu99 -Os
 OSNAME=goldos
 
 #K = kernel

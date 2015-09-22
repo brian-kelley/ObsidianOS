@@ -1,7 +1,8 @@
 #include "memory.h"
 
-static const int LEVELS = 4;
-static const int PARENT_SAVES = 10;
+#define LEVELS 4
+#define PARENT_SAVES 10
+#define NUM_MEGS 14
 
 typedef struct
 {
@@ -11,14 +12,12 @@ typedef struct
 static Block lastParents[LEVELS][PARENT_SAVES]; //just don't use first element (top-level)
 
 static void* megMap = (void*) 0x200000; //location of start of 1 MiB level bitmap
-//Note: May have to change if interferes with kernel or GRUB somehow (but probably won't)
-static const int numMegs = 14; //number of 1 MiB blocks to allow
 //Offset of first sub-block (4-byte aligned, comes after bitmap table)
 static const size_t subblockStart[LEVELS] = {64, 4, 20, 16};
 //Block sizes for each level in bytes
 static const size_t blockSize[LEVELS] = {0x100000, 65528, 1024, 16};
 //Number of sub-blocks within each level
-static const size_t numSubblocks[LEVELS] = {numMegs, 16, 65, 63};
+static int numSubblocks[LEVELS] = {NUM_MEGS, 16, 65, 63};
 
 //List of the 2-bit codes in memory bitmap tables
 enum BlockStatus
@@ -67,7 +66,7 @@ static Block getParentBlock(Block b)
 //Return NULL for invalid block descriptor
 static void* getBlockPtr(Block b)
 {
-	void* ptr = (void*) heapStart;
+	void* ptr = (void*) megMap;
 	if(!validBlock(b))
 		return NULL;
 	int level = getBlockLevel(b);
@@ -133,8 +132,6 @@ static int getBlockStatus(Block b)
 
 static void setBlockStatus(Block b, int code)
 {
-	if(!validBlock(b))
-		return -1;
 	int level = getBlockLevel(b);
 	byte* table; //start of table for parent blocks, or top-level block.
 	byte mask = 0b11;
@@ -154,7 +151,7 @@ static void setBlockStatus(Block b, int code)
 //Find a group of level 0 blocks
 static bool findTopLevelGroup(int numBlocks, Block* result)
 {
-	Block b = {0, -1, -1, -1};
+	Block b = {{0, -1, -1, -1}};
 	int bestStart = -1;
 	int bestSize = 0xFFFF;
 	int thisStart = 0;
@@ -201,7 +198,7 @@ static void allocForSub(Block newParent)
 
 //Find best contiguous group of subblocks that can hold numBlocks
 //Preconditions: parent is already allocated for 
-static bool findGroupInBlock(Block parent, int numBlocks, Block* result, int* overshoot = NULL)
+static bool findGroupInBlock(Block parent, int numBlocks, Block* result, int* overshoot)
 {
 	//Finest level can't be parent
 	int parLevel = getBlockLevel(parent);
@@ -212,7 +209,7 @@ static bool findGroupInBlock(Block parent, int numBlocks, Block* result, int* ov
 	int thisStart = 0;
 	int thisSize = 0;
 	Block sub;
-	for(int i = 0; i < numSubblocks[subLevel]; i++)
+	for(int i = 0; i < numSubblocks[parLevel]; i++)
 	{
 		sub = getNthSubblock(parent, i);
 		if(getBlockStatus(sub) == FREE)
@@ -242,9 +239,9 @@ static int getMaxGroup(Block b)
 {
 	int bestNum = 0;
 	int num = 0;
-	for(int i = 0; i < numSubblocks[b]; i++)
+	for(int i = 0; i < numSubblocks[getBlockLevel(b)]; i++)
 	{
-		if(getBlockStatus(b, i) == FREE)
+		if(getBlockStatus(b) == FREE)
 			num++;
 		else
 		{
@@ -282,7 +279,7 @@ static bool groupSearch(int level, int numBlocks, Block parentBlock, Block* resu
 	int parLevel = getBlockLevel(parentBlock);
 	if(parLevel == level - 1)
 	{
-		if(findGroupInBlock(parentBlock, numBlocks, result))
+		if(findGroupInBlock(parentBlock, numBlocks, result, NULL))
 			return true;
 	}
 	for(int i = 0; i < numSubblocks[parLevel]; i++)
@@ -313,9 +310,9 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
 	int overshoot = 0;
 	for(int i = 0; i < PARENT_SAVES; i++)
 	{
-		if(validBlock(lastParent[level][i]))
+		if(validBlock(lastParents[level][i]))
 		{
-			if(findGroupInBlock(lastParent[level][i], numBlocks, result, &overshoot))
+			if(findGroupInBlock(lastParents[level][i], numBlocks, result, &overshoot))
 			{
 				if(overshoot < bestOvershoot)
 				{
@@ -327,7 +324,7 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
 	}
 	if(bestOvershoot != -1)
 	{
-		Block use = lastParent[level][bestOvershootParent];
+		Block use = lastParents[level][bestOvershootParent];
 		if(!findGroupInBlock(use, numBlocks, result, NULL))
 			//This should never ever happen
 			return false;
@@ -340,10 +337,10 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
 	Block* toReplace;
 	for(int i = 0; i < PARENT_SAVES; i++)
 	{
-		if(!validBlock(lastParent[level][i]))
+		if(!validBlock(lastParents[level][i]))
 		{
 			allValid = false;
-			toReplace = &lastParent[level][i];
+			toReplace = &lastParents[level][i];
 			break;
 		}
 	}

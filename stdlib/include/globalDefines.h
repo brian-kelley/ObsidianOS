@@ -13,6 +13,19 @@ typedef byte bool;
 #define true 1
 #define false 0
 
+#ifndef NULL
+#define NULL ((void*) 0)
+#endif
+#ifndef RAND_MAX
+#define RAND_MAX 0xAFFFFFFF
+#endif
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS (0)
+#endif
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE (-1)
+#endif
+
 //Generic port I/O
 extern byte readport(dword port);
 extern void writeport(dword port, dword data);
