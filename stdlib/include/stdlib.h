@@ -2,6 +2,7 @@
 #define __STDLIB_H__
 
 #include "globalDefines.h"
+#include "memory.h"
 
 typedef struct
 {

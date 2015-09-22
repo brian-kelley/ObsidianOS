@@ -1,5 +1,4 @@
 #include "stdlib.h"
-#include "memory.h"
 
 void* malloc(size_t size)
 {
@@ -8,7 +7,7 @@ void* malloc(size_t size)
 
 void* calloc(size_t num, size_t size)
 {
-	void* ptr = alloc(num * size);
+	void* ptr = mmAlloc(num * size);
 	if(ptr != NULL)
 	{
 		for(size_t i = 0; i < num * size; i++)
@@ -23,7 +22,7 @@ void* calloc(size_t num, size_t size)
 void* realloc(void* ptr, size_t newSize)
 {
 	free(ptr);
-	return alloc(newSize);
+	return mmAlloc(newSize);
 }
 
 void free(void* ptr)
