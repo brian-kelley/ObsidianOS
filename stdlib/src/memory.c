@@ -105,12 +105,6 @@ static Block getNthSubblock(Block parent, int index)
 	return sub;
 }
 
-//Get the size in bytes of a block.
-static size_t getBlockSize(Block b)
-{
-	return blockSize[getBlockLevel(b)];
-}
-
 //Return a BlockStatus value or -1 on error
 static int getBlockStatus(Block b)
 {
@@ -362,14 +356,14 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
 		int worstBlock = -1;
 		for(int i = 0; i < PARENT_SAVES; i++)
 		{
-			int thisGroup = getMaxGroup(lastParent[level][i]);
+			int thisGroup = getMaxGroup(lastParents[level][i]);
 			if(thisGroup < worstGroup)
 			{
 				worstGroup = thisGroup;
 				worstBlock = i;
 			}
 		}
-		toReplace = &lastParent[level][worstBlock];
+		toReplace = &lastParents[level][worstBlock];
 		//replace worstBlock
 		bool success = replaceParentSave(toReplace, level - 1);
 		if(success)
@@ -384,12 +378,12 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
 	Block first;
 	for(int i = 0; i < numSubblocks[0]; i++)
 	{
-		Block topLevel = {i, -1, -1, -1};
+		Block topLevel = {{i, -1, -1, -1}};
 		if(getBlockStatus(topLevel) == SUBDIV)
 		{
 			if(groupSearch(level, numBlocks, topLevel, &first))
 			{
-				*result = *first;
+				*result = first;
 				allocGroup(*result, numBlocks);
 				return true;
 			}
@@ -407,7 +401,7 @@ static bool replaceParentSave(Block* parentSave, int level)
 	*parentSave = replacement;
 	//have a new (allocated) parent block
 	//set the allocation status of that to subdiv
-	allocForSub(parentSave);
+	allocForSub(*parentSave);
 	return true;
 }
 
@@ -422,21 +416,21 @@ void* mmAlloc(size_t size)
 			break;
 		}
 	}
-	size_t blockSize = blockSize[level];
-	int numBlocks = size / blockSize;
-	if(size % blockSize)
+	size_t bsize = blockSize[level];
+	int numBlocks = size / bsize;
+	if(size % bsize)
 		numBlocks++;
 	Block first;
 	bool success = allocBlocks(level, numBlocks, &first);
 	if(success)
-		return getBlockPtr(size);
+		return getBlockPtr(first);
 	else
 		return NULL;
 }
 
 void mmFree(void* mem)
 {
-	Block b = {-1, -1, -1, -1};
+	Block b = {{-1, -1, -1, -1}};
 	size_t offset = (size_t) (mem - megMap); //total offset in memory area
 	for(int i = 0; i < LEVELS; i++)
 	{
@@ -479,18 +473,15 @@ void initMM()
 {
 	for(int i = 0; i < numSubblocks[0]; i++)
 	{
-		Block b;
-		b.level0 = i;
-		b.level1 = -1;
-		b.level2 = -1;
-		b.level3 = -1;
+		Block b = {{i, -1, -1, -1}};
 		setBlockStatus(b, FREE);
 	}
+	Block nullBlock = {{-1, -1, -1, -1}};
 	for(int i = 0; i < LEVELS; i++)
 	{
 		for(int j = 0; j < PARENT_SAVES; j++)
 		{
-			lastParent[i] = {-1, -1, -1, -1};
+			lastParents[i][j] = nullBlock;
 		}
 	}
 }
