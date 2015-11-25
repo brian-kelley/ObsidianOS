@@ -1,6 +1,7 @@
 CC=i386-elf-gcc
 CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-parameter -ffreestanding -std=gnu99 -Os
 OSNAME=goldos
+DESTIMAGE=../disk.img
 
 #K = kernel
 #S = stdlib
@@ -28,7 +29,7 @@ SGO=$(SGS:.s=.o)
 
 all: kernel
 	sudo scripts/makeImage.sh
-	sudo qemu-system-i386 disk.img
+	sudo qemu-system-i386 $(DESTIMAGE)
 
 kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
 	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lgcc

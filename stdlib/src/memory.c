@@ -10,7 +10,6 @@ typedef struct
 } Block;
 
 static Block lastParents[LEVELS][PARENT_SAVES]; //just don't use first element (top-level)
-
 static void* megMap = (void*) 0x200000; //location of start of 1 MiB level bitmap
 //Offset of first sub-block (4-byte aligned, comes after bitmap table)
 static const size_t subblockStart[LEVELS] = {64, 4, 20, 16};
@@ -407,6 +406,7 @@ static bool replaceParentSave(Block* parentSave, int level)
 
 void* mmAlloc(size_t size)
 {
+    printString("Allocating a block of memory.\n");
 	int level = 3;
 	for(int i = 0; i < LEVELS; i++)
 	{
@@ -430,6 +430,7 @@ void* mmAlloc(size_t size)
 
 void mmFree(void* mem)
 {
+    printString("Freeing a block of memory.\n");
 	Block b = {{-1, -1, -1, -1}};
 	size_t offset = (size_t) (mem - megMap); //total offset in memory area
 	for(int i = 0; i < LEVELS; i++)
@@ -471,6 +472,8 @@ Functions in the public interface
 //Mark all dynamic memory as free, set lastParent to invalid blocks
 void initMM()
 {
+    printString("Initializing memory manager...\n");
+
 	for(int i = 0; i < numSubblocks[0]; i++)
 	{
 		Block b = {{i, -1, -1, -1}};

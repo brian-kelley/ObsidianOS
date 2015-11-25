@@ -5,6 +5,7 @@
 #include "stdarg.h"
 #include "string.h"
 #include "terminal.h"
+#include "ctype.h"	//tolower etc
 #include "globalDefines.h"
 
 typedef size_t fpos_t;
@@ -23,6 +24,8 @@ typedef struct
 #define FOPEN_MAX 64
 #define L_tmpnam 1
 #define TMP_MAX 26; //a...z
+
+extern FILE* stdout;
 
 int remove(const char* filename);
 int rename(const char* oldname, const char* newname);

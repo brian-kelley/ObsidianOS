@@ -8,8 +8,10 @@ typedef uint16_t word;
 typedef uint32_t dword;
 typedef uint64_t qword;
 typedef dword size_t;
-typedef byte bool;
 
+//Boolean type
+#undef bool //don't want _Bool
+#define bool byte
 #define true 1
 #define false 0
 

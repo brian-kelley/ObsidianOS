@@ -6,6 +6,7 @@
 #include "input.h"
 #include "terminal.h"
 #include "atadrv.h"
+#include "memory.h"
 
 /* Note on GCC for i386 types:
 
@@ -84,5 +85,7 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
+	printString("About to initialize memory manager...\n");
+	initMM();
 	while(1);
 }

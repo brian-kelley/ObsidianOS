@@ -1,5 +1,7 @@
 #include "stdio.h"
 
+FILE* stdout = NULL;
+
 //utility function to convert between ints and character digits in decimal, hex and octal
 
 static void byteToStream(FILE* stream, byte b)
@@ -30,7 +32,7 @@ static char hexToChar(int digit)
     else if(digit >= 10 && digit < 16)
 	return 'a' + (digit - 10);
     else
-	fputs("Error: invalid hex digit!");
+	printString("Error: invalid hex digit (stdio.c)\n");
         return '!';
 }
 
@@ -106,48 +108,47 @@ static int printSignedDec(long long int num, char* dest)
 	digIndex--;
     }
     digIndex++;
-    for(int i = 0; i < 
 }
 
 static int printUnsignedDec(unsigned int num, char* dest)
 {
-
+    return 0;
 }
 
 static int printOctal(unsigned int num, char* dest)
 {
-    
+    return 0;
 }
 
 static int printHex(unsigned int num, char* dest, bool upper)
 {
-
+    return 0;
 }
 
 static int printFloat(double num, char* dest)
 {
-
+    return 0;
 }
 
 static int printSciFloat(double num, char* dest, bool upper)
 {
-
+    return 0;
 }
 
 static int printShortestFloat(double num, char* dest, bool upper)
 {
-
+    return 0;
 }
 
-static int printString(const char* str, char* dest)
+static int printCstring(const char* str, char* dest)
 {
-
+    return 0;
 }
 
 static int printPointer(void* ptr, char* dest)
 {
-    unsigned int ptrVal = (int) ptr;
-    
+    //unsigned int ptrVal = (int) ptr;
+    return 0;
 }
 
 int printf(const char* format, ...)
@@ -157,9 +158,9 @@ int printf(const char* format, ...)
     for(; *iter != 0; iter++)
     {
 	//if character is not %, just print the character
-	if(*iter != % && '!' <= *iter && *iter <= '~')
+	if(*iter != '%' && '!' <= *iter && *iter <= '~')
 	{
-	    putc(*iter);
+	    putc(*iter, stdout);
 	    charsPrinted++;
 	}
 	else
@@ -167,12 +168,12 @@ int printf(const char* format, ...)
 	    switch(*(iter + 1))
 	    {
 		case '%':
-		    putc('%');
+		    putc('%', stdout);
 		    charsPrinted++;
 		    break;
 		case 'd':
 		    //signed decimal int
-		    
+		    break;
 	    }
 	}
     }

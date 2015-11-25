@@ -3,6 +3,7 @@
 
 #include "globalDefines.h"
 #include "memory.h"
+#include "string.h"
 
 typedef struct
 {

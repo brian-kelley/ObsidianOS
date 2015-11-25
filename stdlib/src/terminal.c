@@ -217,6 +217,19 @@ void printChar(char ch)
 	case '\f':	//Form feed
 		clearScreen(0);
 		break;
+	case ' ':
+	        cursorX++;
+		if(cursorX == TERM_W)
+		{
+		    cursorX = 0;
+		    cursorY++;
+		    if(cursorY == TERM_H)
+		    {
+			cursorY--;
+			shiftUp();
+		    }
+		}
+		break;
 	default:
 		//if character is not drawable, return
 		if(ch < '!' || ch > '~')

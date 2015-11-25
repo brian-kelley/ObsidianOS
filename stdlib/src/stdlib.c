@@ -7,7 +7,7 @@ void* malloc(size_t size)
 
 void* calloc(size_t num, size_t size)
 {
-	void* ptr = mmAlloc(num * size);
+	byte* ptr = (byte*) mmAlloc(num * size);
 	if(ptr != NULL)
 	{
 		for(size_t i = 0; i < num * size; i++)
