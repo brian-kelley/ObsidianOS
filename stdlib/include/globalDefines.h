@@ -10,7 +10,7 @@ typedef uint64_t qword;
 typedef dword size_t;
 
 //Boolean type
-#undef bool //don't want _Bool
+#undef bool //don't want C99 _Bool, use unsigned char instead
 #define bool byte
 #define true 1
 #define false 0

@@ -487,4 +487,5 @@ void initMM()
 			lastParents[i][j] = nullBlock;
 		}
 	}
+    printString("Done.\n");
 }

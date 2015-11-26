@@ -4,9 +4,9 @@ FILE* stdout = NULL;
 
 //utility function to convert between ints and character digits in decimal, hex and octal
 
-static void byteToStream(FILE* stream, byte b)
+static void byteToStream(byte b, FILE* stream)
 {
-    if(stream->kernelID == 0)
+    if(stream == NULL)	//stdout
     {
 	//stdout, write directly to terminal with no buffer
 	printChar(b);
@@ -25,15 +25,22 @@ static void byteToStream(FILE* stream, byte b)
     }
 }
 
-static char hexToChar(int digit)
+static char hexToChar(int digit, bool upper)
 {
     if(digit >= 0 && digit < 10)
 	return '0' + digit;
     else if(digit >= 10 && digit < 16)
-	return 'a' + (digit - 10);
+    {
+	if(upper)
+	    return 'A' + (digit - 10);
+	else
+	    return 'a' + (digit - 10);
+    }
     else
+    {
 	printString("Error: invalid hex digit (stdio.c)\n");
         return '!';
+    }
 }
 
 static int charToHex(char digit)
@@ -82,70 +89,144 @@ static int charToOct(char digit)
 //local utility functions for printing different types
 //each returns the number of characters actually printed to stdout
 
-static int printSignedDec(long long int num, char* dest)
+static int printUnsignedDec(unsigned long long int num, FILE* f)
 {
     int length = 0;
     char digits[20];
-    char* iter = dest;
-    if(num < 0)
-    {
-	length++;
-	*iter = '-';
-	num = -num;
-	iter++;
-    }
+    char* iter = digits;
     if(num == 0)
     {
-	*dest = '0';
+	byteToStream('0', f);
 	return 1;
     }
-    int digIndex = 19;
     while(num > 0)
     {
-	digits[digIndex] = decToChar(num % 10);
+	*iter = decToChar(num % 10);
 	num = num / 10;
-	length++;
-	digIndex--;
+	iter++;
     }
-    digIndex++;
+    //Write the string to file, reversed
+    while(iter != digits)
+    {
+	iter--;
+	byteToStream((byte) *iter, f);
+	length++;
+    }
+    return length;
 }
 
-static int printUnsignedDec(unsigned int num, char* dest)
+static int printSignedDec(long long int num, FILE* f)
+{
+    int length = 0;
+    if(num < 0)
+    {
+	byteToStream('-', f);
+	length++;
+	num = -num;
+    }
+    return length + printUnsignedDec(num, f);
+}
+
+static int printOctal(unsigned long long int num, FILE* f)
+{
+    int length = 1;
+    byteToStream('0', f);   //Octal numbers always start with '0'
+    char digits[25];
+    char* iter = digits;
+    if(num == 0)
+    {
+	byteToStream('0', f);
+	return 2;
+    }
+    while(num > 0)
+    {
+	*iter = octToChar(num % 8); //least-significant digit, written last
+	num /= 8;
+	iter++;
+    }
+    while(iter != digits)
+    {
+	iter--;
+	byteToStream(*iter, f);
+	length++;
+    }
+    return length;
+}
+
+static int printHex(unsigned int num, FILE* f, bool upper)
+{
+    int length = 2;
+    byteToStream('0', f);   //Hex numbers always start with '0x'
+    if(upper)
+	byteToStream('X', f);
+    else
+	byteToStream('x', f);
+    if(num == 0)
+    {
+	byteToStream('0', f);
+	return 3;
+    }
+    char digits[16];
+    char* iter = digits;
+    while(num > 0)
+    {
+	*iter = hexToChar(num % 16, upper);
+	num /= 16;
+	iter++;
+    }
+    while(iter != digits)
+    {
+	iter--;
+	byteToStream(*iter, f);
+	length++;
+    }
+    return length;
+}
+
+static int getLargestDigit(long double num, long double* newNum)
+{
+    if(num == 0)
+    {
+	*newNum = 0;
+	return 0;
+    }
+    long double placeVal = powl(10, (int) log10l(num));
+    int digit = num / placeVal;
+    *newNum = num - placeVal * digit;
+    return digit;
+}
+
+static int printFloat(long double num, FILE* f)
+{
+    int length = 0;
+    char str[40];
+    bool sign;
+    if(num < 0)
+    {
+	num = -num;
+	sign = 1;
+    }
+    else
+	sign = 0;
+    return 0;
+}
+
+static int printSciFloat(double num, FILE* f, bool upper)
 {
     return 0;
 }
 
-static int printOctal(unsigned int num, char* dest)
+static int printShortestFloat(double num, FILE* f, bool upper)
 {
     return 0;
 }
 
-static int printHex(unsigned int num, char* dest, bool upper)
+static int printCstring(const char* str, FILE* f)
 {
     return 0;
 }
 
-static int printFloat(double num, char* dest)
-{
-    return 0;
-}
-
-static int printSciFloat(double num, char* dest, bool upper)
-{
-    return 0;
-}
-
-static int printShortestFloat(double num, char* dest, bool upper)
-{
-    return 0;
-}
-
-static int printCstring(const char* str, char* dest)
-{
-    return 0;
-}
-
-static int printPointer(void* ptr, char* dest)
+static int printPointer(void* ptr, FILE* f)
 {
     //unsigned int ptrVal = (int) ptr;
     return 0;

@@ -724,7 +724,7 @@ double log10(double x)
 
 float log10f(float x)
 {
-	return logf(x) / 2.30258509299f;
+	return logf(x) / 2.30258509299;
 }
 
 long double log10l(long double x)

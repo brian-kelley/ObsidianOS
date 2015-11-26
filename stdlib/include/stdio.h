@@ -5,7 +5,8 @@
 #include "stdarg.h"
 #include "string.h"
 #include "terminal.h"
-#include "ctype.h"	//tolower etc
+#include "ctype.h"
+#include "math.h"
 #include "globalDefines.h"
 
 typedef size_t fpos_t;
