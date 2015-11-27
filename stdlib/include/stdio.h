@@ -1,4 +1,4 @@
-#ifndef __STDIO_H__
+.#ifndef __STDIO_H__
 #define __STDIO_H__
 
 #include <stddef.h>

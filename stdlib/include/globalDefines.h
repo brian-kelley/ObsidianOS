@@ -8,6 +8,8 @@ typedef uint16_t word;
 typedef uint32_t dword;
 typedef uint64_t qword;
 typedef dword size_t;
+typedef int intmax_t;
+typedef int ptrdiff_t;
 
 //Boolean type
 #undef bool //don't want C99 _Bool, use unsigned char instead
