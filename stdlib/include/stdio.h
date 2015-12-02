@@ -8,8 +8,18 @@
 #include "ctype.h"
 #include "math.h"
 #include "globalDefines.h"
+#include "fatdrv.h"
 
 typedef size_t fpos_t;
+
+enum F_ERROR
+{
+	NO_ERROR = 0,
+	HARD_FAULT = 1,		//serious hardware or ATA driver problem!
+	ILLEGAL_WRITE = 2,	//attempted writing to unwritable file
+	FILE_NOT_OPEN = 3,	//attempted to use an invalid FILE handle
+	
+}
 
 typedef struct
 {
@@ -17,6 +27,7 @@ typedef struct
     byte isBuffered;   //1 if buffer points 
     size_t pos;        //position in file/stream, if applicable
     void* buffer;      //buffer, either NULL or a block of memory
+	size_t bufsize;    //size of buffer, defaults to BUFSIZ but can be set with setvbuf
 } FILE;
 
 #define BUFSIZ 1024
