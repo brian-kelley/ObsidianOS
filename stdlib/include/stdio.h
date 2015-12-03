@@ -1,4 +1,4 @@
-.#ifndef __STDIO_H__
+#ifndef __STDIO_H__
 #define __STDIO_H__
 
 #include <stddef.h>
@@ -17,9 +17,9 @@ enum F_ERROR
 	NO_ERROR = 0,
 	HARD_FAULT = 1,		//serious hardware or ATA driver problem!
 	ILLEGAL_WRITE = 2,	//attempted writing to unwritable file
-	FILE_NOT_OPEN = 3,	//attempted to use an invalid FILE handle
+	FILE_NOT_OPEN = 3	//attempted to use an invalid FILE handle
 	
-}
+};
 
 typedef struct
 {

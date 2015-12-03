@@ -80,6 +80,36 @@ void keyPressed(byte scancode, byte pressed)
 	}
 }
 
+//Verify correctness of dynamic allocator
+void memtest()
+{
+    int* ptrs[500];
+    int count = 0;
+    for(int i = 0; i < 500; i++)
+    {
+	//allocate 1, 2, 3, ... 500 int arrays
+	ptrs[i] = malloc((i + 1) * sizeof(int));
+	for(int j = 0; j < i + 1; j++)
+	{
+	    ptrs[i][j] = count++;
+	}
+    }
+    //now verify that the values are all what they were assigned
+    count = 0;
+    for(int i = 0; i < 500; i++)
+    {
+	for(int j = 0; j < i + 1; j++)
+	{
+	    if(ptrs[i][j] != count)
+	    {
+		printString("FATAL MEMORY ERROR!!!!\n");
+		return;
+	    }
+	    count++;
+	}
+    }
+}
+
 void kernel_main()
 {
 	enterMode12H();
@@ -89,5 +119,6 @@ void kernel_main()
 	printString("About to initialize memory manager...\n");
 	initMM();
         //Test memory manager
+	memtest();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }
