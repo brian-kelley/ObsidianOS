@@ -34,6 +34,7 @@ typedef struct
     word sector;
     word index;
 } EntrySlot;
+
 void initFatDriver();		 //initialize the fatInfo struct from boot sector
 bool createDir(const char* path); //not recursive
 bool createFile(const char* path, size_t size);
