@@ -17,14 +17,12 @@ enum F_ERROR
 	NO_ERROR = 0,
 	HARD_FAULT = 1,		//serious hardware or ATA driver problem!
 	ILLEGAL_WRITE = 2,	//attempted writing to unwritable file
-	FILE_NOT_OPEN = 3	//attempted to use an invalid FILE handle
-	
+	FILE_NOT_OPEN = 3	//attempted to use a FILE handle not registerd with kernel  
 };
 
 typedef struct
 {
     int kernelID;      //every stream will have an ID in the kernel
-    byte isBuffered;   //1 if buffer points 
     size_t pos;        //position in file/stream, if applicable
     void* buffer;      //buffer, either NULL or a block of memory
 	size_t bufsize;    //size of buffer, defaults to BUFSIZ but can be set with setvbuf
