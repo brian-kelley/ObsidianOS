@@ -2,6 +2,8 @@
 
 FILE* stdout = NULL;
 
+byte tmpFiles[TMP_MAX] = {0};
+
 //utility function to convert between ints and character digits in decimal, hex and octal
 
 typedef enum
@@ -27,7 +29,7 @@ typedef enum
 
 typedef struct
 {
-    bool ljust;			//Wheter to left justify. Default = false
+    bool ljust;	        //Wheter to left justify. Default = false
     bool forceSign; 	//Whether to write '+' preceding positive #s, default = false
     bool spaceForSign;  //Whether to write ' ' preceding positive #s, default = false
     bool customWidth;   //Whether a custom width was specified (if false, ignore width value)
@@ -312,37 +314,38 @@ int remove(const char* fname)
 
 int rename(const char* oldname, const char* newname)
 {
-    
+    return 0;
 }
 
 FILE* tmpfile()
 {
-
+    
 }
 
 char* tmpnam(char* str)
 {
-
+    return NULL;
 }
 
 int fclose(FILE* stream)
 {
-
+    return 0;
 }
 
 int fflush(FILE* stream)
 {
-
+    return 0;
 }
 
 FILE* fopen(const char* fname, const char* mode)
 {
-
+    return NULL;
 }
 
 FILE* freopen(const char* fname, const char* mode, FILE* stream)
 {
-
+    fclose(stream);
+    return fopen(fname, mode);
 }
 
 void setbuf(FILE* stream, char* buffer)
@@ -352,17 +355,17 @@ void setbuf(FILE* stream, char* buffer)
 
 int setvbuf(FILE* stream, char* buffer, int mode, size_t size)
 {
-
+    return 0;
 }
 
 int fprintf(FILE* stream, const char* format, ...)
 {
-
+    return 0;
 }
 
 int fscanf(FILE* stream, const char* format, ...)
 {
-
+    return 0;
 }
 
 int printf(const char* format, ...)
@@ -374,17 +377,17 @@ int printf(const char* format, ...)
 
 int scanf(const char* format, ...)
 {
-
+    return 0;
 }
 
 int sprintf(char* str, const char* format, ...)
 {
-    
+    return 0;
 }
 
 int sscanf(const char* str, const char* format, ...)
 {
-
+    return 0;
 }
 
 //note: vfprintf is the most general printing function
@@ -399,14 +402,14 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
     for(; *iter != 0; iter++)
     {
         //if character is not % and is printable, print it
-        if(*iter != '%' && '!' <= *iter && *iter <= '~')
+        if(*iter != '%')
         {
             byteToStream(*iter, stream);
             charsPrinted++;
         }
         else
-        {
-            iter++;
+	{
+	    iter++;
             //behavior depends on specifier in format stringp
             SizeSpec ss = NONE;
             bool reading = true;
@@ -593,12 +596,13 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
                                 val = va_arg(arg, ptrdiff_t);
                                 break;
                             }
+			    default:;
                         }
                         charsPrinted += printUnsignedDec(val, stream);
                     }
                     case 'f':
                     {
-						
+			
                     }
                     iter++;
                 }
@@ -610,7 +614,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
             iter = strchr(iter, '%');
             if(*(iter + 1) == '%')
             {
-                //just print a %
+                //just print '%'
             }
         }
     }
@@ -640,6 +644,7 @@ char* fgets(char* str, int num, FILE* stream)
 int fputc(int character, FILE* stream)
 {
     byteToStream(character, stream);
+    return 0;
 }
 
 int fputs(const char* str, FILE* stream)
@@ -647,6 +652,7 @@ int fputs(const char* str, FILE* stream)
     byte* iter = (byte*) str;
     while(*iter)
         byteToStream(*(iter++), stream);
+    return 0;
 }
 
 int getc(FILE* stream)
@@ -667,11 +673,13 @@ char* gets(char* str)
 int putc(int character, FILE* stream)
 {
     byteToStream(character, stream);
+    return 0;
 }
 
 int putchar(int character)
 {
     byteToStream(character, stdout);
+    return 0;
 }
 
 int puts(const char* str)

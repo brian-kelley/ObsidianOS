@@ -1,7 +1,16 @@
 #include "memory.h"
 
+#define LEVELS 4
+#define PARENT_SAVES 20
+#define NUM_MEGS 14
+
+typedef struct
+{
+    int levels[LEVELS];
+} Block;
+
 static Block lastParents[LEVELS][PARENT_SAVES]; //just don't use first element (top-level)
-static void* megMap = NULL; //location of start of 1 MiB level bitmap
+static void* megMap = (void*) 0x200000; //location of start of 1 MiB level bitmap
 //Offset of first sub-block (4-byte aligned, comes after bitmap table)
 static const size_t subblockStart[LEVELS] = {64, 4, 20, 16};
 //Block sizes for each level in bytes
@@ -22,11 +31,6 @@ void printBlock(Block b)
 {
     int* start = &b.levels[0];
     //printf("(%d %d %d %d)", start[0], start[1], start[2], start[3]);
-}
-
-void printString(const char* str)
-{
-    puts(str);
 }
 
 static bool validBlock(Block b)

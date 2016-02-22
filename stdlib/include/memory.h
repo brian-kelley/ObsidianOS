@@ -2,8 +2,7 @@
 #define __MEMORY_H__
 
 #include "globalDefines.h"
-
-extern void printString(const char* str);
+#include "stdio.h"
 
 void initMM(); //initialization
 void* mmAlloc(size_t size);

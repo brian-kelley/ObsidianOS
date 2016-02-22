@@ -28,12 +28,12 @@ typedef struct
 	size_t bufsize;    //size of buffer, defaults to BUFSIZ but can be set with setvbuf
 } FILE;
 
-#define BUFSIZ 1024
+#define BUFSIZ 512
 #define EOF -1
 #define FILENAME_MAX 8
 #define FOPEN_MAX 64
 #define L_tmpnam 1
-#define TMP_MAX 26; //a...z
+#define TMP_MAX 26 //a...z
 
 extern FILE* stdout;
 
