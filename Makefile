@@ -1,5 +1,6 @@
 CC=i386-elf-gcc
-CFLAGS=-c -Wall -Wextra -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-parameter -ffreestanding -std=gnu99 -Os
+CFLAGS=-c -ffreestanding -std=gnu99 -Os
+WARNINGS=-Wall -Wextra -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 OSNAME=goldos
 DESTIMAGE=../disk.img
 
@@ -48,7 +49,7 @@ checkDiskUtils:
 	scripts/checkPrograms.sh
 
 .c.o:
-	$(CC) $(CFLAGS) -Istdlib/include $< -o $@ 
+	$(CC) $(CFLAGS) $(WARNINGS) -Istdlib/include $< -o $@ 
 .asm.o:
 	nasm -f elf32 $< -o $@
 .s.o:

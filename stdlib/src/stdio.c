@@ -42,15 +42,16 @@ PrintFlags getDefaultFlags()
     pf.forceSign = false;
     pf.spaceForSign = false;
     pf.customWidth = false;
-    width = 0;
-    precision = 6;
+    pf.width = 0;
+    pf.precision = 6;
+    return pf;
 }
 
 static void byteToStream(byte b, FILE* stream)
 {
     if(stream == NULL)	//stdout
     {
-        //stdout, write directly to terminal with no buffer
+        //stdout, write directly to terminal
         printChar(b);
     }
     else
@@ -241,7 +242,7 @@ static int getLargestDigit(long double num, long double* newNum)
 static int printCstring(const char* str, FILE* f)
 {
     int length;
-    for(length = 0; str[length] != 0, length++)
+    for(length = 0; str[length] != 0; length++)
     {
         byteToStream(str[length], f);
     }
@@ -267,7 +268,7 @@ static int printSciFloat(long double num, FILE* f, bool upper)
 {
     if(num == 0)
     {
-        return printCstring("0.000000e+00");
+        return printCstring("0.000000e+00", f);
     }
     int expo = log10l(num);
     num *= pow(10, expo);
@@ -276,7 +277,7 @@ static int printSciFloat(long double num, FILE* f, bool upper)
     int length = 0;
     length += printFloat(num, f);
     length += printCstring("e", f);
-    length += printSignedInt(expo, f);
+    length += printSignedDec(expo, f);
     return length;
 }
 
@@ -297,9 +298,9 @@ static int printPointer(void* ptr, FILE* f)
     byteToStream('x', f);
     for(int i = 0; i < 8; i++)
     {
-        byteToStream(hexToChar(val & 0xF0000000), f);
+        byteToStream(hexToChar(val & 0xF0000000, true), f);
         //shift the next 4 bits into the same position
-        f <<= 4;
+        val <<= 4;
     }
     return 10;	//always the same length
 }
@@ -366,8 +367,9 @@ int fscanf(FILE* stream, const char* format, ...)
 
 int printf(const char* format, ...)
 {
-
-    return 0;
+    va_list arg;
+    va_start(arg, format);
+    return vfprintf(stdout, format, arg);
 }
 
 int scanf(const char* format, ...)
@@ -377,7 +379,7 @@ int scanf(const char* format, ...)
 
 int sprintf(char* str, const char* format, ...)
 {
-
+    
 }
 
 int sscanf(const char* str, const char* format, ...)
@@ -543,7 +545,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
                             break;
                         }
                         reading = false;
-                        charsPrinted += printSignedDec(val, f);
+                        charsPrinted += printSignedDec(val, stream);
                     }
                     case 'u':
                     {
@@ -573,7 +575,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
                             }
                             case LL:
                             {
-                                val  va_arg(arg, unsigned long long int);
+                                val = va_arg(arg, unsigned long long int);
                                 break;
                             }
                             case J:
@@ -592,7 +594,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
                                 break;
                             }
                         }
-                        charsPrinted += printUnsignedDec(val, f);
+                        charsPrinted += printUnsignedDec(val, stream);
                     }
                     case 'f':
                     {
@@ -622,17 +624,17 @@ int vprintf(const char* format, va_list arg)
 
 int vsprintf(char* s, const char* format, va_list arg)
 {
-
+    return 0;
 }
 
 int fgetc(FILE* stream)
 {
-
+    return 0;
 }
 
 char* fgets(char* str, int num, FILE* stream)
 {
-
+    return str;
 }
 
 int fputc(int character, FILE* stream)
@@ -649,17 +651,17 @@ int fputs(const char* str, FILE* stream)
 
 int getc(FILE* stream)
 {
-
+    return 'a';
 }
 
 int getchar()
 {
-
+    return 'a';
 }
 
 char* gets(char* str)
 {
-
+    return NULL;
 }
 
 int putc(int character, FILE* stream)
@@ -677,59 +679,60 @@ int puts(const char* str)
     byte* iter = (byte*) str;
     while(*iter)
         byteToStream(*(iter++), stdout);
+    return 0;
 }
 
 int ungetc(int character, FILE* stream)
 {
-
+    return 0;
 }
 
 size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
 {
-
+    return 0;
 }
 
 size_t fwrite(const void* ptr, size_t size, size_t count, FILE* stream)
 {
-
+    return 0;
 }
 
 int fgetpos(FILE* stream, fpos_t* pos)
 {
-
+    return 0;
 }
 
 int fseek(FILE* stream, long int offset, int origin)
 {
-
+    return 0; 
 }
 
 int fsetpos(FILE* stream, const fpos_t* pos)
 {
-
+    return 0;
 }
 
 long int ftell(FILE* stream)
 {
-
+    return 0;
 }
 
 void rewind(FILE* stream)
 {
-
+    return 0;
 }
 
 void clearerr(FILE* stream)
 {
-
+    return 0;
 }
 
 int feof(FILE* stream)
 {
-
+    return 0;
 }
 
 int ferror(FILE* stream)
 {
-
+    return 0;
 }

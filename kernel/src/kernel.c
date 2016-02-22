@@ -8,6 +8,7 @@
 #include "atadrv.h"
 #include "memory.h"
 #include "string.h"
+#include "stdio.h"
 
 /* Note on GCC for i386 types:
 
@@ -119,6 +120,7 @@ void kernel_main()
 	printString("About to initialize memory manager...\n");
 	initMM();
         //Test memory manager
-	memtest();
+	printf("Should be 10: %d\n", 10);
+	//memtest();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }
