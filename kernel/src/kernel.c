@@ -117,6 +117,11 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
-	//initMM();
+	int i = 546;
+	printf("Hello world %i\n", i);
+	printf("%20i\n", i);
+	printf("%-20i\n", i);
+	printf("%-020i\n", i);
+	//initmm();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }
