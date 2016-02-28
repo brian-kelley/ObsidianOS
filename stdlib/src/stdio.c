@@ -483,6 +483,7 @@ static int printShortestFloat(long double num, FILE* f, PrintFlags* pf)
 
 static int printHexFloat(long double num, FILE* f, PrintFlags* pf)
 {
+    bool sign = num < 0;
     //TODO
     return 0;
 }
@@ -492,15 +493,17 @@ static int printPointer(void* ptr, FILE* f, PrintFlags* pf)
     char str[15];
     unsigned int val = (int) ptr;
     //32 bit integer in hex is always 8 digits
-    str[0] = '0';
-    str[1] = 'x';
-    char* iter = &str[2];
+    char* iter = str;
+    *(iter++) = '0';
+    if(pf->uppercase)
+        *(iter++) = 'X';
+    else
+        *(iter++) = 'x';
     for(int i = 0; i < 8; i++)
     {
-        *iter = hexToChar(val & 0xF0000000, pf->uppercase);
+        *(iter++) = hexToChar(val & 0xF0000000, pf->uppercase);
         //shift the next 4 bits into the same position
         val <<= 4;
-        iter++;
     }
     *iter = 0;
     return paddedString(str, f, pf->ljust, ' ', pf->width);
