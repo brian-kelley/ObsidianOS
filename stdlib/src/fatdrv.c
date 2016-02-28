@@ -28,9 +28,10 @@ void initFatDriver()
     fatInfo.sectorsPerCluster = sectorBuf[13];
     fatInfo.numFats = sectorBuf[16];
     doubleFat = fatInfo.numFats == 2;
-    if(fatInfo.numFats > 2)
+    if(fatInfo.numFats != 2)
     {
-        printString("\nError: Disk has more than two copies of the FAT table.\n");
+        //TODO: Handle >2 fats if there is ever a use case for that
+        printString("\nError: FAT16 driver requires exactly 2 FATs.\n");
         while(1);
     }
     fatInfo.maxRootEntries = *((word*) &sectorBuf[17]);
@@ -64,12 +65,6 @@ void initFatDriver()
         }
     }
     memcpy(logicalFatBuf, actualFatBuf, 2 * numClusters);
-    //set attribute masks in FILE_ATTRIB
-    FILE_ATTRIB.READONLY = 1;
-    FILE_ATTRIB.HIDDEN = 2;
-    FILE_ATTRIB.SYSTEM = 4;
-    FILE_ATTRIB.VOLUME_LABEL = 8;
-    FILE_ATTRIB.DIRECTORY = 16;
 }
 
 bool createDir(const char* path)
@@ -497,7 +492,7 @@ int fileYear(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
         return -1;
-    return 1980 + ((int) dir.date & 0b1111111000000000);
+    return 1980 + ((int) dir.date & 0b1111111000000000) >> 9;
 }
 
 bool entryExists(DirEntry* entry)
@@ -610,4 +605,58 @@ bool findFreeSlot(DirEntry* dir, EntrySlot* result)
             cluster = logicalFatBuf[cluster - 2];
     }
     return false;
+}
+
+void compressRoot()
+{
+    //Iterate through root dir entries (backward) and move to front empty slots
+    //Read entire root directory
+    byte* root = malloc(fatInfo.maxRootEntries * 32);
+    if(root == NULL)
+    {
+        puts("Out of memory!");
+        return;
+    }
+    int numSec = fatInfo.maxRootEntries * 32 / 512;
+    for(int i = 0; i < numSec; i++)
+    {
+        readsector(rootStart + i, &root[i * 512]);
+    }
+    bool done = false;        //have all entries been placed in optimal slot?
+    bool modified = false;    //do the root sectors need to be written back?
+    for(int i = fatInfo.maxRootEntries - 1; i >= 0; i--)
+    {
+        DirEntry* entry = (DirEntry*) &root[i * 32];
+        if(entryExists(entry))
+        {
+            //find first empty slot in root
+            for(int j = 0; j < fatInfo.maxRootEntries; j++)
+            {
+                if(j >= i)
+                {
+                    done = true;
+                    break;
+                }
+                DirEntry* possibleSlot = (DirEntry*) &root[j * 32];
+                if(!entryExists(possibleSlot))
+                {
+                    //Found empty slot, move entry to it
+                    memcpy(possibleSlot, entry, 32);
+                    memset(entry, 0, 32);       //mark old slot as free
+                    modified = true;
+                }
+            }
+        }
+        if(done)
+            break;
+    }
+    if(modified)
+    {
+        //write back sectors
+        for(int i = 0; i < numSec; i++)
+        {
+            writesector(rootStart + i, &root[i * 512]);
+        }
+    }
+    free(root);
 }

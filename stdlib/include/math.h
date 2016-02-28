@@ -4,11 +4,14 @@
 #include "globalDefines.h"
 
 //Constants (as doubles, but written with more than double precision)
-#define PI 3.1415926535897932384626
-#define E  2.7182818284523536028747
+#define PI          3.14159265358979323846264338327950288
+#define E           2.71828182845904523536028747135266250
+#define LOG10E      0.434294481903251827651128918916605082
+#define LN2         0.693147180559945309417232121458176568
+#define LN10        2.30258509299404568401799145468436421
 
-#define NAN (0.0 / 0.0)
-#define HUGE_VAL (1.0 / 0.0)
+#define NAN (0.0 / 0.0)         // (0/0) expands to NaN
+#define HUGE_VAL (1e500)
 
 //Trig functions
 double sin(double x);
@@ -54,10 +57,10 @@ long double frexpl(long double x, int* exp);
 double ldexp(double x, int exp);			//build float out of significand
 float ldexpf(float x, int exp);				//and exponent
 long double ldexpl(long double x, int exp);
-double log(double x);						//ln(x)
+double log(double x);						      //ln(x)
 float logf(float x);
 long double logl(long double x);
-double log10(double x);						//log(x), base 10
+double log10(double x);						    //log base 10 of x
 float log10f(float x);
 long double log10l(long double x);
 double modf(double x, double* intpart);		//returns fractional part, integer

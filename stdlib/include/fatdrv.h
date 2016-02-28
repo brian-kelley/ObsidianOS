@@ -7,21 +7,21 @@
 #include "terminal.h"
 #include "stdlib.h"
 
-struct
+enum FILE_ATTRIB
 {
-    byte READONLY;
-    byte HIDDEN;
-    byte SYSTEM;
-    byte VOLUME_LABEL;
-    byte DIRECTORY;
-} FILE_ATTRIB;
+    FA_READONLY = 1;
+    FA_HIDDEN = 2;
+    FA_SYSTEM = 4;
+    FA_VOLUME_LABEL = 8;
+    FA_DIRECTORY = 16;
+};
 
 typedef struct //32 byte struct exactly matching layout on disk
 {
     char filename[8];
     char fileExt[3];
     byte attributes; //& with FILE_ATTRIB values
-    byte PAD[10];
+    byte _PAD[10];
     word time; //5 for hour, 6 for minute, 5 for two-second intervals 0-30
     word date; //7 for year, 4 for month, 5 for day
     word firstCluster;
@@ -60,6 +60,7 @@ void flushFat(); //update FAT(s) on disk to reflect memory copy
 int fatDiff();   //find the first difference (in sectors) between logical and acual, or -1 if they are the same
 bool isValidFilename(const char* name); //does it fit in 8-3 filename? (include dot)
 bool entryExists(DirEntry* entry); //is the entry a file or directory?
+void compressRoot();
 void compressDir(DirEntry* dir);
 bool findFreeSlot(DirEntry* dir, EntrySlot* result);
 

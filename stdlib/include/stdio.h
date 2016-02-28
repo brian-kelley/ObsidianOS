@@ -22,18 +22,27 @@ enum F_ERROR
 
 typedef struct
 {
-    int kernelID;      //every stream will have an ID in the kernel
     size_t pos;        //position in file/stream, if applicable
-    void* buffer;      //buffer, either NULL or a block of memory
-	size_t bufsize;    //size of buffer, defaults to BUFSIZ but can be set with setvbuf
+    byte* buffer;
+    size_t bufsize;    //size of buffer, defaults to BUFSIZ but can be set with setvbuf
+    int err;           //error state (an F_ERROR value)
+    bool canWrite;     //true if mode is write or append
+    bool ungetFilled;  //true if unget is holding a value
+    byte unget;        //hold value from ungetc()
+    bool active;       //false if this entry is not open
+    bool eof;          //true if read or write past end attempted
 } FILE;
 
-#define BUFSIZ 512
-#define EOF -1
+#define BUF_SIZE 512
+#define EOF (-1)
 #define FILENAME_MAX 8
 #define FOPEN_MAX 64
 #define L_tmpnam 1
 #define TMP_MAX 26 //a...z
+
+#define _IOFBF 0
+#define _IOLBF 1
+#define _IONBF 2
 
 extern FILE* stdout;
 
@@ -45,7 +54,7 @@ int fclose(FILE* stream);
 int fflush(FILE* stream);
 FILE* fopen(const char* filename, const char* mode); //mode is some combo of "r,w,a,+"
 FILE* freopen(const char* filename, const char* mode, FILE* stream);
-void setbuf(FILE* stream, char* buffer);
+void setbuf(FILE* stream, char* buffer);    //does NOT call free on the old buffer!
 int setvbuf(FILE* stream, char* buffer, int mode, size_t size);
 int fprintf(FILE* stream, const char* format, ...);
 int fscanf(FILE* stream, const char* format, ...);
