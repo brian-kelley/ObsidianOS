@@ -96,7 +96,7 @@ void setPermission(DirEntry* entry, byte flags)
 
 bool isDirectory(DirEntry* entry)
 {
-    if(entry->attributes & FILE_ATTRIB.DIRECTORY)
+    if(entry->attributes & FA_DIRECTORY)
         return true;
     else
         return false;
@@ -492,7 +492,7 @@ int fileYear(const char* name)
     DirEntry dir;
     if(!walkPath(&dir, name))
         return -1;
-    return 1980 + ((int) dir.date & 0b1111111000000000) >> 9;
+    return 1980 + (((int) dir.date & 0b1111111000000000) >> 9);
 }
 
 bool entryExists(DirEntry* entry)

@@ -105,8 +105,8 @@ static int printSciFloat(long double num, FILE* f, PrintFlags* pf);
 static int printShortestFloat(long double num, FILE* f, PrintFlags* pf);
 static int printHexFloat(long double num, FILE* f, PrintFlags* pf);
 static int printPointer(void* ptr, FILE* f, PrintFlags* pf);
-static int paddedString(char* str, FILE* f, bool ljust, char pad, int width);
-static int paddedStringSignExtend(char* str, FILE* f, bool ljust, char pad, int width);
+static int paddedString(const char* str, FILE* f, bool ljust, char pad, int width);
+static int paddedStringSignExtend(const char* str, FILE* f, bool ljust, char pad, int width);
 //Parse format flags. fmt is right after '%', iter points to caller's iterator
 static PrintFlags parseFlags(char* fmt, char** iter);
 
@@ -368,8 +368,9 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
         char* iStart = iter;
         while(num > 0)
         {
-            *(iter++) = decToChar(num % 10);
-            num /= 10;
+            *(iter++) = decToChar(num);
+            num -= (unsigned long long) num;
+	    num *= 10;
         }
         char* iEnd = iter - 1;
         while(iStart < iEnd)
@@ -419,7 +420,7 @@ static int printSciFloat(long double num, FILE* f, PrintFlags* pf)
     //always write the first digit
     *(iter++) = decToChar(num);
     num *= 10;
-    if(precision != 0 || pf->pound)
+    if(pf->precision != 0 || pf->pound)
         *(iter++) = '.';
     for(int i = 0; i < pf->precision; i++)
     {
@@ -467,7 +468,7 @@ static int printSciFloat(long double num, FILE* f, PrintFlags* pf)
     }
     *iter = 0;
     char pad = ' ';
-    if(pf->zeroPad && !ljust)
+    if(pf->zeroPad && !pf->ljust)
         pad = '0';
     return paddedStringSignExtend(buf, f, pf->ljust, pad, pf->width);
 }
@@ -476,9 +477,9 @@ static int printShortestFloat(long double num, FILE* f, PrintFlags* pf)
 {
     //Only use sci notation if the number is very big or very small
     if(abs((long long int) num) > 1e10 || fabsl(num * 1e10) < 10)
-        return printSciFloat(num, f, upper);
+        return printSciFloat(num, f, pf);
     else
-        return printDecFloat(num, f);
+        return printDecFloat(num, f, pf);
 }
 
 static int printHexFloat(long double num, FILE* f, PrintFlags* pf)
@@ -531,8 +532,12 @@ char* tmpnam(char* str)
 
 int fclose(FILE* stream)
 {
-    int success = fflush
-        return 0;
+    if(!stream)
+	return EOF;
+    int success = fflush(stream);
+    //mark FILE slot as inactive
+    stream->active = false;
+    return success;
 }
 
 int fflush(FILE* stream)
@@ -555,7 +560,7 @@ void setbuf(FILE* stream, char* buffer)
 {
     //note: buffer can be NULL
     if(stream)
-        stream->buffer = buffer;
+        stream->buffer = (byte*) buffer;
 }
 
 int setvbuf(FILE* stream, char* buffer, int mode, size_t size)
@@ -810,13 +815,14 @@ size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
     size_t numRead = 0;
     byte* iter = ptr;
     
-    for(int i = 0; i < size; i++)
+    for(int i = 0; i < (int) size; i++)
     {
-        for(int j = 0; j < count; j++)
+        for(int j = 0; j < (int) count; j++)
         {
-            *(iter++) = byteFromStream()
+	    //TODO
+	    //TODO
+	    //TODO
         }
-        if(!)
     }
     return numRead;
 }
@@ -850,7 +856,7 @@ long int ftell(FILE* stream)
 
 void rewind(FILE* stream)
 {
-    return 0;
+    fseek(stream, 0, 0);
 }
 
 void clearerr(FILE* stream)
@@ -927,13 +933,13 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             pf.deferredWidth = true;
         if(*iter == '*' && pastDecimal)
             pf.deferredPrec = true;
-        if(strchr(digits, *iter))
+        if(strchr((char*) digits, *iter))
         {
             if(!pastDecimal)
             {
                 //parse width number
                 int width = 0;
-                while(strchr(digits, *iter))
+                while(strchr((char*) digits, *iter))
                 {
                     width *= 10;
                     width += charToDec(*iter);
@@ -945,7 +951,7 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             {
                 //parse precision number
                 int precision = 0;
-                while(strchr(digits, *iter))
+                while(strchr((char*) digits, *iter))
                 {
                     precision *= 10;
                     precision += charToDec(*iter);
@@ -1054,7 +1060,7 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
     return pf;
 }
 
-static int paddedString(char* str, FILE* f, bool ljust, char pad, int width)
+static int paddedString(const char* str, FILE* f, bool ljust, char pad, int width)
 {
     int num = 0;
     int len = strlen(str);
@@ -1066,7 +1072,7 @@ static int paddedString(char* str, FILE* f, bool ljust, char pad, int width)
             num++;
         }
     }
-    for(char* iter = str; *iter; iter++)
+    for(char* iter = (char*) str; *iter; iter++)
     {
         byteToStream(*iter, f);
         num++;
@@ -1082,15 +1088,15 @@ static int paddedString(char* str, FILE* f, bool ljust, char pad, int width)
     return num;
 }
 
-static int paddedStringSignExtend(char* str, FILE* f, bool ljust, char pad, int width)
+static int paddedStringSignExtend(const char* str, FILE* f, bool ljust, char pad, int width)
 {
     //If pad is '0', move sign char (str[0]) to front
     int num = 0;
     int len = strlen(str);
-    char* newString = str;
+    char* newString = (char*) str;
     if(!ljust && pad == '0' && (str[0] == '+' || str[0] == '-' || str[0] == ' '))
     {
-        byteToStream(str[0]);
+        byteToStream(str[0], f);
         num++;
         newString++;
         width--;
@@ -1100,12 +1106,12 @@ static int paddedStringSignExtend(char* str, FILE* f, bool ljust, char pad, int 
 
 static int printSigned(long long int val, FILE* f, PrintFlags* pf)
 {
-    if(pf.base == DEC)
+    if(pf->base == DEC)
         return printSignedDec(val, f, pf);
     else
     {
         //explicitly convert to unsigned for hex/octal
-        unsigned long long uval = *((unsigned long long*) val);
+        unsigned long long uval = *((unsigned long long*) &val);
         return printUnsigned(uval, f, pf);
     }
 }

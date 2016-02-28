@@ -80,7 +80,7 @@ void terminalKeyListener(byte scancode)
       			}
 			parseCommand(cmdStart);	//Would normally load a program into RAM, invoke the runtime and jump execution to the program. So treat that line as an arbitrary program running.
 			//Leave the cursor on the current line if that line is empty.
-			if(cursorX = 0)
+			if(cursorX == 0)
 			{
 			    cursorX = promptLen;
 			    drawChar(cursor, cursorX, cursorY, fgColor, bgColor);

@@ -7,6 +7,7 @@
 #include "terminal.h"
 #include "ctype.h"
 #include "math.h"
+#include "stdlib.h"
 #include "globalDefines.h"
 #include "fatdrv.h"
 

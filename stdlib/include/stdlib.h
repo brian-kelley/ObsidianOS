@@ -41,9 +41,10 @@ int system(const char* command);
 void* bsearch(void* key, void* base, size_t num, size_t size, int (*compare) (const void*, const void*));
 void* qsort(void* base, size_t num, size_t size, int (*compare) (const void*, const void*));
 
-int abs(int n);
+//use macros for abs/labs
+#define abs(a) ((a < 0) ? -(a) : (a))
+#define labs(a) ((a < 0) ? -(a) : (a))
 div_t div(int numer, int denom);
-long int labs(long int n);
 ldiv_t ldiv(long int numer, long int denom);
 
 #endif

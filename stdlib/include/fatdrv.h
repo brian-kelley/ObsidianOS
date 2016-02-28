@@ -9,11 +9,11 @@
 
 enum FILE_ATTRIB
 {
-    FA_READONLY = 1;
-    FA_HIDDEN = 2;
-    FA_SYSTEM = 4;
-    FA_VOLUME_LABEL = 8;
-    FA_DIRECTORY = 16;
+    FA_READONLY = 1,
+    FA_HIDDEN = 2,
+    FA_SYSTEM = 4,
+    FA_VOLUME_LABEL = 8,
+    FA_DIRECTORY = 16
 };
 
 typedef struct //32 byte struct exactly matching layout on disk

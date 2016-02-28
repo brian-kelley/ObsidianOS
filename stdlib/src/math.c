@@ -495,7 +495,7 @@ double tanh(double x)
 	double e2X = exp(x);
 	if(-DOUBLE_CONV_TOL < e2X && e2X < DOUBLE_CONV_TOL)
 		return -1;	//if |x| big, automatically converges to +-1
-	else if(e2X == HUGE_VAL)
+	else if(e2X >= HUGE_VAL)
 		return 1;
 	e2X *= e2X;
 	return (e2X + 1) / (e2X - 1);
