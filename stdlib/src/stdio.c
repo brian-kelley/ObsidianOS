@@ -484,9 +484,8 @@ static int printShortestFloat(long double num, FILE* f, PrintFlags* pf)
 
 static int printHexFloat(long double num, FILE* f, PrintFlags* pf)
 {
-    bool sign = num < 0;
-    //TODO
-    return 0;
+    //TODO? very low priority
+    return printSciFloat(num, f, pf);
 }
 
 static int printPointer(void* ptr, FILE* f, PrintFlags* pf)
