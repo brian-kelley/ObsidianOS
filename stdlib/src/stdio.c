@@ -348,29 +348,71 @@ static int printCstring(const char* str, FILE* f, PrintFlags* pf)
 
 static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
 {
-    char buf[32];
-    char* iter = buf;
+    bool sign = false;
     if(num < 0)
     {
-        *(iter++) = '-';
+        sign = true;
         num = -num;
     }
-    else if(pf->forceSign)
+    unsigned long long origIPart = num;
+    //First, determine the fractional part string (doesn't include '.')
+    char fpart[128];
+    fpart[0] = 0;
+    if(precision > 0)
+    {
+        //now if frac >= 0.5, propagate rounding up through the number
+        char* fiter = fpart;
+        long double frac = num - origIPart;
+        for(int i = 0; i < precision; i++)
+        {
+            frac *= 10;
+            *(fiter++) = decToChar(frac);    //int conversion gives the single digit left of decimal
+            frac -= (int) frac;
+        }
+        *(fiter--) = 0;
+        //round according to remaining frac, and then propagate the increment through all digits
+        bool carry = false;
+        if(frac >= 0.5)
+        {
+            //increment digit at fiter, and continue back to the beginning of the string
+            do
+            {
+                char inc = *fiter;
+                if(inc == '9')
+                {
+                    carry = true;
+                    *fiter = '0';
+                }
+                else
+                {
+                    (*fiter)++;
+                    carry = false;
+                }
+                fiter--;
+            }
+            while(carry && fiter >= fpart);
+        }
+        if(carry)
+            origIPart++;
+    }
+    char buf[160];
+    char* iter = buf;
+    if(sign)
+        *(iter++) = '-';
+    else if(false)
         *(iter++) = '+';
-    else if(pf->spaceForSign)
+    else if(false)
         *(iter++) = ' ';
-    //print integer part of the number
-    unsigned long long ipart = num;
-    if(ipart == 0)
+    if(origIPart == 0)
         *(iter++) = '0';
     else
     {
         char* iStart = iter;
-        while(num > 1)
+        unsigned long long ipart = origIPart;   //ipart will be modified here
+        while(ipart > 0)
         {
-	    unsigned long long ipart = num;	    
             *(iter++) = decToChar(ipart % 10);
-	    num /= 10;
+            ipart /= 10;
         }
         char* iEnd = iter - 1;
         while(iStart < iEnd)
@@ -382,26 +424,15 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
             iEnd--;
         }
     }
-    num -= ipart;
-    if(pf->precision > 0 || pf->pound)
-        //force decimal point
+    if(precision > 0 || pf->pound)
         *(iter++) = '.';
-    if(pf->precision > 0)
-    {
-        for(int i = 0; i < pf->precision; i++)
-        {
-            num *= 10;
-	    unsigned long long digit = num;
-	    num -= (unsigned long long) num; //set num to its fractional part
-	    unsigned ii = digit;
-	    printf("digit: %u\n", ii);
-            *(iter++) = decToChar(digit);
-        }
-    }
+    *iter = 0;
+    //If there is a fractional part, append it to buf
+    if(precision > 0)
+        strcpy(iter, fpart);
     char pad = ' ';
     if(!pf->ljust && pf->zeroPad)
         pad = '0';
-    *iter = 0;
     return paddedStringSignExtend(buf, f, pf->ljust, pad, pf->width);
 }
 
