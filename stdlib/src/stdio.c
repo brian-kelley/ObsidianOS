@@ -366,11 +366,11 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
     else
     {
         char* iStart = iter;
-        while(num > 0)
+        while(num > 1)
         {
-            *(iter++) = decToChar(num);
-            num -= (unsigned long long) num;
-	    num *= 10;
+	    unsigned long long ipart = num;	    
+            *(iter++) = decToChar(ipart % 10);
+	    num /= 10;
         }
         char* iEnd = iter - 1;
         while(iStart < iEnd)
@@ -383,15 +383,19 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
         }
     }
     num -= ipart;
-    if((pf->precision == 0 || num == 0) && pf->pound)
+    if(pf->precision > 0 || pf->pound)
         //force decimal point
         *(iter++) = '.';
-    else
+    if(pf->precision > 0)
     {
         for(int i = 0; i < pf->precision; i++)
         {
             num *= 10;
-            *(iter++) = decToChar(num);
+	    unsigned long long digit = num;
+	    num -= (unsigned long long) num; //set num to its fractional part
+	    unsigned ii = digit;
+	    printf("digit: %u\n", ii);
+            *(iter++) = decToChar(digit);
         }
     }
     char pad = ' ';
@@ -617,19 +621,23 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
     //Make a mutable copy of the format string
     char* iter = (char*) format;
     int charsPrinted = 0; //caller can request # of characters printed so far with %n
-    for(; *iter != 0; iter++)
+    while(*iter)
     {
         //if character is not % and is printable, print it
         if(*iter != '%')
         {
             byteToStream(*iter, stream);
             charsPrinted++;
+	    iter++;
         }
         else
         {
             iter++;
             if(*iter == '%')
+	    {
                 byteToStream(*iter, stream);
+		iter++;
+	    }
             else
             {
                 //this moves iter to the end of the item
@@ -760,6 +768,7 @@ int fputs(const char* str, FILE* stream)
     byte* iter = (byte*) str;
     while(*iter)
         byteToStream(*(iter++), stream);
+    byteToStream('\n', stream);
     return 0;
 }
 
@@ -795,6 +804,7 @@ int puts(const char* str)
     byte* iter = (byte*) str;
     while(*iter)
         byteToStream(*(iter++), stdout);
+    byteToStream('\n', stdout);
     return 0;
 }
 
@@ -876,15 +886,17 @@ int ferror(FILE* stream)
 
 static PrintFlags parseFlags(char* fmt, char** callerIter)
 {
+    if(*fmt == '%')
+	fmt++;
     PrintFlags pf = getDefaultFlags();
     //get a char* pointing to the last char of the flags (type specifier)
     const char* terminals = "diuoxXfFeEgGaAcspn";
-    char* end = fmt + strcspn(fmt, terminals);
+    char* end = strpbrk(fmt, terminals);
     char* iter = fmt;
     bool pastDecimal = false;
     const char* digits = "0123456789";
     int sizeSpec = NONE;
-    while(iter != end)
+    while(iter <= end)
     {
         //check for size specifier
         if(*iter == 'h')
@@ -1052,6 +1064,7 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             break;
         }
     }
+    //callerIter should now point to the character after the type specifier
     *callerIter = end + 1;
     //Left-justified numbers must have spaces for padding
     if(pf.ljust)
