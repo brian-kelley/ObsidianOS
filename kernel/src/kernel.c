@@ -117,8 +117,10 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
-	double val = 1.23456789;
+	double val = PI;
 	printf("%f\n", val);
+	puts("hello world");
+	resetTermCursor();
 	//initmm();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }

@@ -19,5 +19,6 @@ void shiftUp();	//Shift the buffer contents up one line
 void parseCommand(int startRow);	//Command parser needs to know which row in buffer command starts
 void clearTerminal(byte commandMode);	//commandMode: 1 if should draw cursor/prompt after clear, 0 otherwise
 const char* readString();	        //read in string from stdin buffer
+void resetTermCursor();
 
 #endif

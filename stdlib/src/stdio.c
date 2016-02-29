@@ -358,12 +358,12 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
     //First, determine the fractional part string (doesn't include '.')
     char fpart[128];
     fpart[0] = 0;
-    if(precision > 0)
+    if(pf->precision > 0)
     {
         //now if frac >= 0.5, propagate rounding up through the number
         char* fiter = fpart;
         long double frac = num - origIPart;
-        for(int i = 0; i < precision; i++)
+        for(int i = 0; i < pf->precision; i++)
         {
             frac *= 10;
             *(fiter++) = decToChar(frac);    //int conversion gives the single digit left of decimal
@@ -424,11 +424,11 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
             iEnd--;
         }
     }
-    if(precision > 0 || pf->pound)
+    if(pf->precision > 0 || pf->pound)
         *(iter++) = '.';
     *iter = 0;
     //If there is a fractional part, append it to buf
-    if(precision > 0)
+    if(pf->precision > 0)
         strcpy(iter, fpart);
     char pad = ' ';
     if(!pf->ljust && pf->zeroPad)
@@ -745,7 +745,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
                             val = va_arg(arg, double);
                         else
                             val = va_arg(arg, long double);
-                        return printFloat(val, stream, &pf);
+                        charsPrinted += printFloat(val, stream, &pf);
                         break;
                     }
                     case STRING:

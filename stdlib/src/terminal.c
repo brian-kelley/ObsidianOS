@@ -332,3 +332,10 @@ const char* readString()
     //string is in terminal buffer, copy into stdin buffer and return
     return (const char*) &stdinBuf[0];
 }
+
+void resetTermCursor()
+{
+    cursorX = 0;
+    printString(prompt);
+    cursorX = promptLen;
+}
