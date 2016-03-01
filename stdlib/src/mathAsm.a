@@ -4,6 +4,9 @@ global initFPU		; void initFPU
 global sin		; double sin
 global sinf
 global sinl
+global cos
+global cosf
+global cosl
 
 section .text
 
@@ -28,17 +31,17 @@ sinl:
     fsin
     ret
 
-;_cos:
-;    fld qword [esp + 4]
-;    fcos
-;    ret
+cos:
+    fld qword [esp + 4]
+    fcos
+    ret
 
-;_cosf:
-;    fld dword [esp + 4]
-;    fcos
-;    ret
+cosf:
+    fld dword [esp + 4]
+    fcos
+    ret
 
-;_cosl:
-;    fld tword [esp + 4]
-;    fcos
-;    ret
+cosl:
+    fld tword [esp + 4]
+    fcos
+    ret

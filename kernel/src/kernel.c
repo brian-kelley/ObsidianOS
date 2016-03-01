@@ -122,8 +122,8 @@ void kernel_main()
 	initMM();
 	initFPU();
 	long double val = 2.5;
-	long double sval = sinl(val);
-	printf("sin(%.2Lf) = %.2Lf\n", val, sval);
+	long double s = sinl(val);
+	printf("%Lf %Lf\n", val, s);
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }

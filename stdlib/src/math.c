@@ -8,10 +8,6 @@
 
 //TODO: replace with asm
 
-double cos(double x) {return 0;}
-float cosf(float x) {return 0;}
-long double cosl(long double x) {return 0;}
-
 //locally defined factorial function, needed for Taylor series evaluation
 int factorial(int num)
 {
