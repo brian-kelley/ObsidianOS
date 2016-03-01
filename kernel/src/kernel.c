@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "string.h"
 #include "stdio.h"
+#include "math.h"
 
 /* Note on GCC for i386 types:
 
@@ -22,6 +23,7 @@ long double: 96 bits in memory for 8-byte alignment but is actually 80 bit preci
 */
 
 extern byte getFontVal();
+extern void initFPU();	    //mathAsm.asm
 byte userProc = 0;	//0 if in terminal and 1 if running user program
 
 char hexFromBits(byte bits)	//put in low 4
@@ -118,12 +120,10 @@ void kernel_main()
 	initKeyboard();
 	initTerminal();
 	initMM();
-	long long big = 2LL << 62 - 1;
-	printf(">%030lli<\n", big);
-	printf(">%-030lli<\n", big);
-	big = -big;
-	printf(">%030lli<\n", big);
-	printf(">%-030lli<\n", big);
+	initFPU();
+	long double val = 2.5;
+	long double sval = sinl(val);
+	printf("sin(%.2Lf) = %.2Lf\n", val, sval);
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }

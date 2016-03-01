@@ -112,11 +112,8 @@ static PrintFlags parseFlags(char* fmt, char** iter);
 
 static void byteToStream(byte b, FILE* stream)
 {
-    if(stream == NULL)	//stdout
-    {
-        //stdout, write directly to terminal
+    if(stream == NULL)	//stdout (TODO: Make stdout a proper FILE)
         printChar(b);
-    }
     else
     {
         if(!stream->canWrite)
@@ -440,10 +437,11 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
 
 static int printSciFloat(long double num, FILE* f, PrintFlags* pf)
 {
-    char buf[100];
+    char buf[256];
+    memset(buf, 0, 256);
     char* iter = buf;
     bool sign = num < 0;
-    num = fabsl(num);
+    num = abs(num);
     int expo = log10l(num);
     num /= pow(10, expo);
     //print the significand, with the precision given by pf
@@ -527,22 +525,21 @@ static int printHexFloat(long double num, FILE* f, PrintFlags* pf)
 
 static int printPointer(void* ptr, FILE* f, PrintFlags* pf)
 {
-    char str[15];
-    unsigned int val = (int) ptr;
+    char str[11];   //a pointer is always 11 chars
+    unsigned val = (unsigned int) ptr;
+    unsigned mask = 0xF;
     //32 bit integer in hex is always 8 digits
-    char* iter = str;
-    *(iter++) = '0';
+    str[0] = '0';
     if(pf->uppercase)
-        *(iter++) = 'X';
+	str[1] = 'X';
     else
-        *(iter++) = 'x';
+	str[1] = 'x';
     for(int i = 0; i < 8; i++)
     {
-        *(iter++) = hexToChar(val & 0xF0000000, pf->uppercase);
-        //shift the next 4 bits into the same position
-        val <<= 4;
+	str[9 - i] = hexToChar(val & mask, pf->uppercase);
+	val >>= 4;
     }
-    *iter = 0;
+    str[10] = 0;
     return paddedString(str, f, pf->ljust, ' ', pf->width);
 }
 
@@ -747,7 +744,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
                         long double val;
                         if(pf.type == F64)
                             val = va_arg(arg, double);
-                        else
+                        else if(pf.type == F80)
                             val = va_arg(arg, long double);
                         charsPrinted += printFloat(val, stream, &pf);
                         break;

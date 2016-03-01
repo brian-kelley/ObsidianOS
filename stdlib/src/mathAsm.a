@@ -1,0 +1,44 @@
+; x87 FPU math.h functions
+
+global initFPU		; void initFPU
+global sin		; double sin
+global sinf
+global sinl
+
+section .text
+
+initFPU:
+    fninit
+    ret
+
+sin:
+    ; x is the 8 bytes at first arg (esp + 4)
+    fld qword [esp + 4]
+    fsin
+    ret
+
+sinf:
+    fld dword [esp + 4]
+    fsin
+    ret
+
+sinl:
+    ; x is a 10-byte float within 12 bytes
+    fld tword [esp + 4]
+    fsin
+    ret
+
+;_cos:
+;    fld qword [esp + 4]
+;    fcos
+;    ret
+
+;_cosf:
+;    fld dword [esp + 4]
+;    fcos
+;    ret
+
+;_cosl:
+;    fld tword [esp + 4]
+;    fcos
+;    ret

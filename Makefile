@@ -15,16 +15,16 @@ DESTIMAGE=../disk.img
 
 KCS=$(wildcard kernel/src/*.c)
 KCH=$(wildcard kernel/src/*.h)
-KAS=$(wildcard kernel/src/*.asm)
+KAS=$(wildcard kernel/src/*.a)
 KGS=$(wildcard kernel/src/*.s)
 KCO=$(KCS:.c=.o)
-KAO=$(KAS:.asm=.o)
+KAO=$(KAS:.a=.o)
 KGO=$(KGS:.s=.o)
 
-SAS=$(wildcard stdlib/src/*.asm)
+SAS=$(wildcard stdlib/src/*.a)
 SCS=$(wildcard stdlib/src/*.c)
 SGS=$(wildcard stdlib/src/*.s)
-SAO=$(SAS:.asm=.o)
+SAO=$(SAS:.a=.o)
 SCO=$(SCS:.c=.o)
 SGO=$(SGS:.s=.o)
 
@@ -50,7 +50,7 @@ checkDiskUtils:
 
 .c.o:
 	$(CC) $(CFLAGS) $(WARNINGS) -Istdlib/include $< -o $@ 
-.asm.o:
-	nasm -f elf32 $< -o $@
+.a.o:
+	nasm -felf32 $< -o $@
 .s.o:
 	i386-elf-as $< -o $@
