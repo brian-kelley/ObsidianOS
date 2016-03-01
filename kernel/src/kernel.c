@@ -117,8 +117,15 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
-	double val = PI;
-	printf("%f\n", val);
+	double val = 3;
+	putchar('\n');
+	printf("Should be 3.: %#.0f\n", val);
+	printf("Should be 3: %.0f\n", val);
+	printf("Should be 3.00: %.2f\n", val);
+	printf("Should be 0003.000000: %011f\n", val);
+	printf("Should be 3.000000: %f\n", val);
+	printf("Should be 3.0000: %.4f\n", val);
+	printf("Should be 003.00: %06.2f\n", val);
 	puts("hello world");
 	resetTermCursor();
 	//initmm();

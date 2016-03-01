@@ -58,6 +58,8 @@ typedef struct
     bool sciNot;        //scientific notation for floats
     bool useShortest;   //shortest repr for floats, true for Gg
     bool numPrinted;    //true for %n
+    bool customWidth;
+    bool customPrecision;
 } PrintFlags;
 
 PrintFlags getDefaultFlags()
@@ -78,6 +80,8 @@ PrintFlags getDefaultFlags()
     pf.numPrinted = false;
     pf.width = 0;
     pf.precision = 6;
+    pf.customWidth = false;
+    pf.customPrecision = false;
     return pf;
 }
 
@@ -358,11 +362,11 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
     //First, determine the fractional part string (doesn't include '.')
     char fpart[128];
     fpart[0] = 0;
+    long double frac = num - origIPart;
     if(pf->precision > 0)
     {
         //now if frac >= 0.5, propagate rounding up through the number
         char* fiter = fpart;
-        long double frac = num - origIPart;
         for(int i = 0; i < pf->precision; i++)
         {
             frac *= 10;
@@ -628,7 +632,9 @@ int printf(const char* format, ...)
 {
     va_list arg;
     va_start(arg, format);
-    return vfprintf(stdout, format, arg);
+    int num = vfprintf(stdout, format, arg);
+    va_end(arg);
+    return num;
 }
 
 int scanf(const char* format, ...)
@@ -927,6 +933,8 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
     bool pastDecimal = false;
     const char* digits = "0123456789";
     int sizeSpec = NONE;
+    int customW = 0;
+    int customP = 0;
     while(iter <= end)
     {
         //check for size specifier
@@ -967,47 +975,57 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             pf.spaceForSign = true;
         if(*iter == '#')
             pf.pound = true;
-        if(*iter == '0')
-            pf.zeroPad = true;
-        if(*iter == '.')
+	if(*iter == '.')
             pastDecimal = true;
+        if(*iter == '0' && !pastDecimal)
+            pf.zeroPad = true;
         if(*iter == '*' && !pastDecimal)
             pf.deferredWidth = true;
         if(*iter == '*' && pastDecimal)
             pf.deferredPrec = true;
-        if(strchr((char*) digits, *iter))
+	//Check for numerical argument for width or precision
+	//Width can't start with 0 but precision can
+	//If past '.', any numerical characters interpreted as precision
+        if(strchr((char*) digits, *iter) && (*iter != '0' || pastDecimal))
         {
             if(!pastDecimal)
             {
                 //parse width number
-                int width = 0;
+		customW = 0;
                 while(strchr((char*) digits, *iter))
                 {
-                    width *= 10;
-                    width += charToDec(*iter);
+                    customW *= 10;
+                    customW += charToDec(*iter);
                     iter++;
                 }
-                pf.width = width;
+		pf.customWidth = true;
             }
             else
             {
                 //parse precision number
-                int precision = 0;
+		customP = 0;
                 while(strchr((char*) digits, *iter))
                 {
-                    precision *= 10;
-                    precision += charToDec(*iter);
+                    customP *= 10;
+                    customP += charToDec(*iter);
                     iter++;
                 }
+		pf.customPrecision = true;
             }
-            iter--;
+	    iter--;
         }
-        iter++;
+	iter++;
     }
     //now end points to the type character
     pf.uppercase = isupper(*end);
     char typeKey = tolower(*end);
     pf.numPrinted = *end == 'n';
+    if(pf.customWidth)
+	pf.width = customW;
+    if(pf.customPrecision)
+	pf.precision = customP;
+    //if(pf.customWidth || pf.customPrecision)
+	//printf("Width: %i Prec: %i\n", pf.width, pf.precision);
     switch(sizeSpec)
     {
         case Z:
