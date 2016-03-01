@@ -29,7 +29,7 @@ enum BlockStatus
 
 void printBlock(Block b)
 {
-    int* start = &b.levels[0];
+    //int* start = &b.levels[0];
     //printf("(%d %d %d %d)", start[0], start[1], start[2], start[3]);
 }
 
@@ -48,7 +48,7 @@ static bool validBlock(Block b)
 //Precondition: b is valid. Function doesn't check.
 static int getBlockLevel(Block b)
 {
-    int level = 0;
+    //int level = 0;
     for(int i = 1; i < LEVELS; i++)
     {
         if(b.levels[i] == -1)
@@ -210,14 +210,6 @@ static bool findGroupInBlock(Block parent, int numBlocks, Block* result, int* ov
         return false;
     }
     int numSub = numSubblocks[parentLevel];
-    //puts("All child blocks of parent:");
-    for(int i = 0; i < numSub; i++)
-    {
-        Block child = getNthSubblock(parent, i);
-        int status = getBlockStatus(child);
-        //printf("%d", status);
-    }
-    //puts("");
     int bestStart = -1;
     int bestSize = numSub + 1;
     Block iter = getNthSubblock(parent, 0);
@@ -361,19 +353,15 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
     //puts("Did not find good cached parent block.");
     bool allValid = true;
     Block* toReplace;
-    int TEMP;
     for(int i = 0; i < PARENT_SAVES; i++)
     {
         if(!validBlock(lastParents[level][i]))
         {
             allValid = false;
             toReplace = &lastParents[level][i];
-            TEMP = i;
             break;
         }
     }
-    Block newParent;
-    //printf("  Replacing lastParents level %d index %d\n", level, TEMP);
     if(!allValid)
     {
         bool success = replaceParentSave(toReplace, level - 1);
@@ -433,24 +421,15 @@ static bool allocBlocks(int level, int numBlocks, Block* result)
 
 static bool replaceParentSave(Block* parentSave, int level)
 {
-    //printf("Replacing a parent: parent is level %d\n" , level);
     Block replacement;
     bool success = allocBlocks(level, 1, &replacement);
     setBlockStatus(replacement, SUBDIV);
-    {
-        int status = getBlockStatus(replacement);
-        //printf("Shoudl be 3! %d\n", status);
-    }
     if(!success)
         return false;
     *parentSave = replacement;
     allocForSub(*parentSave);
     //have a new (allocated) parent block
     //set the allocation status of that to subdiv
-    int* lvl = &replacement.levels[0];
-    //printf("New parent is ");
-    //printBlock(replacement);
-    //puts("");
     return true;
 }
 

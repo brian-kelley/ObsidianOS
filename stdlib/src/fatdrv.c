@@ -70,7 +70,7 @@ void initFatDriver()
 bool createDir(const char* path)
 {
     //walk components of path and create subdirectories that don't exist
-    char* tok = strtok((char*) path, NULL);
+    //char* tok = strtok((char*) path, NULL);
     return true;
 }
 
@@ -214,14 +214,15 @@ void reallocChain(word first, size_t newSize)
 word allocChain(size_t size)
 {
     size_t bytesPerCluster = 512 * fatInfo.sectorsPerCluster;
-    word numClusters = (word) (size / bytesPerCluster);
+    word chainClusters = (word) (size / bytesPerCluster);
     if(size % bytesPerCluster)
-        numClusters++;
-    if(numClusters == 0)
-        numClusters = 1;
+        chainClusters++;
+    //file of size 0 bytes still has gets one cluster
+    if(chainClusters == 0)
+        chainClusters = 1;
     word first = allocCluster(0, true);
     word iter = first;
-    for(word i = 0; i < numClusters - 1; i++)
+    for(word i = 0; i < chainClusters - 1; i++)
     {
         iter = allocCluster(iter, false);
     }
@@ -353,7 +354,7 @@ bool findFile(DirEntry* result, DirEntry* dir, const char* name, bool allowDir)
             {
                 //process this dir entry
                 DirEntry* thisEntry = (DirEntry*) &sec.data[j];
-                byte det = thisEntry->filename[0];
+                //byte det = thisEntry->filename[0];
                 if(!entryExists(thisEntry))
 
                     continue;
@@ -508,14 +509,14 @@ void compressDir(DirEntry* dir)
     //first, see if a cluster could be saved (if not, don't do anything)
     if(!entryExists(dir) || !isDirectory(dir))
         return;
-    int numClusters = 1;
+    int dirClusters = 1;
     word cluster = dir->firstCluster;
     while(1)
     {
         if(logicalFatBuf[cluster - 2] != 0xFFFF)
         {
             cluster = logicalFatBuf[cluster - 2];
-            numClusters++;
+            dirClusters++;
         }
         else
             break;
@@ -526,7 +527,7 @@ void compressDir(DirEntry* dir)
     int idealClusters = idealSize / bytesPerCluster;
     if(idealSize % bytesPerCluster)
         idealClusters++;
-    if(idealClusters == numClusters)
+    if(idealClusters == dirClusters)
         return; //no space will be saved
     //actually do the compression
     //make a copy of numClusters (curClusters)
@@ -535,8 +536,8 @@ void compressDir(DirEntry* dir)
     //if curClusters is still greater than idealClusters, repeat process for new last cluster
     //call reallocChain to remove the freed sectors (given by numClusters - curClusters)
     //flush FAT so clusters can't be 'leaked' in case of power loss etc
-    int curClusters = numClusters;
-    DirEntry entryToCopy; //hold space for entries being moved into other clusters
+    int curClusters = dirClusters;
+    //DirEntry entryToCopy; //hold space for entries being moved into other clusters
     Sector srcSec; //sector in cluster that will be freed
     Sector origSrcSec; //copy of src as it is on disk, compare to see if updated
     Sector dstSec; //sector in cluster earlier in chain with free slots

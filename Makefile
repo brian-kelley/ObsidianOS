@@ -1,6 +1,6 @@
 CC=i386-elf-gcc
 CFLAGS=-c -ffreestanding -std=gnu99 -Os
-WARNINGS=-Wall -Wextra -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-function
+WARNINGS=-Wall -Wextra -Wshadow -Wno-unused-parameter -Wno-strict-aliasing
 OSNAME=goldos
 DESTIMAGE=../disk.img
 

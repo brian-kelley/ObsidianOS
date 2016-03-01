@@ -58,8 +58,6 @@ typedef struct
     bool sciNot;        //scientific notation for floats
     bool useShortest;   //shortest repr for floats, true for Gg
     bool numPrinted;    //true for %n
-    bool customWidth;
-    bool customPrecision;
 } PrintFlags;
 
 PrintFlags getDefaultFlags()
@@ -80,8 +78,6 @@ PrintFlags getDefaultFlags()
     pf.numPrinted = false;
     pf.width = 0;
     pf.precision = 6;
-    pf.customWidth = false;
-    pf.customPrecision = false;
     return pf;
 }
 
@@ -361,6 +357,7 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
     unsigned long long origIPart = num;
     //First, determine the fractional part string (doesn't include '.')
     char fpart[128];
+    memset(fpart, 0, 128);
     fpart[0] = 0;
     long double frac = num - origIPart;
     if(pf->precision > 0)
@@ -371,7 +368,7 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
         {
             frac *= 10;
             *(fiter++) = decToChar(frac);    //int conversion gives the single digit left of decimal
-            frac -= (int) frac;
+            frac -= (unsigned long long int) frac;
         }
         *(fiter--) = 0;
         //round according to remaining frac, and then propagate the increment through all digits
@@ -399,7 +396,8 @@ static int printDecFloat(long double num, FILE* f, PrintFlags* pf)
         if(carry)
             origIPart++;
     }
-    char buf[160];
+    char buf[256];
+    memset(buf, 0, 256);
     char* iter = buf;
     if(sign)
         *(iter++) = '-';
@@ -771,7 +769,7 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
             }
         }
     }
-    return 0;
+    return charsPrinted;
 }
 
 int vprintf(const char* format, va_list arg)
@@ -991,26 +989,24 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             if(!pastDecimal)
             {
                 //parse width number
-		customW = 0;
+		pf.width = 0;
                 while(strchr((char*) digits, *iter))
                 {
-                    customW *= 10;
-                    customW += charToDec(*iter);
+                    pf.width *= 10;
+                    pf.width += charToDec(*iter);
                     iter++;
                 }
-		pf.customWidth = true;
-            }
+	    }
             else
             {
                 //parse precision number
-		customP = 0;
+		pf.precision = 0;
                 while(strchr((char*) digits, *iter))
                 {
-                    customP *= 10;
-                    customP += charToDec(*iter);
+                    pf.precision *= 10;
+                    pf.precision += charToDec(*iter);
                     iter++;
                 }
-		pf.customPrecision = true;
             }
 	    iter--;
         }
@@ -1020,10 +1016,6 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
     pf.uppercase = isupper(*end);
     char typeKey = tolower(*end);
     pf.numPrinted = *end == 'n';
-    if(pf.customWidth)
-	pf.width = customW;
-    if(pf.customPrecision)
-	pf.precision = customP;
     //if(pf.customWidth || pf.customPrecision)
 	//printf("Width: %i Prec: %i\n", pf.width, pf.precision);
     switch(sizeSpec)
