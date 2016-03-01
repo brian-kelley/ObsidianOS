@@ -117,19 +117,13 @@ void kernel_main()
 	clearScreen(4);
 	initKeyboard();
 	initTerminal();
-	double val = 3;
-	printChar('\n');
-	printf("Should be 003.00: %06.2f\n", val);
-	printf("Should be 3.: %#.0f\n", val);
-	printf("Should be 3: %.0f\n", val);
-	printf("Should be 3.00: %.2f\n", val);
-	double val2 = E;
-	printf("Should be E with 10 digits: %.10f\n", val2);
-	printf("Should be 0003.000000: %011f\n", val);
-	printf("Should be 3.000000: %f\n", val);
-	printf("Should be 3.0000: %.4f\n", val);
-	printf("Should be 0003.000: %08.3f\n", val);
+	initMM();
+	long long big = 2LL << 62 - 1;
+	printf(">%030lli<\n", big);
+	printf(">%-030lli<\n", big);
+	big = -big;
+	printf(">%030lli<\n", big);
+	printf(">%-030lli<\n", big);
 	resetTermCursor();
-	//initmm();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
 }

@@ -857,7 +857,7 @@ int ungetc(int character, FILE* stream)
 size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
 {
     size_t numRead = 0;
-    byte* iter = ptr;
+    //byte* iter = ptr;
     
     for(int i = 0; i < (int) size; i++)
     {
@@ -931,8 +931,6 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
     bool pastDecimal = false;
     const char* digits = "0123456789";
     int sizeSpec = NONE;
-    int customW = 0;
-    int customP = 0;
     while(iter <= end)
     {
         //check for size specifier
@@ -1154,7 +1152,7 @@ static int paddedStringSignExtend(const char* str, FILE* f, bool ljust, char pad
         newString++;
         width--;
     }
-    return num + paddedString(str, f, ljust, pad, width);
+    return num + paddedString(newString, f, ljust, pad, width);
 }
 
 static int printSigned(long long int val, FILE* f, PrintFlags* pf)
