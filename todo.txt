@@ -1,13 +1,13 @@
 GoldOS Todo list
 
 DONE (high) Modify makefile (grub-mkrescue line) to initialize FAT16 filesystem in MBR partition 1
-- (high) Memory manager in kernel
-- (high) stdlib.h function implementations
-- (high) stdio.h functions
-- (low) ctype.h functions
+DONE (high) Memory manager in kernel
+PROGRESS - (high) stdlib.h function implementations
+PROGRESS - (high) stdio.h functions
+DONE (low) ctype.h functions
 - (high) ELF32 executable loader 
 - (high) Editor (built-in to kernel for now)
-- (low) foreground and background color customization
+DONE (low) foreground and background color customization
 - (low) only move cursor down one line when valid process is started AND it writes to stdout
 - (low) PS/2 mouse driver, cursor drawing
 - (low) have the keyboard interrupt only place a stroke in a circular queue instead of actually calling the key listener from the interrupt handler
@@ -19,8 +19,10 @@ DONE (high) Modify makefile (grub-mkrescue line) to initialize FAT16 filesystem 
 - (high) Assembler (support just int operations first, then x87 FPU instructions and immediate float/double values
 - (high) C compiler
 - (high) ELF32 linker to build libraries and executables to make self-hosted
+>>>>>>>>>>>>>>>>------------<<<<<<<<<<<<<<<<
 ----------------Self-hosted!----------------
+>>>>>>>>>>>>>>>>------------<<<<<<<<<<<<<<<<
 - (low) change core utilities to standalone executables, compiled in the OS. (ls, mkdir, cd, etc.)
 - (high) basic UX customizations
 - (high) games! (pong, snake, platformers, etc.)
-- (low) python-like interpreted language
+- (low) python-like interpreted language?

@@ -1,22 +1,33 @@
 #include "math.h"
 
 //Taylor series convergence criteria
-#define FLOAT_CONV_TOL 1e-7
-#define DOUBLE_CONV_TOL 1e-10
-#define LONG_DOUBLE_CONV_TOL 1e-16
+#define FLOAT_CONV_TOL 1e-8
+#define DOUBLE_CONV_TOL 1e-16
+#define LONG_DOUBLE_CONV_TOL 1e-20
 #define MAX_ITERS 20
 
-//TODO: replace with asm
-
 //locally defined factorial function, needed for Taylor series evaluation
-int factorial(int num)
+long double factorial(int n)
 {
-	if((num & 1) == num)
-		return 1;
-	int rv = 1;
-	for(int mult = num; mult > 1; mult--)
-		rv *= mult;
-	return rv;
+    if(n < 2)
+	return 1;
+    long double rv = 1;
+    for(; n > 1; n--)
+	rv *= n;
+    return rv;
+}
+
+long double combination(int n, int k)
+{
+    if(k > n)
+	return 0;
+    if(k * 2 == n)
+    {
+	long double fk = factorial(k);
+	return factorial(n) / (fk * fk);
+    }
+    long double rv = factorial(n) / (factorial(k) * factorial(n - k));
+    return rv;
 }
 
 //Math utility functions (not in header)
@@ -24,17 +35,21 @@ int factorial(int num)
 double intpow(double base, int exponent)
 {
 	if(exponent == 0)
-		return base;
+	    return 1;
+	else if(exponent == 1)
+	    return base;
 	double rv = 1;
 	for(int i = 0; i < exponent; i++)
-		rv *= base;
+	    rv *= base;
 	return rv;
 }
 
 float intpowf(float base, int exponent)
 {
 	if(exponent == 0)
-		return base;
+	    return 1;
+	else if(exponent == 1)
+	    return base;
 	float rv = 1;
 	for(int i = 0; i < exponent; i++)
 		rv *= base;
@@ -44,142 +59,77 @@ float intpowf(float base, int exponent)
 long double intpowl(long double base, int exponent)
 {
 	if(exponent == 0)
-		return base;
+	    return 1;
+	else if(exponent == 1)
+	    return base;
 	long double rv = 1;
 	for(int i = 0; i < exponent; i++)
-		rv *= base;
+	    rv *= base;
 	return rv;
 }
 
 double tan(double x)
 {
-	if(x == NAN)
-		return NAN;
-	double cosine = cos(x);
-	if(-DOUBLE_CONV_TOL < cosine && cosine < DOUBLE_CONV_TOL)
-		return NAN;
-	return 0;
-	//return sin(x) / cosine;
+    return sin(x) / cos(x);
 }
 
 float tanf(float x)
 {
-	if(x == NAN)
-		return NAN;
-	float cosine = cosf(x);
-	if(-FLOAT_CONV_TOL < cosine && cosine < DOUBLE_CONV_TOL)
-		return NAN;
-	return 0;
-	//return sinf(x) / cosine;
+    return sinf(x) / cosf(x);
 }
 
 long double tanl(long double x)
 {
-	if(x == NAN)
-		return NAN;
-	long double cosine = cosl(x);
-	if(-LONG_DOUBLE_CONV_TOL < cosine && cosine < LONG_DOUBLE_CONV_TOL)
-		return NAN;
-	//return sinl(x) / cosine;
-	return 0;
+    return sinl(x) / cosl(x);
 }
 
 double asin(double x)
 {
-	//Check for valid input
+        //Check for valid input
 	if(x > 1.0 || x < -1.0 || x == NAN)
 		return NAN;
-	double rv = x;
+	double rv = 0;
 	for(int i = 0; i < MAX_ITERS; i++)
 	{
-		//Numerator and denominator for the (2n choose n) factor, terms 1 & 2
-		long long int chooseTermNumer1 = 1;
-		long long int chooseTermDenom1 = 1;
-		for(int j = 0; j < (2 * i + 1); j++)	//# of times thru loop 1, 3, 5
-		{
-			chooseTermNumer1 *= (j * 2 + 1);
-			chooseTermDenom1 *= (j * 2 + 2);
-		}
-		//Calculate these based on term 1 numer/denom, since numer is just
-		//multiplied by next odd and denom is multiplied by next even
-		long long int chooseTermNumer2 = chooseTermNumer1 * ((i * 2 + 2) * 2 + 1);
-		long long int chooseTermDenom2 = chooseTermDenom1 * ((i * 2 + 2) * 2 + 2);
-		double chooseTerm1 = (long double) chooseTermNumer1 / chooseTermDenom1;
-		double chooseTerm2 = (long double) chooseTermNumer2 / chooseTermDenom2;
-		double term1 = chooseTerm1 * intpow(x, i * 4 + 3) / (i * 4 + 3);
-		double term2 = chooseTerm2 * intpow(x, i * 4 + 5) / (i * 4 + 5);
-		//See if converged
-		double termDiff = term1 - term2;
-		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
-			break;
-		rv += term1;
-		rv += term2;
+		double term = combination(2 * i, i) * intpow(x, 2 * i + 1);
+		term /= (intpow(4, i) * (2 * i + 1));
+		rv += term;
+		if(-DOUBLE_CONV_TOL < term && term < DOUBLE_CONV_TOL)
+		    break;
 	}
 	return rv;
 }
 
 float asinf(float x)
 {
+        //Check for valid input
 	if(x > 1.0 || x < -1.0 || x == NAN)
 		return NAN;
-	double rv = x;
+	float rv = 0;
 	for(int i = 0; i < MAX_ITERS; i++)
 	{
-		//Numerator and denominator for the (2n choose n) factor, terms 1 & 2
-		long long int chooseTermNumer1 = 1;
-		long long int chooseTermDenom1 = 1;
-		for(int j = 0; j < (2 * i + 1); j++)	//# of times thru loop 1, 3, 5
-		{
-			chooseTermNumer1 *= (j * 2 + 1);
-			chooseTermDenom1 *= (j * 2 + 2);
-		}
-		//Calculate these based on term 1 numer/denom, since numer is just
-		//multiplied by next odd and denom is multiplied by next even
-		long long int chooseTermNumer2 = chooseTermNumer1 * ((i * 2 + 2) * 2 + 1);
-		long long int chooseTermDenom2 = chooseTermDenom1 * ((i * 2 + 2) * 2 + 2);
-		float chooseTerm1 = (long double) chooseTermNumer1 / chooseTermDenom1;
-		float chooseTerm2 = (long double) chooseTermNumer2 / chooseTermDenom2;
-		float term1 = chooseTerm1 * intpow(x, i * 4 + 3) / (i * 4 + 3);
-		float term2 = chooseTerm2 * intpow(x, i * 4 + 5) / (i * 4 + 5);
-		//See if converged
-		float termDiff = term1 - term2;
-		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
-			break;
-		rv += term1;
-		rv += term2;
+		float term = combination(2 * i, i) * intpowf(x, 2 * i + 1);
+		term /= (intpowf(4, i) * (2 * i + 1));
+		rv += term;
+		if(-FLOAT_CONV_TOL < term && term < FLOAT_CONV_TOL)
+		    break;
 	}
 	return rv;
 }
 
 long double asinl(long double x)
 {
+        //Check for valid input
 	if(x > 1.0 || x < -1.0 || x == NAN)
 		return NAN;
-	double rv = x;
+	long double rv = 0;
 	for(int i = 0; i < MAX_ITERS; i++)
 	{
-		//Numerator and denominator for the (2n choose n) factor, terms 1 & 2
-		long long int chooseTermNumer1 = 1;
-		long long int chooseTermDenom1 = 1;
-		for(int j = 0; j < (2 * i + 1); j++)	//# of times thru loop 1, 3, 5
-		{
-			chooseTermNumer1 *= (j * 2 + 1);
-			chooseTermDenom1 *= (j * 2 + 2);
-		}
-		//Calculate these based on term 1 numer/denom, since numer is just
-		//multiplied by next odd and denom is multiplied by next even
-		long long int chooseTermNumer2 = chooseTermNumer1 * ((i * 2 + 2) * 2 + 1);
-		long long int chooseTermDenom2 = chooseTermDenom1 * ((i * 2 + 2) * 2 + 2);
-		long double chooseTerm1 = (long double) chooseTermNumer1 / chooseTermDenom1;
-		long double chooseTerm2 = (long double) chooseTermNumer2 / chooseTermDenom2;
-		long double term1 = chooseTerm1 * intpow(x, i * 4 + 3) / (i * 4 + 3);
-		long double term2 = chooseTerm2 * intpow(x, i * 4 + 5) / (i * 4 + 5);
-		//See if converged
-		long double termDiff = term1 - term2;
-		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
-			break;
-		rv += term1;
-		rv += term2;
+		long double term = combination(2 * i, i) * intpowl(x, 2 * i + 1);
+		term /= (intpowl(4, i) * (2 * i + 1));
+		rv += term;
+		if(-LONG_DOUBLE_CONV_TOL < term && term < LONG_DOUBLE_CONV_TOL)
+		    break;
 	}
 	return rv;
 }
@@ -207,18 +157,29 @@ long double acosl(long double x)
 
 double atan(double x)
 {
-	double rv = 0;
-	for(int i = 0; i < MAX_ITERS; i++)
+    if(x == 0)
+	return 0;
+    if(x < 0)
+	return -atan(-x);
+    if(x > 1)
+	return PI / 2 - atan(1 / x);
+    if(x > 0.268)   
+	return PI / 6 - atan((sqrt(3) * x - 1) / (sqrt(3) + x));
+    //now x is in a range where Taylor converges quickly
+    double rv = 0;
+    for(int i = 0; i < MAX_ITERS; i++)
+    {
+    	double term1 = intpow(x, i * 4 + 1) / (i * 4 + 1);
+       	double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
+	double termDiff = term1 - term2;
+        if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
 	{
-		double term1 = intpow(x, i * 4 + 1) / (i * 4 + 1);
-		double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
-		double termDiff = term1 - term2;
-		if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
-			break;
-		rv += term1;
-		rv -= term2;
+	    printf("Converged after %i terms.\n", i * 2);
+	    break;
 	}
-	return rv;
+        rv += termDiff;
+    }
+    return rv;
 }
 
 float atanf(float x)
@@ -815,27 +776,6 @@ long double powl(long double base, long double exponent)
 		else
 			return expl(exponent * logl(base));
 	}
-}
-
-double sqrt(double x)
-{
-	if(x < 0)
-		return NAN;
-	return exp(0.5 * log(x));
-}
-
-float sqrtf(float x)
-{
-	if(x < 0)
-		return NAN;
-	return expf(0.5f * logf(x));
-}
-
-long double sqrtl(long double x)
-{
-	if(x < 0)
-		return NAN;
-	return expl(0.5 * logl(x));
 }
 
 double ceil(double x)

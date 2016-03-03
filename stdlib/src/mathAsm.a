@@ -7,6 +7,9 @@ global sinl
 global cos
 global cosf
 global cosl
+global sqrt
+global sqrtf
+global sqrtl
 
 section .text
 
@@ -45,3 +48,19 @@ cosl:
     fld tword [esp + 4]
     fcos
     ret
+
+sqrt:
+    fld qword [esp + 4]
+    fsqrt
+    ret
+
+sqrtf:
+    fld dword [esp + 4]
+    fsqrt
+    ret
+
+sqrtl:
+    fld tword [esp + 4]
+    fsqrt
+    ret
+
