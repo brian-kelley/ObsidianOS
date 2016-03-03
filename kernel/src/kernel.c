@@ -122,13 +122,11 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	double x = 0.1;
+	double x = 0.99;
 	double y = atan(x);
 	printf("atan(%f) = %.15f\n", x, y);
 	double back = tan(y);
 	printf("tan(atan(%f)) = %.15f\n", x, back);
-	double root = sqrt(x);
-	printf("sqrt(%f) is %.10f\n", x, root);
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts

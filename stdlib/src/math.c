@@ -164,7 +164,7 @@ double atan(double x)
     if(x > 1)
 	return PI / 2 - atan(1 / x);
     if(x > 0.268)   
-	return PI / 6 - atan((sqrt(3) * x - 1) / (sqrt(3) + x));
+	return PI / 6 + atan((sqrt(3) * x - 1) / (sqrt(3) + x));
     //now x is in a range where Taylor converges quickly
     double rv = 0;
     for(int i = 0; i < MAX_ITERS; i++)
