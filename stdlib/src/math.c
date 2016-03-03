@@ -85,74 +85,32 @@ long double tanl(long double x)
 
 double asin(double x)
 {
-        //Check for valid input
-	if(x > 1.0 || x < -1.0 || x == NAN)
-		return NAN;
-	double rv = 0;
-	for(int i = 0; i < MAX_ITERS; i++)
-	{
-		double term = combination(2 * i, i) * intpow(x, 2 * i + 1);
-		term /= (intpow(4, i) * (2 * i + 1));
-		rv += term;
-		if(-DOUBLE_CONV_TOL < term && term < DOUBLE_CONV_TOL)
-		    break;
-	}
-	return rv;
+    return 2 * atan(x / (1 + sqrt(1 - x * x)));
 }
 
 float asinf(float x)
 {
-        //Check for valid input
-	if(x > 1.0 || x < -1.0 || x == NAN)
-		return NAN;
-	float rv = 0;
-	for(int i = 0; i < MAX_ITERS; i++)
-	{
-		float term = combination(2 * i, i) * intpowf(x, 2 * i + 1);
-		term /= (intpowf(4, i) * (2 * i + 1));
-		rv += term;
-		if(-FLOAT_CONV_TOL < term && term < FLOAT_CONV_TOL)
-		    break;
-	}
-	return rv;
+    return 2 * atanf(x / (1 + sqrtf(1 - x * x)));
 }
 
 long double asinl(long double x)
 {
-        //Check for valid input
-	if(x > 1.0 || x < -1.0 || x == NAN)
-		return NAN;
-	long double rv = 0;
-	for(int i = 0; i < MAX_ITERS; i++)
-	{
-		long double term = combination(2 * i, i) * intpowl(x, 2 * i + 1);
-		term /= (intpowl(4, i) * (2 * i + 1));
-		rv += term;
-		if(-LONG_DOUBLE_CONV_TOL < term && term < LONG_DOUBLE_CONV_TOL)
-		    break;
-	}
-	return rv;
+    return 2 * atanl(x / (1 + sqrtl(1 - x * x)));
 }
 
 double acos(double x)
 {
-	if(x < -1.0 || x > 1.0 || x == NAN)
-		return NAN;
-	return PI / 2.0 - asin(x);
+    return 2 * atan(sqrt(1 - x * x) / (1 + x));
 }
 
 float acosf(float x)
 {
-	if(x < -1.0 || x > 1.0 || x == NAN)
-		return NAN;
-	return PI / 2.0 - asinf(x);
+    return 2 * atanf(sqrtf(1 - x * x) / (1 + x));
 }
 
 long double acosl(long double x)
 {
-	if(x < -1.0 || x > 1.0 || x == NAN)
-		return NAN;
-	return PI / 2.0 - asinl(x);
+    return 2 * atanl(sqrtl(1 - x * x) / (1 + x));
 }
 
 double atan(double x)
@@ -173,10 +131,7 @@ double atan(double x)
        	double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
 	double termDiff = term1 - term2;
         if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
-	{
-	    printf("Converged after %i terms.\n", i * 2);
 	    break;
-	}
         rv += termDiff;
     }
     return rv;
@@ -184,34 +139,50 @@ double atan(double x)
 
 float atanf(float x)
 {
-	float rv = 0;
-	for(int i = 0; i < MAX_ITERS; i++)
-	{
-		float term1 = intpowf(x, i * 4 + 1) / (i * 4 + 1);
-		float term2 = intpowf(x, i * 4 + 3) / (i * 4 + 3);
-		float termDiff = term1 - term2;
-		if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
-			break;
-		rv += term1;
-		rv -= term2;
-	}
-	return rv;
+    if(x == 0)
+	return 0;
+    if(x < 0)
+	return -atan(-x);
+    if(x > 1)
+	return PI / 2 - atanf(1 / x);
+    if(x > 0.268)   
+	return PI / 6 + atanf((sqrt(3) * x - 1) / (sqrtf(3) + x));
+    //now x is in a range where Taylor converges quickly
+    float rv = 0;
+    for(int i = 0; i < MAX_ITERS; i++)
+    {
+    	float term1 = intpowf(x, i * 4 + 1) / (i * 4 + 1);
+       	float term2 = intpowf(x, i * 4 + 3) / (i * 4 + 3);
+	float termDiff = term1 - term2;
+        if(-FLOAT_CONV_TOL < termDiff && termDiff < FLOAT_CONV_TOL)
+	    break;
+        rv += termDiff;
+    }
+    return rv;
 }
 
 long double atanl(long double x)
 {
-	long double rv = 0;
-	for(int i = 0; i < MAX_ITERS; i++)
-	{
-		long double term1 = intpow(x, i * 4 + 1) / (i * 4 + 1);
-		long double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
-		long double termDiff = term1 - term2;
-		if(-LONG_DOUBLE_CONV_TOL < termDiff && termDiff < LONG_DOUBLE_CONV_TOL)
-			break;
-		rv += term1;
-		rv -= term2;
-	}
-	return rv;
+    if(x == 0)
+	return 0;
+    if(x < 0)
+	return -atan(-x);
+    if(x > 1)
+	return PI / 2 - atan(1 / x);
+    if(x > 0.268)   
+	return PI / 6 + atan((sqrt(3) * x - 1) / (sqrt(3) + x));
+    //now x is in a range where Taylor converges quickly
+    long double rv = 0;
+    for(int i = 0; i < MAX_ITERS; i++)
+    {
+    	long double term1 = intpow(x, i * 4 + 1) / (i * 4 + 1);
+       	long double term2 = intpow(x, i * 4 + 3) / (i * 4 + 3);
+	long double termDiff = term1 - term2;
+        if(-DOUBLE_CONV_TOL < termDiff && termDiff < DOUBLE_CONV_TOL)
+	    break;
+        rv += termDiff;
+    }
+    return rv;
 }
 
 double atan2(double y, double x)
