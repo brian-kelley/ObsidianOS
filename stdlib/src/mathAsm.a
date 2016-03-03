@@ -1,15 +1,30 @@
 ; x87 FPU math.h functions
 
 global initFPU		; void initFPU
-global sin		; double sin
+global sin
 global sinf
 global sinl
 global cos
 global cosf
 global cosl
+global tan
+global tanf
+global tanl
 global sqrt
 global sqrtf
 global sqrtl
+global atan
+global atanf
+global atanl
+global atan2
+global atan2f
+global atan2l
+global exp
+global expf
+global expl
+global pow
+global powf
+global powl
 
 section .text
 
@@ -49,6 +64,21 @@ cosl:
     fcos
     ret
 
+tan:
+    fld qword [esp + 4]
+    fptan
+    ret
+
+tanf:
+    fld dword [esp + 4]
+    fptan
+    ret
+
+tanl:
+    fld tword [esp + 4]
+    fptan
+    ret
+
 sqrt:
     fld qword [esp + 4]
     fsqrt
@@ -64,3 +94,99 @@ sqrtl:
     fsqrt
     ret
 
+atan:
+    fld qword [esp + 4]
+    fld1
+    fpatan
+    ret
+
+atanf:
+    fld dword [esp + 4]
+    fld1
+    fpatan
+    ret
+
+atanl:
+    fld tword [esp + 4]
+    fld1
+    fpatan
+    ret
+
+atan2:
+    fld qword [esp + 4]
+    fld qword [esp + 12]
+    fpatan
+    ret
+
+atan2f:
+    fld dword [esp + 4]
+    fld dword [esp + 8]
+    fpatan
+    ret
+
+atan2l:
+    fld tword [esp + 4]
+    fld tword [esp + 16]
+    fpatan
+    ret
+
+exp:
+    fld qword [esp + 4]
+    fldl2e
+    fmul ST1
+    f2xm1
+    fld1
+    fadd
+    ret
+
+expf:
+    fld dword [esp + 4]
+    fldl2e
+    fmul ST1
+    f2xm1
+    fld1
+    fadd
+    ret
+
+expl:
+    fld tword [esp + 4]
+    fldl2e
+    fmul ST1
+    f2xm1
+    fld1
+    fadd
+    ret
+
+; double pow(double base, double exp)
+pow:
+    fld1
+    fld qword [esp + 4]
+    fyl2x
+    fld qword [esp + 12]
+    fmulp
+    f2xm1
+    fld1
+    faddp
+    ret
+
+powf:
+    fld1
+    fld dword [esp + 4]
+    fyl2x
+    fld dword [esp + 8]
+    fmulp
+    f2xm1
+    fld1
+    faddp
+    ret
+    
+powl:
+    fld1
+    fld tword [esp + 4]
+    fyl2x
+    fld tword [esp + 16]
+    fmulp
+    f2xm1
+    fld1
+    faddp
+    ret
