@@ -123,6 +123,8 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
+	double val = 14;
+	printf("ln(%f) = %f\n", val, log(val));
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts

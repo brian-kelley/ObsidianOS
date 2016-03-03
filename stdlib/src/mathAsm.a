@@ -25,6 +25,12 @@ global expl
 global pow
 global powf
 global powl
+global log
+global logf
+global logl
+global log10
+global log10f
+global log10l
 
 section .text
 
@@ -189,4 +195,52 @@ powl:
     f2xm1
     fld1
     faddp
+    ret
+
+log:
+    fld1
+    fld qword [esp + 4]
+    fyl2x
+    fldl2e
+    fdivp ST1
+    ret
+
+logf:
+    fld1
+    fld dword [esp + 4]
+    fyl2x
+    fldl2e
+    fdivp ST1
+    ret
+
+logl:
+    fld1
+    fld tword [esp + 4]
+    fyl2x
+    fldl2e
+    fdivp ST1
+    ret
+
+log10:
+    fld1
+    fld qword [esp + 4]
+    fyl2x
+    fldl2t
+    fdivp ST1
+    ret
+
+log10f:
+    fld1
+    fld dword [esp + 4]
+    fyl2x
+    fldl2t
+    fdivp ST1
+    ret
+
+log10l:
+    fld1
+    fld tword [esp + 4]
+    fyl2x
+    fldl2t
+    fdivp ST1
     ret
