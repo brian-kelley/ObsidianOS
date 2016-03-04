@@ -1,5 +1,7 @@
 ; x87 FPU math.h functions
 
+extern puts
+
 global initFPU		; void initFPU
 global sin
 global sinf
@@ -31,6 +33,12 @@ global logl
 global log10
 global log10f
 global log10l
+global frexp
+global frexpf
+global frexpl
+global ldexp
+global ldexpf
+global ldexpl
 
 section .text
 
@@ -244,3 +252,31 @@ log10l:
     fldl2t
     fdivp ST1
     ret
+
+frexp:
+    fld qword [esp + 4]
+    fxtract		      ; mantissa = ST0, exponent = ST1
+    fxch		      ; swap ST0,ST1
+    mov dword eax, [esp + 12]
+    fistp dword [eax]	      ; store ipart of ST0 in the int* at esp+12
+    ret
+
+frexpf:
+    fld dword [esp + 4]
+    fxtract
+    fxch
+    mov dword eax, [esp + 8]
+    fistp dword [eax]
+    ret
+
+frexpl:
+    fld tword [esp + 4]
+    fxtract
+    fxch
+    mov dword eax, [esp + 16]
+    fistp dword [eax]
+    ret
+
+section .data
+
+hello: db 'Hello from x86', 0

@@ -123,8 +123,10 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	double val = 14;
-	printf("ln(%f) = %f\n", val, log(val));
+	long double test = 144.42;
+	int e;
+	long double mant = frexpl(test, &e);
+	printf("%Lf = %Lf * 2^%i\n", test, mant, e);
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
