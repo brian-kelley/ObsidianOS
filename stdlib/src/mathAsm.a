@@ -277,6 +277,24 @@ frexpl:
     fistp dword [eax]
     ret
 
+ldexp:
+    fild dword [esp + 12]
+    fld qword [esp + 4]
+    fscale
+    ret
+
+ldexpf:
+    fild dword [esp + 8]
+    fld dword [esp + 4]
+    fscale
+    ret
+
+ldexpl:
+    fild dword [esp + 16]
+    fld tword [esp + 4]
+    fscale
+    ret
+
 section .data
 
 hello: db 'Hello from x86', 0
