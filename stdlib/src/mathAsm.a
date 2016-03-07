@@ -45,12 +45,16 @@ global fabsl
 global modf
 global modff
 global modfl
+global fmod
+global fmodf
+global fmodl
 global ceil
 global ceilf
 global ceill
 global floor
 global floorf
 global floorl
+global fmod
 
 section .text
 
@@ -464,6 +468,36 @@ floorl:
     mov [esp], ax
     fldcw [esp]
     add esp, 2
+    ret
+
+fmod:
+    fld qword [esp + 12]
+    fld qword [esp + 4]
+    .try:
+    fprem
+    fstsw ax
+    test ax, 0000010000000000b
+    jnz .try
+    ret
+
+fmodf:
+    fld dword [esp + 8]
+    fld dword [esp + 4]
+    .try:
+    fprem
+    fstsw ax
+    test ax, 0000010000000000b
+    jnz .try
+    ret
+
+fmodl:
+    fld tword [esp + 16]
+    fld tword [esp + 4]
+    .try:
+    fprem
+    fstsw ax
+    test ax, 0000010000000000b
+    jnz .try
     ret
 
 section .data

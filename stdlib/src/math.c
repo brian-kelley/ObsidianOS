@@ -90,26 +90,4 @@ long double tanhl(long double x)
 	return (e2X + 1) / (e2X - 1);
 }
 
-double fmod(double numer, double denom)
-{
-	if(denom == 0)
-		return NAN;
-	int quotient = numer / denom;
-	return numer - (denom * quotient);
-}
 
-float fmodf(float numer, float denom)
-{
-	if(denom == 0)
-		return NAN;
-	int quotient = numer / denom;
-	return numer - (denom * quotient);
-}
-
-long double fmodl(long double numer, long double denom)
-{
-	if(denom == 0)
-		return NAN;
-	int quotient = numer / denom;
-	return numer - (denom * quotient);
-}
