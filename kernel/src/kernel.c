@@ -123,10 +123,9 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	double numer = 5.2;
-	double denom = 2.4;
-	double remain = fmodl(numer, denom);
-	printf("%f/%f remainder = %f\n", numer, denom, remain);
+	double x = 0.234;
+	double t = tanh(x);
+	printf("tanh(%f) = %f\n", x, t);
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
