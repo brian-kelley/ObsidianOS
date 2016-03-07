@@ -34,7 +34,10 @@ char* strcpy(char* dst, const char* src)
 	for(int i = 0;; i++)
 	{
 		if(src[i] == 0)
-			break;
+		{
+		    dst[i] = 0;
+		    break;
+		}
 		dst[i] = src[i];
 	}
 	return dst;
@@ -42,69 +45,43 @@ char* strcpy(char* dst, const char* src)
 
 char* strncpy(char* dst, const char* src, size_t num)
 {
-	for(int i = 0; i < (int) num; i++)
-	{
-		if(src[i] == 0)
-			break;
-		dst[i] = src[i];
-	}
-	return dst;
+    size_t total = 0;
+    for(; total < num; total++)
+    {
+    	dst[total] = src[total];
+	if(!src[total])
+	    break;
+    }
+    for(; total < num; total++)
+	dst[total] = 0;
+    return dst;
 }
 
 char* strcat(char* dst, const char* src)
 {
-	//Find the end of dst where src will be copied
-	int dstLen;
-	for(int i = 0;; i++)
-	{
-		if(dst[i] == 0)
-		{
-			dstLen = i;
-			break;
-		}
-	}
-	//dstLen is the number of non-null chars in dst string
-	//so dst[dstLen] is the \0, where src is copied to
-	for(int i = 0;; i++)
-	{
-		if(src[i] == 0)
-		{
-			//Add the null to the end of the resulting string
-			dst[dstLen - 1 + i] = 0;
-			break;
-		}
-		dst[dstLen - 1 + i] = src[i];
-	}
-	return dst;
+    char* iter = dst;
+    for(; *iter; iter++);
+    const char* siter = src;
+    for(; *siter; siter++)
+	*(iter++) = *siter;
+    *iter = 0;
+    return dst;
 }
 
 char* strncat(char* dst, const char* src, size_t num)
 {
-	int dstLen;
-	for(int i = 0;; i++)
-	{
-		if(dst[i] == 0)
-		{
-			dstLen = i;
-			break;
-		}
-	}
-	int catLen = -1;
-	for(int i = 0; i < (int) num; i++)
-	{
-		if(src[i] == 0)
-		{
-			catLen = dstLen - 1 + i;
-			break;
-		}
-		dst[dstLen - 1 + i] = src[i];
-	}
-	if(catLen == -1)	//this means that src string wasn't completely copied
-	{
-		catLen = dstLen - 1 + num;
-	}
-	dst[catLen] = 0;
-	return dst;
+    char* iter = dst;
+    for(; *iter; iter++);
+    const char* siter = src;
+    size_t added = 0;
+    for(; *siter; siter++)
+    {
+	if(added++ >= num)
+	    break;
+	*(iter++) = *siter;
+    }
+    *iter = 0;
+    return dst;
 }
 
 int memcmp(const void* ptr1, const void* ptr2, size_t num)
@@ -137,7 +114,7 @@ int strcmp(const char* str1, const char* str2)
 
 int strncmp(const char* str1, const char* str2, size_t num)
 {
-	for(int i = 0; i < (int) num; i++)
+	for(size_t i = 0; i < num; i++)
 	{
 		if(str1[i] == 0 || str2[i] == 0)
 			return 0;
@@ -152,8 +129,8 @@ int strncmp(const char* str1, const char* str2, size_t num)
 void* memchr(void* ptr, int value, size_t num)
 {
 	byte* arr = (byte*) ptr;
-	byte search = (byte) value;
-	for(int i = 0; i < (int) num; i++)
+	byte search = value;
+	for(size_t i = 0; i < num; i++)
 	{
 		if(arr[i] == search)
 			return ptr + i;
@@ -166,54 +143,38 @@ char* strchr(char* str, int character)
 	for(int i = 0;; i++)
 	{
 		if(str[i] == 0)
-			break;
-		if(str[i] == (char) character)
+			return NULL;
+		if(str[i] == character)
 			return str + i;
 	}
-	return NULL;
 }
 
 size_t strcspn(const char* str1, const char* str2)
 {
-	size_t strLength = 0;
-	for(size_t i = 0;; i++)
+    for(size_t i = 0;; i++)
+    {
+	if(str1[i] == 0)
+	    return i;
+	for(size_t j = 0; str2[j]; j++)
 	{
-		if(str1[i] == 0)
-		{
-			strLength = i;
-		}
-		for(size_t j = 0;; j++)
-		{
-		    if(str2[j] == 0)
-			return 0;
-		    if(str1[i] == str2[j])
-			return i;
-		}
+	    if(str1[i] == str2[j])
+		return i;
 	}
-	return strLength;
+    }
 }
 
 char* strpbrk(char* str1, const char* str2)
 {
-	for(int i = 0;; i++)
-	{
-		if(str1[i] == 0)
-			break;
-		for(int j = 0;; j++)
-		{
-			if(str2[j] == 0)
-				break;
-			if(str1[i] == str2[j])
-				return str1 + i;
-		}
-	}
-	return NULL;
+    size_t span = strcspn(str1, str2);
+    if(str1[span])
+	return str1 + span;
+    return NULL;
 }
 
 const char* strrchr(const char* str, int character)
 {
 	//first find end of string
-	int stringLen = 0;
+	size_t stringLen = 0;
 	for(;; stringLen++)
 	{
 		if(str[stringLen] == 0)
@@ -229,24 +190,22 @@ const char* strrchr(const char* str, int character)
 
 size_t strspn(const char* str1, const char* str2)
 {
-	size_t rv = 0;
-	for(;; rv++)
+    size_t i = 0;
+    for(; str1[i]; i++)
+    {
+	bool found = false;
+	for(size_t j = 0; str2[j]; j++)
 	{
-		if(str1[rv] == 0)
-			return rv;
-		byte found = 0;
-		for(int j = 0;; j++)
-		{
-			if(str1[rv] == str2[j])
-			{
-				found = 1;
-				break;
-			}
-		}
-		if(!found)
-			break;
+	    if(str1[i] == str2[j])
+	    {
+		found = true;
+		break;
+	    }
 	}
-	return rv;
+	if(!found)
+	    break;
+    }
+    return i;
 }
 
 char* strstr(const char* str1, const char* str2)
@@ -275,51 +234,17 @@ char* strstr(const char* str1, const char* str2)
 
 char* strtok(char* str, const char* delimiters)
 {
-	if(str == NULL && lastTok == NULL)
-		return NULL;
-	//Scan to start of token
-	char* tokSearchBegin = str == NULL ? lastTok : str;
-	char* tokStart = NULL;
-	for(int i = 0;; i++)
-	{
-		if(tokSearchBegin[i] == 0)
-			return NULL;
-		byte isDelim = 0;
-		for(int j = 0;; j++)
-		{
-			if(delimiters[j] == 0)
-				break;
-			if(tokSearchBegin[i] == delimiters[j])
-			{
-				isDelim = 1;
-				break;
-			}
-		}
-		if(!isDelim)
-		{
-			//token starts here
-			tokStart = tokSearchBegin + i;
-		}
-	}
-	//if here then tokStart points to start of token
-	//scan for end of token, if reached before \0 then put \0 at end of tok
-	for(int i = 0;; i++)
-	{
-		//check for delimiter in token
-		if(tokStart[i] == 0)
-			break;
-		for(int j = 0;; j++)
-		{
-			if(delimiters[j] == 0)
-				break;
-			if(tokStart[i] == delimiters[j])
-			{
-				tokStart[i] = 0;
-				break;
-			}
-		}
-	}
-	return tokStart;
+    char* start = str ? str : lastTok;
+    if(start == NULL)
+	return NULL;
+    start += strspn(start, delimiters);      //scan to the first non-delim char
+    char* end = start + strcspn(start, delimiters);
+    if(*end == 0)	    //hit the end of original string
+	lastTok = NULL;
+    else
+	lastTok = end + 1;
+    *end = 0;
+    return start;
 }
 
 void* memset(void* ptr, int value, size_t num)

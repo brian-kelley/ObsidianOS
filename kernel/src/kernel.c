@@ -123,9 +123,7 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	double x = 0.234;
-	double t = tanh(x);
-	printf("tanh(%f) = %f\n", x, t);
+	
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
