@@ -45,6 +45,12 @@ global fabsl
 global modf
 global modff
 global modfl
+global ceil
+global ceilf
+global ceill
+global floor
+global floorf
+global floorl
 
 section .text
 
@@ -362,6 +368,102 @@ modfl:
     fsub ST1
     mov dword eax, [esp + 16]
     fstp tword [eax]
+    ret
+
+ceil:
+    fld qword [esp + 4]
+    sub esp, 2
+    fstcw [esp]
+    mov ax, [esp]
+    and ax, 1111001111111111b
+    or ax, 0000100000000000b
+    mov [esp], ax
+    fldcw [esp]
+    frndint
+    and ax, 1111001111111111b
+    mov [esp], ax
+    fldcw [esp]
+    add esp, 2
+    ret
+
+ceilf:
+    fld dword [esp + 4]
+    sub esp, 2
+    fstcw [esp]
+    mov ax, [esp]
+    and ax, 1111001111111111b
+    or ax, 0000100000000000b
+    mov [esp], ax
+    fldcw [esp]
+    frndint
+    and ax, 1111001111111111b
+    mov [esp], ax
+    fldcw [esp]
+    add esp, 2
+    ret
+
+ceill:
+    fld tword [esp + 4]
+    sub esp, 2
+    fstcw [esp]
+    mov ax, [esp]
+    and ax, 1111001111111111b
+    or ax, 0000100000000000b
+    mov [esp], ax
+    fldcw [esp]
+    frndint
+    and ax, 1111001111111111b
+    mov [esp], ax
+    fldcw [esp]
+    add esp, 2
+    ret
+
+floor:
+    fld qword [esp + 4]
+    sub esp, 2
+    fstcw [esp]
+    mov ax, [esp]
+    and ax, 1111001111111111b
+    or ax, 0000010000000000b
+    mov [esp], ax
+    fldcw [esp]
+    frndint
+    and ax, 1111001111111111b
+    mov [esp], ax
+    fldcw [esp]
+    add esp, 2
+    ret    
+
+floorf:
+    fld dword [esp + 4]
+    sub esp, 2
+    fstcw [esp]
+    mov ax, [esp]
+    and ax, 1111001111111111b
+    or ax, 0000010000000000b
+    mov [esp], ax
+    fldcw [esp]
+    frndint
+    and ax, 1111001111111111b
+    mov [esp], ax
+    fldcw [esp]
+    add esp, 2
+    ret
+
+floorl:
+    fld tword [esp + 4]
+    sub esp, 2
+    fstcw [esp]
+    mov ax, [esp]
+    and ax, 1111001111111111b
+    or ax, 0000010000000000b
+    mov [esp], ax
+    fldcw [esp]
+    frndint
+    and ax, 1111001111111111b
+    mov [esp], ax
+    fldcw [esp]
+    add esp, 2
     ret
 
 section .data

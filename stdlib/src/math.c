@@ -90,51 +90,6 @@ long double tanhl(long double x)
 	return (e2X + 1) / (e2X - 1);
 }
 
-double ceil(double x)
-{
-	double ipart;
-	modf(x, &ipart);
-	if(ipart == x)
-		return x;
-	else
-		return (double) ((unsigned long long int) x + 1);
-}
-
-float ceilf(float x)
-{
-	float ipart;
-	modff(x, &ipart);
-	if(ipart == x)
-		return x;
-	else
-		return (long long int) x + 1;
-}
-
-long double ceill(long double x)
-{
-	long double ipart;
-	modfl(x, &ipart);
-	if(ipart == x)
-		return x;
-	else
-		return (long double) ((long long int) x + 1);
-}
-
-double floor(double x)
-{
-	return (double) ((long long int) x);
-}
-
-float floorf(float x)
-{
-	return (float) ((long long int) x);
-}
-
-long double floorl(long double x)
-{
-	return (long double) ((long long int) x);
-}
-
 double fmod(double numer, double denom)
 {
 	if(denom == 0)

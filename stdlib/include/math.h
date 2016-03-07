@@ -14,7 +14,6 @@
 #define HUGE_VAL (1e50)
 
 //Generic abs/max/min
-//#define abs(a) ((a) < 0 ? (-(a)) : (a))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
