@@ -90,24 +90,6 @@ long double tanhl(long double x)
 	return (e2X + 1) / (e2X - 1);
 }
 
-double modf(double x, double* intpart)
-{
-	*intpart = (double) ((unsigned long long int) x);
-	return x - *intpart;
-}
-
-float modff(float x, float* intpart)
-{
-	*intpart = (float) ((unsigned long long int) x);
-	return x - *intpart;
-}
-
-long double modfl(long double x, long double* intpart)
-{
-	*intpart = (long double) ((unsigned long long int) x);
-	return x - *intpart;
-}
-
 double ceil(double x)
 {
 	double ipart;
@@ -175,19 +157,4 @@ long double fmodl(long double numer, long double denom)
 		return NAN;
 	int quotient = numer / denom;
 	return numer - (denom * quotient);
-}
-
-double fabs(double x)
-{
-	return x < 0 ? -x : x;
-}
-
-float fabsf(float x)
-{
-	return x < 0 ? -x : x;
-}
-
-long double fabsl(long double x)
-{
-	return x < 0 ? -x : x;
 }

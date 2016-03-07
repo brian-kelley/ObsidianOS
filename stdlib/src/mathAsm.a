@@ -39,6 +39,12 @@ global frexpl
 global ldexp
 global ldexpf
 global ldexpl
+global fabs
+global fabsf
+global fabsl
+global modf
+global modff
+global modfl
 
 section .text
 
@@ -295,6 +301,69 @@ ldexpl:
     fscale
     ret
 
+fabs:
+    fld qword [esp + 4]
+    fabs
+    ret
+
+fabsf:
+    fld dword [esp + 4]
+    fabs
+    ret
+
+fabsl:
+    fld tword [esp + 4]
+    fabs
+    ret
+
+modf:
+    fld qword [esp + 4]
+    fld1
+    fld ST1
+    .try:                    ; in case fprem needs to be called multiple times
+    fprem
+    fstsw ax
+    test ax, 0000010000000000b ; test C2 status bit
+    jnz .try
+    fstp ST1
+    fxch ST1
+    fsub ST1
+    mov dword eax, [esp + 12]
+    fstp qword [eax]
+    ret
+
+modff:
+    fld dword [esp + 4]
+    fld1
+    fld ST1
+    .try:                    ; in case fprem needs to be called multiple times
+    fprem
+    fstsw ax
+    test ax, 0000010000000000b ; test C2 status bit
+    jnz .try
+    fstp ST1
+    fxch ST1
+    fsub ST1
+    mov dword eax, [esp + 8]
+    fstp dword [eax]
+    ret
+
+modfl:
+    fld tword [esp + 4]
+    fld1
+    fld ST1
+    .try:                    ; in case fprem needs to be called multiple times
+    fprem
+    fstsw ax
+    test ax, 0000010000000000b ; test C2 status bit
+    jnz .try
+    fstp ST1
+    fxch ST1
+    fsub ST1
+    mov dword eax, [esp + 16]
+    fstp tword [eax]
+    ret
+
 section .data
 
-hello: db 'Hello from x86', 0
+floatformat: db '%f\n', 0
