@@ -41,72 +41,23 @@ void terminalKeyListener(byte scancode)
 			drawChar(' ', cursorX, cursorY, fgColor, bgColor);
 			//Immediately run the command
 			//Get cursor on a new line before running command
+			char* cmdStart = &buffer[cursorX][cursorY] - commandLen;
 			cursorX = 0;
-			int cmdStart = -1 + cursorY - ((commandLen + promptLen) / TERM_W);
 			cursorY++;
-			cmdStart++;
 			if(cursorY == TERM_H)
 			{
 				shiftUp();
 				cursorY--;
-				cmdStart--;
 			}
 			if(stdinWait)
 			{
 			    stdinWait = 0;  //if here then in loop to read string for stdin
-		            char* commandStart = (char*) &buffer[cmdStart][promptLen];
-			    if(commandLen > STDIN_BUF_SIZE - 1)
-				commandLen = STDIN_BUF_SIZE - 1;
-			    for(int i = 0; i < commandLen; i++)
-			    {
-				stdinBuf[i] = commandStart[i];
-			    }
-			    stdinBuf[commandLen] = 0;
-			    //now reset invisible cursor appropriately for libc application
-			    cursorX = 0;
-			    cursorY++;
-			    if(cursorY == TERM_H - 1)
-			    {
-				shiftUp();
-				cursorY--;
-			    }
-			    cursorX = 0;
+			    //TODO
 			    break;
 			}
-			if(commandLen == 0)
-			{
-			    cursorX = promptLen;
-			    break;
-      			}
 			parseCommand(cmdStart);	//Would normally load a program into RAM, invoke the runtime and jump execution to the program. So treat that line as an arbitrary program running.
 			//Leave the cursor on the current line if that line is empty.
-			if(cursorX == 0)
-			{
-			    cursorX = promptLen;
-			    drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
-			    buffer[cursorY][cursorX] = cursor;
-			}
-			//Otherwise, go to a fresh line
-			else
-			{
-			    cursorX = promptLen;
-			    cursorY++;
-			    if(cursorY == TERM_H)
-			    {
-			    	shiftUp();
-		    		cursorY--;
-			    }
-			    buffer[cursorY][cursorX] = cursor;
-			    drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
-		    	}
-			//Draw prompt string on cursor's new row
-			for(int i = 0;; i++)
-			{
-				if(prompt[i] == 0)
-					break;
-				drawChar(prompt[i], i, cursorY, fgColor, bgColor);
-				buffer[cursorY][i] = prompt[i];
-			}
+			resetTermCursor();
 			break;
 		}
 		case KEY_BACKSPACE:
@@ -283,7 +234,7 @@ void shiftUp()
 	terminalUpdateScreen();
 }
 
-void parseCommand(int row)
+void parseCommand(char* start)
 {
 	//Stop drawing the cursor while the command is running
 	//Figure out exactly where the command starts
@@ -291,8 +242,8 @@ void parseCommand(int row)
 	//that means that command starts in the buffer at x = promptLen, y = cursorY - (commandLen + promptLen) / TERM_W
 	//Rows stored contiguously.
 	//When Enter is pressed, parseCommand is the first thing the terminal does so that cursor position preserved
-	char* commandStart = (char*) &buffer[row][promptLen];
-	commandStart[commandLen] = 0;	//Add a null-terminator in the buffer 
+	start[commandLen] = 0;	//Add a null-terminator in the buffer
+	/* DO THE COMMAND */
 }
 
 void clearTerminal(byte commandMode)
@@ -338,4 +289,5 @@ void resetTermCursor()
     cursorX = 0;
     printString(prompt);
     cursorX = promptLen;
+    drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
 }

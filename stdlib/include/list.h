@@ -31,4 +31,3 @@ TYPE TYPE##ListPopBack(TYPE##List* l); \
 TYPE##ListIter TYPE##ListInsert(TYPE##ListIter it, TYPE data); \
 void TYPE##ListRemove(TYPE##ListIter it); \
 int TYPE##ListEmpty(TYPE##List* l);
-

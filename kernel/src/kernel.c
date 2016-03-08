@@ -11,8 +11,10 @@
 #include "stdio.h"
 #include "math.h"
 #include "list.h"
+#include "vector.h"
 
 DEFINE_LIST(int)
+DEFINE_VECTOR(int)
 
 /* Note on GCC for i386 types:
 
@@ -132,32 +134,19 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	intList l;
-	intListInit(&l);
+	intVector vec;
+	intVecInit(&vec);
+	for(int i = 0; i < 10; i++)
+	    intVecPushBack(&vec, i);
 	puts("");
-	for(int i = 0; i < 5; i++)
-	    intListPushBack(&l, i);
-	printList(&l);
-	intListPopFront(&l);
-	intListPopFront(&l);
 	puts("");
-	printList(&l);
-	intListPushBack(&l, 10);
-	intListPushBack(&l, 20);
-	intListPushBack(&l, 30);
+	for(int i = 0; i < vec.size; i++)
+	{
+	    printf("%4i ", vec.buf[i]);
+	    if(i % 16 == 15)
+		puts("");
+	}
 	puts("");
-	printList(&l);
-	intListPopBack(&l);
-	intListPopBack(&l);
-	puts("");
-	printList(&l);
-	while(!intListEmpty(&l))
-	    intListPopFront(&l);
-	puts("");
-	printList(&l);
-	int isEmpty = intListEmpty(&l);
-	if(isEmpty)
-	    puts("List empty");
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
