@@ -1,6 +1,7 @@
 #include "stdio.h"
 
-FILE* stdout = NULL;
+FILE* stdout;
+FILE* stdin;
 
 byte tmpFiles[TMP_MAX] = {0};
 
@@ -121,6 +122,7 @@ static void byteToStream(byte b, FILE* stream)
             stream->err = ILLEGAL_WRITE;
             return;
         }
+	
     }
 }
 

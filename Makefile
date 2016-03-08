@@ -37,7 +37,7 @@ kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
 	mv $(OSNAME).bin isodir/boot
 	grub-mkrescue -o $(OSNAME).iso isodir
 	
-libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO)
+libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO) $(SINC)
 	ar rcs libc.a $(SAO) $(SCO) $(SGO)
 
 clean:

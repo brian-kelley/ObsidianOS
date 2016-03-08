@@ -10,6 +10,9 @@
 #include "string.h"
 #include "stdio.h"
 #include "math.h"
+#include "list.h"
+
+DEFINE_LIST(int)
 
 /* Note on GCC for i386 types:
 
@@ -114,6 +117,12 @@ void memtest()
     }
 }
 
+void printList(intList* l)
+{
+    for(intListIter it = intListBegin(l); it != intListEnd(l); it = it->next)
+	printf("%i\n", it->data);
+}
+
 void kernel_main()
 {
 	enterMode12H();
@@ -123,7 +132,32 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	
+	intList l;
+	intListInit(&l);
+	puts("");
+	for(int i = 0; i < 5; i++)
+	    intListPushBack(&l, i);
+	printList(&l);
+	intListPopFront(&l);
+	intListPopFront(&l);
+	puts("");
+	printList(&l);
+	intListPushBack(&l, 10);
+	intListPushBack(&l, 20);
+	intListPushBack(&l, 30);
+	puts("");
+	printList(&l);
+	intListPopBack(&l);
+	intListPopBack(&l);
+	puts("");
+	printList(&l);
+	while(!intListEmpty(&l))
+	    intListPopFront(&l);
+	puts("");
+	printList(&l);
+	int isEmpty = intListEmpty(&l);
+	if(isEmpty)
+	    puts("List empty");
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
