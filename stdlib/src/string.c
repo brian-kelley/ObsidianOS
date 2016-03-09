@@ -10,7 +10,7 @@ void* memcpy(void* dst, const void* src, size_t num)
     if(src > dst)
     {
 	for(size_t i = 0; i < num; i++)
-	    dstArr[i] = srcArr[i];
+	    dstArr[i] = srcArr[i];x
     }
     else if(src < dst)
     {

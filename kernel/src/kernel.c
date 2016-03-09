@@ -145,18 +145,7 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
-	puts("");
-	intVector vec;
-	intVecInit(&vec);
-	for(int i = 0; i < 5; i++)
-	    intVecPushBack(&vec, i);
-	printVector(&vec);
-	intVecInsert(&vec, 0, 66);
-	printVector(&vec);
-	intVecRemove(&vec, 2);
-	intVecRemove(&vec, 2);
-	intVecRemove(&vec, 0);
-	printVector(&vec);
+	
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts

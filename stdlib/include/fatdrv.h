@@ -25,7 +25,7 @@ typedef struct //32 byte struct exactly matching layout on disk
     word time; //5 for hour, 6 for minute, 5 for two-second intervals 0-30
     word date; //7 for year, 4 for month, 5 for day
     word firstCluster;
-    dword size;
+    word size;
 } DirEntry;
 
 typedef struct
@@ -36,8 +36,7 @@ typedef struct
 } EntrySlot;
 
 void initFatDriver();		 //initialize the fatInfo struct from boot sector
-bool createDir(const char* path); //not recursive
-bool createFile(const char* path, size_t size);
+bool createFile(const char* path, bool dir);
 bool deleteFile(const char* path);
 bool deleteDir(const char* path);
 void setPermission(DirEntry* entry, byte flags);  //set the FAT16 attribute flags on a file
@@ -56,13 +55,15 @@ word allocCluster(word last, bool first); //mark a cluster as used and EOF, set 
 void reallocChain(word first, size_t newSize); //add or remove clusters at end of file to get new size (bytes)
 word allocChain(size_t size);
 void deleteChain(word first);  //mark all clusters in chain as free (don't modify corresponding directory entry)
-void flushFat(); //update FAT(s) on disk to reflect memory copy
+void flushFat(); //update FAT(s) on disk to reflect logical memory copy
 int fatDiff();   //find the first difference (in sectors) between logical and acual, or -1 if they are the same
 bool isValidFilename(const char* name); //does it fit in 8-3 filename? (include dot)
 bool entryExists(DirEntry* entry); //is the entry a file or directory?
 void compressRoot();
 void compressDir(DirEntry* dir);
 bool findFreeSlot(DirEntry* dir, EntrySlot* result);
+dword getNextSector(dword prevSec);         //next sector in file, or 0 if at end
+bool load83Name(char* shortName, const char* longName);
 
 int fileSecond(const char* name);
 int fileMinute(const char* name);
