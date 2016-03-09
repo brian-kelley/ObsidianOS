@@ -24,8 +24,6 @@ void initTerminal()
 	printString(welcomeStr);
 	printString(prompt);
 	cursorX = promptLen;
-	drawChar(cursor, cursorX, cursorY, fgColor, bgColor);
-	//terminalUpdateScreen();
 }
 
 void terminalKeyListener(byte scancode)
@@ -52,7 +50,7 @@ void terminalKeyListener(byte scancode)
 			if(stdinWait)
 			{
 			    stdinWait = 0;  //if here then in loop to read string for stdin
-			    //TODO
+			    //TODO: Let stdin read from the input string
 			    break;
 			}
 			parseCommand(cmdStart);	//Would normally load a program into RAM, invoke the runtime and jump execution to the program. So treat that line as an arbitrary program running.

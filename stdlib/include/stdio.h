@@ -23,15 +23,17 @@ enum F_ERROR
 
 typedef struct
 {
-    size_t pos;        //position in file/stream, if applicable
+    size_t pos;           //position in file/stream, if applicable
     byte* buffer;
-    size_t bufsize;    //size of buffer, defaults to BUFSIZ but can be set with setvbuf
-    int err;           //error state (an F_ERROR value)
-    bool canWrite;     //true if mode is write or append
-    bool ungetFilled;  //true if unget is holding a value
-    byte unget;        //hold value from ungetc()
-    bool active;       //false if this entry is not open
-    bool eof;          //true if read or write past end attempted
+    size_t bufsize;       //size of buffer, default is BUFSIZ, set with setvbuf
+    size_t parentCluster; //cluster of the parent directory (0 for root)
+    size_t parentIndex;   //index of dir entry within parent cluster
+    size_t bufOffset;     //byte offset of the start of buffer
+    int err;              //error state (an F_ERROR value)
+    bool canWrite;        //true if mode is write or append
+    bool ungetFilled;     //true if unget is holding a value
+    byte unget;           //hold value from ungetc()
+    bool eof;             //true if read or write past end of file attempted
 } FILE;
 
 #define BUF_SIZE 512

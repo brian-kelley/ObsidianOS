@@ -473,6 +473,20 @@ void* mmAlloc(size_t size)
     }
 }
 
+void* mmRealloc(void* mem, size_t size)
+{
+    Block b = {{-1, -1, -1, -1}};
+    size_t offset = (size_t) (mem - megMap); //total offset in memory area
+    for(int i = 0; i < LEVELS; i++)
+    {
+        b.levels[i] = (offset - subblockStart[i]) / blockSize[i];
+        if(b.levels[i] * blockSize[i] + subblockStart[i] == offset)
+            break;
+        offset -= (b.levels[i] * blockSize[i] + subblockStart[i]);
+    }
+    return NULL;
+}
+
 void mmFree(void* mem)
 {
     Block b = {{-1, -1, -1, -1}};

@@ -570,8 +570,8 @@ int fclose(FILE* stream)
     if(!stream)
 	return EOF;
     int success = fflush(stream);
-    //mark FILE slot as inactive
-    stream->active = false;
+    //TODO: Remove this file entry from fileList
+    //fileListIter it = 
     return success;
 }
 
@@ -904,8 +904,7 @@ void rewind(FILE* stream)
 
 void clearerr(FILE* stream)
 {
-    if(stream->active)
-        stream->err = NO_ERROR;
+    stream->err = NO_ERROR;
 }
 
 int feof(FILE* stream)

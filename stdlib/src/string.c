@@ -5,23 +5,19 @@ static char* lastTok;	//used to store the \0 where last token ended
 //memcpy implementation that does work with overlapping src/dst arrays
 void* memcpy(void* dst, const void* src, size_t num)
 {
-	byte* srcArr = (byte*) src;
-	byte* dstArr = (byte*) dst;
-	if(src < dst)
-	{
-		for(int i = 0; i < (int) num; i++)
-		{
-			dstArr[i] = srcArr[i];
-		}
-	}
-	else if(src > dst)
-	{
-		for(int i = (int) num - 1; i >= 0; i--)
-		{
-			dstArr[i] = srcArr[i];
-		}
-	}
-	return dst;
+    byte* srcArr = (byte*) src;
+    byte* dstArr = (byte*) dst;
+    if(src > dst)
+    {
+	for(size_t i = 0; i < num; i++)
+	    dstArr[i] = srcArr[i];
+    }
+    else if(src < dst)
+    {
+        for(size_t i = 0; i < num; i++)
+	    dstArr[num - i - 1] = srcArr[num - i - 1];
+    }
+    return dst;
 }
 
 void* memmove(void* dst, const void* src, size_t num)

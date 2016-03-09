@@ -6,6 +6,7 @@
 
 void initMM(); //initialization
 void* mmAlloc(size_t size);
+void* mmRealloc(void* mem, size_t size);
 void mmFree(void* mem);
 
 #endif

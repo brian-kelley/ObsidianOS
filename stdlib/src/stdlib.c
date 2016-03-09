@@ -9,20 +9,17 @@ void* calloc(size_t num, size_t size)
 {
 	byte* ptr = (byte*) mmAlloc(num * size);
 	if(ptr != NULL)
-	{
-		for(size_t i = 0; i < num * size; i++)
-		{
-			ptr[i] = 0;
-		}
-	}
+	    memset(ptr, 0, size);
 	return ptr;
 }
 
 //for now just to the trivial thing - free and reallocate
 void* realloc(void* ptr, size_t newSize)
 {
-	free(ptr);
-	return mmAlloc(newSize);
+    void* newPtr = malloc(newSize);
+    memcpy(newPtr, ptr, newSize);
+    return newPtr;
+    //TODO: return mmRealloc(ptr, newSize);
 }
 
 void free(void* ptr)

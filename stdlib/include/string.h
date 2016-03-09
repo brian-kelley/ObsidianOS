@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include "globalDefines.h"
+#include "stdio.h"
 
 void* memcpy(void* dst, const void* src, size_t num);
 void* memmove(void* dst, const void* src, size_t num);

@@ -53,12 +53,14 @@ void TYPE##VecInsert(TYPE##Vector* v, size_t i, TYPE val) \
 { \
     if(i > v->size) \
 	return; \
-    TYPE##VecPushBack(v, val); \
-    if(i == v->size) \
-	return; \
-    for(size_t it = v->size - 2; it >= i; it--) \
-	v->buf[it + 1] = v->buf[i]; \
+    if(v->size + 1 == v->capacity) \
+    { \
+    	v->capacity *= 1.5; \
+	v->buf = realloc(v->buf, sizeof(TYPE) * v->capacity); \
+    } \
+    memmove(&v->buf[i + 1], &v->buf[i], sizeof(TYPE) * (v->size - i)); \
     v->buf[i] = val; \
+    v->size++; \
 } \
 \
 TYPE TYPE##VecRemove(TYPE##Vector* v, size_t i) \
@@ -69,7 +71,8 @@ TYPE TYPE##VecRemove(TYPE##Vector* v, size_t i) \
 	memset(&empty, 0, sizeof(TYPE)); \
 	return empty; \
     } \
+    TYPE val = v->buf[i]; \
+    memmove(&v->buf[i], &v->buf[i + 1], sizeof(TYPE) * (v->size - i)); \
     v->size--; \
-    for(size_t it = i; it < v->size; it++) \
-	v->buf[it] = v->buf[it + 1]; \
+    return val; \
 }

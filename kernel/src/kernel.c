@@ -125,6 +125,17 @@ void printList(intList* l)
 	printf("%i\n", it->data);
 }
 
+void printVector(intVector* vec)
+{
+	for(size_t i = 0; i < vec->size; i++)
+	{
+	    printf("%-4i ", vec->buf[i]);
+	    if(i % 10 == 9)
+		puts("");
+	}
+	puts("");
+}
+
 void kernel_main()
 {
 	enterMode12H();
@@ -134,19 +145,18 @@ void kernel_main()
 	initMM();
 	initFPU();
 	//Begin test
+	puts("");
 	intVector vec;
 	intVecInit(&vec);
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 5; i++)
 	    intVecPushBack(&vec, i);
-	puts("");
-	puts("");
-	for(int i = 0; i < vec.size; i++)
-	{
-	    printf("%4i ", vec.buf[i]);
-	    if(i % 16 == 15)
-		puts("");
-	}
-	puts("");
+	printVector(&vec);
+	intVecInsert(&vec, 0, 66);
+	printVector(&vec);
+	intVecRemove(&vec, 2);
+	intVecRemove(&vec, 2);
+	intVecRemove(&vec, 0);
+	printVector(&vec);
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts
