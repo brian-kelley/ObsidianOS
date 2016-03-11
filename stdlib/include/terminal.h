@@ -5,6 +5,8 @@
 #include "globalDefines.h"
 #include "video.h"
 #include "input.h"
+#include "fatdrv.h"
+#include "stdio.h"
 
 #define TERM_W 80
 #define TERM_H 30
@@ -20,5 +22,7 @@ void parseCommand(char* start);	//Command parser needs to know which row in buff
 void clearTerminal(byte commandMode);	//commandMode: 1 if should draw cursor/prompt after clear, 0 otherwise
 const char* readString();	        //read in string from stdin buffer
 void resetTermCursor();
+void ls(const char* args);              //integrated ls/dir command
+void cd(const char* args);              //integrated cd command
 
 #endif

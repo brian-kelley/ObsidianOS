@@ -31,8 +31,8 @@ void initFatDriver()
     if(fatInfo.numFats != 2)
     {
         //TODO: Handle >2 fats if there is ever a use case for that
-        printString("\nError: FAT16 driver requires exactly 2 FATs.\n");
-        while(1);
+        printString("\nError: The FAT16 driver requires exactly 2 FATs.\n");
+        while(1);   //hang the system
     }
     fatInfo.maxRootEntries = *((word*) &sectorBuf[17]);
     fatInfo.totalSectors = *((word*) &sectorBuf[19]);
@@ -763,11 +763,16 @@ bool createEntry(DirEntry* parent, DirEntry* newFile)
     EntrySlot* slot;
     if(!findFreeSlot(parent, &slot))
     {
-        //alloc new cluster for parent, insert at beginning of chain
+        //alloc new cluster for parent, add to end of chain
         dword iter = parent->firstCluster;
         while(true)
         {
             dword next = logicalFatBuf[iter];
         }
     }
+}
+
+int getMaxRootEntries()
+{
+    return fatInfo.maxRootEntries;
 }

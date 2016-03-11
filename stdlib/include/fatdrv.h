@@ -43,6 +43,7 @@ void setPermission(DirEntry* entry, byte flags);  //set the FAT16 attribute flag
 qword getFreeSpace();
 int numFilesInEntry(DirEntry* dir);  //get number of entries in dir
 int numFilesInDir(const char* path);
+int getMaxRootEntries();
 DirEntry getRootDirEntry(int index); //get info about the nth root directory entry
 bool walkPath(DirEntry* result, const char* path);
 bool findFile(DirEntry* result, DirEntry* dir, const char* name, bool allowDir);
