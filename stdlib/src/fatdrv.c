@@ -81,7 +81,6 @@ bool createFile(const char* path, bool dir)
     copy[plen] = 0;
     const char* delim = "/";
     char* tok = strtok((char*) copy, delim);
-    char* dir = tok;
     byte sec[512];
     DirEntry iter;
     DirEntry check;
@@ -103,7 +102,7 @@ bool createFile(const char* path, bool dir)
         {
             for(int i = 0; i < 512; i += 32)
             {
-                *check = *((DirEntry*) &sec[i]);
+                check = *((DirEntry*) &sec[i]);
                 if(entryExists(&iter) && memcmp(&check.filename, shortName, 11) == 0)
                 {
                     //match!
@@ -711,7 +710,7 @@ void compressRoot()
 dword getNextSector(dword prevSec)
 {
     dword offset = prevSec - dataStart;
-    if(offset % fatInfo.spc < fatInfo.spc - 1)
+    if(offset % fatInfo.spc < (dword) fatInfo.spc - 1)
         return prevSec + 1;	  //next sector in same cluster
     dword cluster = (prevSec - dataStart) / fatInfo.spc;
     dword nextCluster = logicalFatBuf[cluster - 2];
@@ -724,7 +723,7 @@ bool load83Name(char* shortName, const char* longName)
 {
     //Check if valid filename
     size_t longLen = strlen(longName);
-    char* dot = strrchr(longName, '.');
+    const char* dot = strrchr(longName, '.');
     size_t stemLen = longLen - (dot - longName);
     //If > 3 chars after '.', assume '.' is part of the stem
     if(dot == NULL || longLen - stemLen > 3)
@@ -739,7 +738,7 @@ bool load83Name(char* shortName, const char* longName)
     if(stemLen > 8)
         return false;
     size_t extLen = longLen - 1 - stemLen;
-    memcpy(shortName, longLen, stemLen);
+    memcpy(shortName, longName, stemLen);
     memset(shortName + stemLen, ' ', 8 - stemLen);
     memcpy(shortName + 8, dot + 1, extLen);
     memset(shortName + 8 + extLen, ' ', 3 - extLen);
@@ -748,16 +747,17 @@ bool load83Name(char* shortName, const char* longName)
 
 bool createEntry(DirEntry* parent, DirEntry* newFile)
 {
-    EntrySlot* slot;
+    EntrySlot slot;
     if(!findFreeSlot(parent, &slot))
     {
         //alloc new cluster for parent, add to end of chain
         dword iter = parent->firstCluster;
         while(true)
         {
-            dword next = logicalFatBuf[iter];
+            //dword next = logicalFatBuf[iter];
         }
     }
+    return true;
 }
 
 int getMaxRootEntries()
