@@ -123,19 +123,7 @@ bool createFile(const char* path, bool dir)
         //end of directory, target was not found, create it
         if(!match)
         {
-            EntrySlot newSlot;
-            DirEntry newEntry;
-            //First check if a slot is available
-            if(!findFreeSlot(&iter, &newEntry))
-            {
-                //add a new cluster to directory
-                dword last = iter.firstCluster;
-                while(last < 0xFFF8)
-                    last = logicalFatBuf[]
-            }
-            size_t newEntrySector = dataStart + (newSlot.cluster - 2) * fatInfo.spc + newSlot.sector;
-            readsector(newEntrySector, sec);
-            memcpy(&sec[32 * newSlot.index], )
+            
         }
     }
     return true;
