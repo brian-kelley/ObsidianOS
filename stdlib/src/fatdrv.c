@@ -74,61 +74,69 @@ bool createFile(const char* path, bool dir)
     size_t plen = strlen(path);
     if(plen > 511)
     {
-	puts("Error creating directory: path too long.");
-	return false;
+        puts("Error creating directory: path too long.");
+        return false;
     }
-    strcpy(copy, path);
-    const char* delim = "/\\";
+    memcpy(copy, path, plen);
+    copy[plen] = 0;
+    const char* delim = "/";
     char* tok = strtok((char*) copy, delim);
     char* dir = tok;
     byte sec[512];
     DirEntry iter;
-    while(true)
+    DirEntry check;
+    while(true)                 //iterates over tokens in the path
     {
-	if(tok == NULL)
-	    break;
-	if(!isValidFilename(tok))
-	{
-	    puts("Invalid filename!");
-	    return false;
-	}
-	//break token into 8.3 filename
-	char shortName[11];
-	char* dot = strrchr(tok, '.');
-	if(dot)
-	{
-	    char* it = tok;
-	    for(int i = 0; i < 8; i++)
-	    {
-		if(it < dot)
-		{
-		    shortName[i] = *it;
-		    it++;
-		}
-		else
-		    shortName[i] = ' ';
-	    }
-	//Determine if <iter>/<next> exists
-	{
-	    dword secNum = dataStart + (iter.firstCluster - 2) * fatInfo.spc;
-	    readsector(secNum, sec);
-	    do
-	    {
-		for(int i = 0; i < 512; i += 32)
-		{
-		    *iter = *((DirEntry*) &sec[i]);
-		    if(entryExists(&iter) && 
-		}
-		secNum = getNextSector(secNum);
-		if(secNum == 0)
-	        {
-		    //end of directory
-		}
-		else
-		{
-	    }
-	    while(true);
-	}
+        if(tok == NULL)
+            break;
+        char shortName[11];
+        if(!load83Name(shortName, tok))
+        {
+            puts("Invalid filename!");
+            return false;
+        }
+        //Determine if <iter>/<next> exists
+        dword secNum = dataStart + (iter.firstCluster - 2) * fatInfo.spc;
+        readsector(secNum, sec);
+        bool match = false;
+        do
+        {
+            for(int i = 0; i < 512; i += 32)
+            {
+                *check = *((DirEntry*) &sec[i]);
+                if(entryExists(&iter) && memcmp(&check.filename, shortName, 11) == 0)
+                {
+                    //match!
+                    iter = check;
+                    match = true;
+                    break;
+                }
+            }
+            if(match)
+                break;
+            secNum = getNextSector(secNum);
+            if(secNum == 0)
+                break;
+            readsector(secNum, sec);
+        }
+        while(true);
+        //end of directory, target was not found, create it
+        if(!match)
+        {
+            EntrySlot newSlot;
+            DirEntry newEntry;
+            //First check if a slot is available
+            if(!findFreeSlot(&iter, &newEntry))
+            {
+                //add a new cluster to directory
+                dword last = iter.firstCluster;
+                while(last < 0xFFF8)
+                    last = logicalFatBuf[]
+            }
+            size_t newEntrySector = dataStart + (newSlot.cluster - 2) * fatInfo.spc + newSlot.sector;
+            readsector(newEntrySector, sec);
+            memcpy(&sec[32 * newSlot.index], )
+        }
     }
     return true;
 }
@@ -246,18 +254,14 @@ void reallocChain(word first, size_t newSize)
     {
         //allocate new clusters
         for(int i = 0; i < newClusters - curClusters; i++)
-        {
             iter = allocCluster(iter, false);
-        }
     }
     else
     {
         //free clusters
         iter = first;
         for(word i = 0; i < curClusters - newClusters - 1; i++)
-        {
             iter = logicalFatBuf[iter - 2];
-        }
         //iter holds new last cluster
         word temp = logicalFatBuf[iter - 2];
         logicalFatBuf[iter - 2] = 0xFFFF;
@@ -720,18 +724,50 @@ dword getNextSector(dword prevSec)
 {
     dword offset = prevSec - dataStart;
     if(offset % fatInfo.spc < fatInfo.spc - 1)
-	return prevSec + 1;	  //next sector in same cluster
+        return prevSec + 1;	  //next sector in same cluster
     dword cluster = (prevSec - dataStart) / fatInfo.spc;
     dword nextCluster = logicalFatBuf[cluster - 2];
     if(nextCluster >= 0xFFF8)
-	return 0;		  //end of file
+        return 0;		  //end of file
     return nextCluster * fatInfo.spc;
 }
 
 bool load83Name(char* shortName, const char* longName)
 {
-    if(!isValidFilename(longName))
-	return false;
-    
+    //Check if valid filename
+    size_t longLen = strlen(longName);
+    char* dot = strrchr(longName, '.');
+    size_t stemLen = longLen - (dot - longName);
+    //If > 3 chars after '.', assume '.' is part of the stem
+    if(dot == NULL || longLen - stemLen > 3)
+    {
+        if(longLen > 8)
+            return false;
+        memcpy(shortName, longName, longLen);
+        memset(shortName + longLen, ' ', 11 - longLen);
+        return true;
+    }
+    //Otherwise, assume '.' is between stem and ext
+    if(stemLen > 8)
+        return false;
+    size_t extLen = longLen - 1 - stemLen;
+    memcpy(shortName, longLen, stemLen);
+    memset(shortName + stemLen, ' ', 8 - stemLen);
+    memcpy(shortName + 8, dot + 1, extLen);
+    memset(shortName + 8 + extLen, ' ', 3 - extLen);
     return true;
+}
+
+bool createEntry(DirEntry* parent, DirEntry* newFile)
+{
+    EntrySlot* slot;
+    if(!findFreeSlot(parent, &slot))
+    {
+        //alloc new cluster for parent, insert at beginning of chain
+        dword iter = parent->firstCluster;
+        while(true)
+        {
+            dword next = logicalFatBuf[iter];
+        }
+    }
 }

@@ -533,13 +533,13 @@ static int printPointer(void* ptr, FILE* f, PrintFlags* pf)
     //32 bit integer in hex is always 8 digits
     str[0] = '0';
     if(pf->uppercase)
-	str[1] = 'X';
+        str[1] = 'X';
     else
-	str[1] = 'x';
+        str[1] = 'x';
     for(int i = 0; i < 8; i++)
     {
-	str[9 - i] = hexToChar(val & mask, pf->uppercase);
-	val >>= 4;
+        str[9 - i] = hexToChar(val & mask, pf->uppercase);
+        val >>= 4;
     }
     str[10] = 0;
     return paddedString(str, f, pf->ljust, ' ', pf->width);
@@ -568,7 +568,7 @@ char* tmpnam(char* str)
 int fclose(FILE* stream)
 {
     if(!stream)
-	return EOF;
+        return EOF;
     int success = fflush(stream);
     //TODO: Remove this file entry from fileList
     //fileListIter it = 
@@ -662,16 +662,16 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
         {
             byteToStream(*iter, stream);
             charsPrinted++;
-	    iter++;
+            iter++;
         }
         else
         {
             iter++;
             if(*iter == '%')
-	    {
+            {
                 byteToStream(*iter, stream);
-		iter++;
-	    }
+                iter++;
+            }
             else
             {
                 //this moves iter to the end of the item
@@ -862,9 +862,9 @@ size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
     {
         for(int j = 0; j < (int) count; j++)
         {
-	    //TODO
-	    //TODO
-	    //TODO
+            //TODO
+            //TODO
+            //TODO
         }
     }
     return numRead;
@@ -920,7 +920,7 @@ int ferror(FILE* stream)
 static PrintFlags parseFlags(char* fmt, char** callerIter)
 {
     if(*fmt == '%')
-	fmt++;
+        fmt++;
     PrintFlags pf = getDefaultFlags();
     //get a char* pointing to the last char of the flags (type specifier)
     const char* terminals = "diuoxXfFeEgGaAcspn";
@@ -969,7 +969,7 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             pf.spaceForSign = true;
         if(*iter == '#')
             pf.pound = true;
-	if(*iter == '.')
+        if(*iter == '.')
             pastDecimal = true;
         if(*iter == '0' && !pastDecimal)
             pf.zeroPad = true;
@@ -977,26 +977,26 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
             pf.deferredWidth = true;
         if(*iter == '*' && pastDecimal)
             pf.deferredPrec = true;
-	//Check for numerical argument for width or precision
-	//Width can't start with 0 but precision can
-	//If past '.', any numerical characters interpreted as precision
+        //Check for numerical argument for width or precision
+        //Width can't start with 0 but precision can
+        //If past '.', any numerical characters interpreted as precision
         if(strchr((char*) digits, *iter) && (*iter != '0' || pastDecimal))
         {
             if(!pastDecimal)
             {
                 //parse width number
-		pf.width = 0;
+                pf.width = 0;
                 while(strchr((char*) digits, *iter))
                 {
                     pf.width *= 10;
                     pf.width += charToDec(*iter);
                     iter++;
                 }
-	    }
+            }
             else
             {
                 //parse precision number
-		pf.precision = 0;
+                pf.precision = 0;
                 while(strchr((char*) digits, *iter))
                 {
                     pf.precision *= 10;
@@ -1004,16 +1004,16 @@ static PrintFlags parseFlags(char* fmt, char** callerIter)
                     iter++;
                 }
             }
-	    iter--;
+            iter--;
         }
-	iter++;
+        iter++;
     }
     //now end points to the type character
     pf.uppercase = isupper(*end);
     char typeKey = tolower(*end);
     pf.numPrinted = *end == 'n';
     //if(pf.customWidth || pf.customPrecision)
-	//printf("Width: %i Prec: %i\n", pf.width, pf.precision);
+    //printf("Width: %i Prec: %i\n", pf.width, pf.precision);
     switch(sizeSpec)
     {
         case Z:

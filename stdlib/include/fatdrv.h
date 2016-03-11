@@ -64,6 +64,8 @@ void compressDir(DirEntry* dir);
 bool findFreeSlot(DirEntry* dir, EntrySlot* result);
 dword getNextSector(dword prevSec);         //next sector in file, or 0 if at end
 bool load83Name(char* shortName, const char* longName);
+void loadDirEntryDefaults(DirEntry* dir);
+bool createEntry(DirEntry* parent, DirEntry* newFile);  //NULL parent means root; can only fail if disk full
 
 int fileSecond(const char* name);
 int fileMinute(const char* name);
