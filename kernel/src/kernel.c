@@ -144,6 +144,8 @@ void kernel_main()
 	initTerminal();
 	initMM();
 	initFPU();
+	ataInit();
+	initFatDriver();
 	//Begin test
 	
 	//End test

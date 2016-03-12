@@ -337,7 +337,7 @@ static int printHex(unsigned long long int num, FILE* f, PrintFlags* pf)
     char pad = ' ';
     if(!pf->ljust && pf->zeroPad)
         pad = '0';
-    return paddedString(buf, f, pf->ljust, pad, pf->width);
+    return paddedStringSignExtend(buf, f, pf->ljust, pad, pf->width);
 }
 
 static int printCstring(const char* str, FILE* f, PrintFlags* pf)
@@ -1149,6 +1149,14 @@ static int paddedStringSignExtend(const char* str, FILE* f, bool ljust, char pad
         num++;
         newString++;
         width--;
+    }
+    else if(!ljust && pad == '0' && (str[0] == '0' && tolower(str[1]) == 'x'))
+    {
+	byteToStream('0', f);
+	byteToStream(str[1], f);
+	num += 2;
+	newString += 2;
+	width -= 2;
     }
     return num + paddedString(newString, f, ljust, pad, width);
 }

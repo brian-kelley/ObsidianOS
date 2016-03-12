@@ -306,9 +306,9 @@ void ls(const char* args)
 {
     //TODO: store the "working directory" and list files in there
     //TODO: cache some portion of the filesystem tree for ls/cd speed
-    puts("I'm in ls!");
     /* TEMPORARY TEST VERSION */
     //iterate through root directory entries and print populated ones
+    printf("max %i entries in root\n", getMaxRootEntries());
     for(int i = 0; i < getMaxRootEntries(); i++)
     {
         DirEntry ent = getRootDirEntry(i);

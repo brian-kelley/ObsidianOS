@@ -45,6 +45,10 @@ void initFatDriver()
         printString("\nError: Disk formatted with sector size other than 512 bytes.\n");
         while(1); //halt, leave that message on the screen
     }
+    puts("first 32 bytes of BPB:\n");
+    for(int i = 0; i < 32; i++)
+	printf("%02hhx ", sectorBuf[i]);
+    puts("");
     fat1 = 1; //first sector after boot sector
     fat2 = fat1 + fatInfo.sectorsPerFat;
     rootStart = fat2 + fatInfo.sectorsPerFat;
@@ -751,7 +755,7 @@ bool createEntry(DirEntry* parent, DirEntry* newFile)
     if(!findFreeSlot(parent, &slot))
     {
         //alloc new cluster for parent, add to end of chain
-        dword iter = parent->firstCluster;
+        //dword iter = parent->firstCluster;
         while(true)
         {
             //dword next = logicalFatBuf[iter];
