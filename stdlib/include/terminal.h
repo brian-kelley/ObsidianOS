@@ -24,5 +24,6 @@ const char* readString();	        //read in string from stdin buffer
 void resetTermCursor();
 void ls(const char* args);              //integrated ls/dir command
 void cd(const char* args);              //integrated cd command
+void hexdump(void* data, size_t size);
 
 #endif

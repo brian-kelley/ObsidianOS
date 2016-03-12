@@ -8,7 +8,8 @@ static struct
     word maxRootEntries;
     dword totalSectors;
     word sectorsPerFat;
-    dword hiddenSectors; //use as offset for all sector values (seems to be 0)
+    dword hiddenSectors; //first sector of partition
+    dword reserved;      //# of reserved sectors between BPB and 1st FAT
 } fatInfo;
 
 static dword fat1;  //first sector of first FAT
@@ -26,6 +27,7 @@ void initFatDriver()
     readsector(0, sectorBuf);
     fatInfo.sectorSize = *((word*) &sectorBuf[11]);
     fatInfo.spc = sectorBuf[13];
+    fatInfo.reserved = *((word*) &sectorBuf[14]);
     fatInfo.numFats = sectorBuf[16];
     doubleFat = fatInfo.numFats == 2;
     if(fatInfo.numFats != 2)
@@ -45,13 +47,17 @@ void initFatDriver()
         printString("\nError: Disk formatted with sector size other than 512 bytes.\n");
         while(1); //halt, leave that message on the screen
     }
-    puts("first 32 bytes of BPB:\n");
-    for(int i = 0; i < 32; i++)
-	printf("%02hhx ", sectorBuf[i]);
-    puts("");
-    fat1 = 1; //first sector after boot sector
+    printf("%i hidden sectors\n", fatInfo.hiddenSectors);
+    printf("%i reserved sectors\n", fatInfo.reserved);
+    fat1 = fatInfo.reserved; //first sector after boot sector
     fat2 = fat1 + fatInfo.sectorsPerFat;
     rootStart = fat2 + fatInfo.sectorsPerFat;
+    int offset = rootStart * 512;
+    printf("root starts at byte %#x\n", offset);
+    printf("fat1 starts at %i\n", fat1);
+    printf("fat2 starts at %i\n", fat2);
+    printf("????root entries start at sector %i\n", rootStart);
+    printf("clusters start at %i\n", dataStart);
     dataStart = rootStart + fatInfo.maxRootEntries * 32 / 512;
     numClusters = (fatInfo.totalSectors - dataStart) / fatInfo.spc;
     logicalFatBuf = (word*) malloc(2 * numClusters);

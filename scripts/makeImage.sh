@@ -11,6 +11,7 @@ sudo grub-install --root-directory=/mnt --no-floppy --modules="normal part_msdos
 	#copy grub os list and kernel to disk's boot directory
 sudo cp isodir/boot/grub/grub.cfg /mnt/boot/grub
 sudo cp isodir/boot/goldos.bin /mnt/boot
+sudo cp isodir/test.txt /mnt
 sudo umount /dev/loop1
 sudo losetup -d /dev/loop1
 sudo losetup -d /dev/loop0

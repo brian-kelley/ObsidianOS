@@ -246,14 +246,12 @@ void parseCommand(char* start)
     }
     memcpy(cmd, start, commandLen);
     cmd[commandLen] = 0;
-    printf("In parseCommand, have command of %i chars!", commandLen);
     //Stop drawing the cursor while the command is running
     //Figure out exactly where the command starts
     //commandLen gives the number of characters in command string, so (commandLen + promptLen) / TERM_W gives the number of complete lines in command
     //that means that command starts in the buffer at x = promptLen, y = cursorY - (commandLen + promptLen) / TERM_W
     //Rows stored contiguously.
     //When Enter is pressed, parseCommand is the first thing the terminal does so that cursor position preserved
-    printf("command: \"%s\"\n", cmd);
     if(strcmp("ls", cmd) == 0)
         ls(NULL);
     else if(strcmp("cd", cmd) == 0)
@@ -314,31 +312,62 @@ void ls(const char* args)
         DirEntry ent = getRootDirEntry(i);
 	byte indicator = ent.filename[0];
         if(indicator == 0)
-            break;
+	    break;
         else if(indicator == 0xE5 || indicator == 0x05)
             continue;
         char name[13];
         name[8] = '.';
         name[12] = 0;
-        memcpy(name, &ent.filename, 8);
-        memcpy(name + 9, &ent.fileExt, 3);
-        printf("%s ", name);
-        byte attrib = ent.attributes;
-        if(attrib & 1)
-            putchar('R');
-        if(attrib & 2)
-            putchar('H');
+	byte attrib = ent.attributes;
+        memcpy(name, &ent.filename[0], 8);
+        memcpy(name + 9, &ent.fileExt[0], 3);
+	for(char* iter = (char*) &ent; iter < ((char*) &ent) + sizeof(DirEntry); iter++)
+	{
+	    if('!' <= *iter && *iter <= '~')
+		putchar(*iter);
+	    else
+		putchar('.');
+	}
+	/*
+	printf("\"%s\" ", name);
+	if(attrib & 1)
+	    putchar('R');
+	if(attrib & 2)
+	    putchar('H');
         if(attrib & 4)
             putchar('S');
-        if(attrib & 8)
+	if(attrib & 8)
             printString("(volume label)");
         if(attrib & 16)
             putchar('D');
-        puts("");
+	*/
+	puts("");
     }
 }
 
 void cd(const char* args)
 {
     
+}
+
+void hexdump(void* data, size_t num)
+{
+    byte* arr = data;
+    char str[17];
+    str[16] = 0;
+    for(size_t i = 0; i < num; i++)
+    {
+	printf("%02hhx ", arr[i]);
+	if('!' <= arr[i] && arr[i] <= '~')
+	    str[i % 16] = arr[i];
+	else
+	    str[i % 16] = '.';
+	if(i % 16 == 15)
+	    printf("%23s\n", str);
+	else if(i == num - 1)
+	{
+	    str[i % 16 + 1] = 0;
+	    printf("%*s\n", 23 + 2 * (15 - i % 16), str);
+	}
+    }
 }

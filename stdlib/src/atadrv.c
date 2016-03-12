@@ -2,6 +2,8 @@
 
 static dword partitionStart; //first sector of partition
 
+extern int printf(const char* fmt, ...);
+
 int ataInit()
 {
     //select master drive
