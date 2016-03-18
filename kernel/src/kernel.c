@@ -13,6 +13,8 @@
 #include "list.h"
 #include "vector.h"
 
+extern void demo();
+
 DEFINE_LIST(int)
 DEFINE_VECTOR(int)
 
@@ -136,35 +138,6 @@ void printVector(intVector* vec)
 	puts("");
 }
 
-void demo()
-{
-    puts("");
-    double theta = 0;
-    double omega = 0.2; //added to theta each line
-    double amplitude = 40;
-    int h, left, right;
-    while(true)
-    {
-	h = cos(theta) * amplitude;
-	theta += omega;
-	if(theta > 2 * PI)
-	    theta -= 2 * PI;
-	left = 40 - h;
-	right = 40;
-	if(left > right)
-	{
-	    right = left;
-	    left = 40;
-	}
-	for(int i = 0; i < left; i++)
-	    putchar(' ');
-	for(int i = left; i < right; i++)
-	    putchar('-');
-	for(int i = right; i < 80; i++)
-	    putchar(' ');
-    }
-}
-
 void kernel_main()
 {
 	enterMode12H();
@@ -176,12 +149,6 @@ void kernel_main()
 	ataInit();
 	initFatDriver();
 	//Begin test
-	demo();
-	/*
-	byte buf[512];
-	readsector(65, buf);
-	hexdump(buf, 150);
-	*/
 	//End test
 	resetTermCursor();
 	while(1);   //Kernel setup done, everything else triggered by interrupts

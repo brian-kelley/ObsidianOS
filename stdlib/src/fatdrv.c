@@ -89,12 +89,18 @@ bool createFile(const char* path, bool dir)
     }
     memcpy(copy, path, plen);
     copy[plen] = 0;
+    int numElem = 1;
+    for(char* iter = copy; *iter; iter++)
+    {
+        if(*iter == '/')
+            numElem++;
+    }
     const char* delim = "/";
     char* tok = strtok((char*) copy, delim);
     byte sec[512];
     DirEntry iter;
     DirEntry check;
-    while(true)                 //iterates over tokens in the path
+    for(int i = 0; i < numElem; i++)
     {
         if(tok == NULL)
             break;

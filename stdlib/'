@@ -1,0 +1,43 @@
+#include "cppstring.h"
+
+#define MINCAP 16               //min capacity, depends on malloc 
+
+static void resize(string* s, size_t newCap)
+{
+    if(newCap <= MINCAP)
+        return;
+    c_str = realloc(c_str, newCap);
+}
+
+string emptyStr()
+{
+    string s;
+    s.size = 0;
+    s.cap = MINCAP;
+    s.c_str = malloc(s.cap);
+    s.c_str[0] = 0;
+    return s;
+}
+
+string initStr(const char* c)
+{
+    string s;
+    size_t len = strlen(c);
+    s.cap = len + 1;
+    if(s.cap < MINCAP)
+        s.cap = MINCAP;
+    s.c_str = malloc(s.cap);
+    memcpy(s.c_str, c, s.cap);
+    s.size = len;
+    return s;
+}
+
+void disposeStr(string* s)
+{
+    free(s.c_str);
+}
+
+void concatStr(string* dst, string* src)
+{
+    
+}

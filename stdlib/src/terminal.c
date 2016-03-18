@@ -3,6 +3,8 @@
 #define STDIN_BUF_SIZE 512
 #define COMMAND_MAX 2000
 
+extern void demo();
+
 static char buffer[TERM_H][TERM_W];
 static char stdinBuf[STDIN_BUF_SIZE];      //linear buffer of cstrings that are typed in
 static int cursorX = 0;
@@ -16,6 +18,7 @@ static byte bgColor = 0x0;	//background
 static const int TAB_WIDTH = 4;
 static int commandLen;		//number of chars in command being typed
 static byte stdinWait = 0;	//true if inputting stdin string from libc, false if in shell
+static volatile byte runningDemo = 0;
 
 void initTerminal()
 {
@@ -30,9 +33,13 @@ void initTerminal()
 
 void terminalKeyListener(byte scancode)
 {
-    if(ctrlPressed || altPressed)
-        return;
+    runningDemo = false;
     Scancode code = (Scancode) scancode;
+    if(code == KEY_C && ctrlPressed)
+    {
+	runningDemo = false;
+	return;
+    }
     switch(code)
     {
         case KEY_ENTER:
@@ -128,78 +135,94 @@ void printChar(char ch)
     switch(ch)
     {
         case '\0':
-        return;
+	{
+	    return;
+	}
         case '\t':	//tab
-        //round X up to a TAB_WIDTH-column boundary
-        if(cursorX % TAB_WIDTH == 0)
-            cursorX += TAB_WIDTH;
-        else
-            cursorX = (1 + (cursorX / TAB_WIDTH)) * TAB_WIDTH;
-        //put cursor at start of next line if past end of line
-        if(cursorX >= TERM_W)
-        {
-            cursorX = 0;
-            cursorY++;
-            if(cursorY == TERM_H)
-            {
-                cursorY--;
-                shiftUp();
-            }
-        }
-        break;
+	{
+	    //round X up to a TAB_WIDTH-column boundary
+	    if(cursorX % TAB_WIDTH == 0)
+		cursorX += TAB_WIDTH;
+	    else
+		cursorX = (1 + (cursorX / TAB_WIDTH)) * TAB_WIDTH;
+	    //put cursor at start of next line if past end of line
+	    if(cursorX >= TERM_W)
+	    {
+		cursorX = 0;
+		cursorY++;
+		if(cursorY == TERM_H)
+                {
+	            cursorY--;
+	            shiftUp();
+	        }
+	    }
+	    break;
+	}
         case '\n':	//newline
-        cursorX = 0;
-        cursorY++;
-        if(cursorY == TERM_H)
-        {
-            cursorY--;
-            shiftUp();
-        }
-        break;
+	{
+	    cursorX = 0;
+	    cursorY++;
+	    if(cursorY == TERM_H)
+	    {
+		cursorY--;
+		shiftUp();
+	    }
+	    break;
+	}
         case '\b': //backspace
-        if(cursorX > 0)
-        {
-            buffer[cursorY][cursorX] = ' ';
-            drawChar(' ', cursorX, cursorY, fgColor, bgColor);
-            cursorX--;
-        }
-        break;
+	{
+	    if(cursorX > 0)
+	    {
+		buffer[cursorY][cursorX] = ' ';
+		drawChar(' ', cursorX, cursorY, fgColor, bgColor);
+		cursorX--;
+	    }
+	    break;
+	}
         case '\r':	//Carriage return, go back to start of line
-        cursorX = 0;
-        break;
+	{
+	    cursorX = 0;
+	    break;
+	}
         case '\f':	//Form feed
-        clearScreen(0);
-        break;
+	{
+	    clearScreen(0);
+            break;
+	}
         case ' ':
-        cursorX++;
-        if(cursorX == TERM_W)
-        {
-            cursorX = 0;
-            cursorY++;
+	{
+	    cursorX++;
+	    if(cursorX == TERM_W)
+	    {
+		cursorX = 0;
+		cursorY++;
+	    }
             if(cursorY == TERM_H)
             {
                 cursorY--;
                 shiftUp();
             }
+	    break;
         }
-        break;
         default:
-        //if character is not drawable, return
-        if(ch < '!' || ch > '~')
-            return;
-        drawChar(ch, cursorX, cursorY, fgColor, bgColor);
-        buffer[cursorY][cursorX] = ch;
-        cursorX++;
-        if(cursorX == TERM_W)
-        {
-            cursorX = 0;
-            cursorY++;
-            if(cursorY == TERM_H)
-            {
-                cursorY--;
-                shiftUp();
-            }
-        }
+	{
+	    //if character is not drawable, return
+	    if(ch < '!' || ch > '~')
+		return;
+	    drawChar(ch, cursorX, cursorY, fgColor, bgColor);
+	    buffer[cursorY][cursorX] = ch;
+	    cursorX++;
+	    if(cursorX == TERM_W)
+	    {
+		cursorX = 0;
+		cursorY++;
+		if(cursorY == TERM_H)
+		{
+		    cursorY--;
+		    shiftUp();
+		}
+	    }
+	}
     }
 }
 
@@ -258,6 +281,11 @@ void parseCommand(char* start)
         cd(NULL);
     else if(strcmp("clear", cmd) == 0)
 	clearTerminal(1);
+    else if(strcmp("demo", cmd) == 0)
+    {
+	runningDemo = true;
+	demo();
+    }
     /* DO THE COMMAND */
 }
 
@@ -369,5 +397,35 @@ void hexdump(void* data, size_t num)
 	    str[i % 16 + 1] = 0;
 	    printf("%*s\n", 23 + 2 * (15 - i % 16), str);
 	}
+    }
+}
+
+void demo()
+{
+    puts("");
+    double theta = 0;
+    double omega = 0.2; //added to theta each line
+    double amplitude = 40;
+    int h, left, right;
+    //a Ctrl+C interrupt will jump out of loop
+    for(int j = 0; j < 200; j++)
+    {
+	h = cos(theta) * amplitude;
+	theta += omega;
+	if(theta > 2 * PI)
+	    theta -= 2 * PI;
+	left = 40 - h;
+	right = 40;
+	if(left > right)
+	{
+	    right = left;
+	    left = 40;
+	}
+	for(int i = 0; i < left; i++)
+	    putchar(' ');
+	for(int i = left; i < right; i++)
+	    putchar('-');
+	for(int i = right; i < 80; i++)
+	    putchar(' ');
     }
 }
