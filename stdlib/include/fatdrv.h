@@ -67,6 +67,7 @@ dword getNextSector(dword prevSec);         //next sector in file, or 0 if at en
 bool load83Name(char* shortName, const char* longName);
 void loadDirEntryDefaults(DirEntry* dir);
 bool createEntry(DirEntry* parent, DirEntry* newFile);  //NULL parent means root; can only fail if disk full
+bool isLongNameEntry(DirEntry* entry);
 
 int fileSecond(const char* name);
 int fileMinute(const char* name);

@@ -20,6 +20,7 @@ static word* logicalFatBuf; //copy of FAT reflecting actual allocations etc.
 static word* actualFatBuf;  //copy of the FAT on disk
 static bool doubleFat;      //true if disk has 2 copies of fat, false if only one
 static word numClusters;    //actual number of clusters in data area
+static const char* invalidChars = ".\"*+,/:;<=>?\\[]|";
 
 void initFatDriver()
 {
@@ -138,7 +139,8 @@ bool createFile(const char* path, bool dir)
         //end of directory, target was not found, create it
         if(!match)
         {
-            
+            DirEntry newEntry;
+            memcpy(shortName, 11);
         }
     }
     return true;
@@ -198,7 +200,7 @@ word allocCluster(word last, bool first)
     if(dest == -1)
     {
         printString("\nError: Not enough disk space to complete operation.\n");
-        while(1);
+        return 0xFFFF;
     }
     logicalFatBuf[dest] = 0xFFFF;
     if(!first)
@@ -284,9 +286,7 @@ word allocChain(size_t size)
     word first = allocCluster(0, true);
     word iter = first;
     for(word i = 0; i < chainClusters - 1; i++)
-    {
         iter = allocCluster(iter, false);
-    }
     return first;
 }
 
@@ -467,7 +467,7 @@ bool writeClusterSec(word cluster, int n, Sector* sec)
 
 bool isValidFilename(const char* name)
 {
-    if(strpbrk((char*) name, ".\"*+,/:;<=>?\\[]|"))
+    if(strpbrk((char*) name, invalidChars); 
         return false;
     return true;
 }
@@ -737,27 +737,38 @@ dword getNextSector(dword prevSec)
 
 bool load83Name(char* shortName, const char* longName)
 {
-    //Check if valid filename
+    //check for illegal characters
+    if(!isValidFilename(longName))
+        return false;
     size_t longLen = strlen(longName);
-    const char* dot = strrchr(longName, '.');
+    const char* dot = strrchr(longName, '.'); //find rightmost dot for ext separator
     size_t stemLen = longLen - (dot - longName);
     //If > 3 chars after '.', assume '.' is part of the stem
     if(dot == NULL || longLen - stemLen > 3)
     {
+        //no extension; longName is only stem
         if(longLen > 8)
             return false;
-        memcpy(shortName, longName, longLen);
-        memset(shortName + longLen, ' ', 11 - longLen);
+        int i;
+        for(i = 0; i < longLen; i++)
+            shortName[i] = toupper(longName[i]);
+        for(; i < 11; i++)
+            shortName[i] = ' ';
         return true;
     }
     //Otherwise, assume '.' is between stem and ext
     if(stemLen > 8)
         return false;
     size_t extLen = longLen - 1 - stemLen;
-    memcpy(shortName, longName, stemLen);
-    memset(shortName + stemLen, ' ', 8 - stemLen);
-    memcpy(shortName + 8, dot + 1, extLen);
-    memset(shortName + 8 + extLen, ' ', 3 - extLen);
+    int i;
+    for(i = 0; i < stemLen; i++)
+        shortName[i] = toupper(longName[i]);
+    for(; i < 8; i++)
+        shortName[i] = ' ';
+    for(i = 0; i < extLen; i++)
+        shortName[8 + i] = toupper(*(dot + 1 + i));
+    for(; i < 3; i++)
+        shortName[8 + i] = ' ';
     return true;
 }
 
@@ -766,12 +777,19 @@ bool createEntry(DirEntry* parent, DirEntry* newFile)
     EntrySlot slot;
     if(!findFreeSlot(parent, &slot))
     {
-        //alloc new cluster for parent, add to end of chain
-        //dword iter = parent->firstCluster;
+        int newCluster = allocCluster(0, true);
+        int iter = logicalFatBuf[parent->firstCluster];
         while(true)
         {
-            //dword next = logicalFatBuf[iter];
+            int next = logicalFatBuf[iter];
+            if(next >= 0xFFF8)
+                break;
+            else
+                iter = next;
         }
+        logicalFatBuf[iter] = newCluster;
+        logicalFatBuf[newCluster] = 0xFFFF;
+        findFreeSlot(parent, &slot);
     }
     return true;
 }
@@ -779,4 +797,11 @@ bool createEntry(DirEntry* parent, DirEntry* newFile)
 int getMaxRootEntries()
 {
     return fatInfo.maxRootEntries;
+}
+
+bool isLongNameEntry(DirEntry* entry)
+{
+    byte mask = FA_DIRECTORY | FA_SYSTEM | FA_VOLUME_LABEL;
+    byte test = entry->attributes & mask;
+    return test == mask;
 }
