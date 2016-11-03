@@ -4,6 +4,8 @@ WARNINGS=-Wall -Wextra -Wshadow -Wno-unused-parameter -Wno-strict-aliasing
 OSNAME=goldos
 DESTIMAGE=../disk.img
 
+INCLUDE=-Istdlib/include -IDataStruct/include
+
 #K = kernel
 #S = stdlib
 #C = c language
@@ -28,17 +30,23 @@ SAO=$(SAS:.a=.o)
 SCO=$(SCS:.c=.o)
 SGO=$(SGS:.s=.o)
 
+DataStructSources=$(wildcard DataStruct/src/*.c)
+DataStructObjects=$(DataStructSources:.c=.o)
+
 all: kernel
 	sudo scripts/makeImage.sh
 	sudo qemu-system-i386 $(DESTIMAGE)
 
-kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
-	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lgcc
+kernel: libc libstruct $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
+	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lstruct -lgcc
 	mv $(OSNAME).bin isodir/boot
 	grub-mkrescue -o $(OSNAME).iso isodir
 	
 libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO) $(SINC)
 	ar rcs libc.a $(SAO) $(SCO) $(SGO)
+
+libstruct: $(DataStructObjects)
+	ar rcs libstruct.a $(DataStructObjects)
 
 clean:
 	rm -f stdlib/src/*.o
@@ -49,7 +57,7 @@ checkDiskUtils:
 	scripts/checkPrograms.sh
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARNINGS) -Istdlib/include $< -o $@ 
+	$(CC) $(CFLAGS) $(WARNINGS) $(INCLUDE) $< -o $@ 
 .a.o:
 	nasm -felf32 $< -o $@
 .s.o:

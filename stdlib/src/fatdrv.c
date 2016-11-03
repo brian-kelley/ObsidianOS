@@ -117,9 +117,9 @@ bool createFile(const char* path, bool dir)
         bool match = false;
         do
         {
-            for(int i = 0; i < 512; i += 32)
+            for(int j = 0; j < 512; j += 32)
             {
-                check = *((DirEntry*) &sec[i]);
+                check = *((DirEntry*) &sec[j]);
                 if(entryExists(&iter) && memcmp(&check.filename, shortName, 11) == 0)
                 {
                     //match!
@@ -140,7 +140,7 @@ bool createFile(const char* path, bool dir)
         if(!match)
         {
             DirEntry newEntry;
-            memcpy(shortName, 11);
+            //memcpy(shortName, 11);
         }
     }
     return true;
@@ -467,7 +467,7 @@ bool writeClusterSec(word cluster, int n, Sector* sec)
 
 bool isValidFilename(const char* name)
 {
-    if(strpbrk((char*) name, invalidChars); 
+    if(strpbrk((char*) name, invalidChars))
         return false;
     return true;
 }

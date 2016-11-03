@@ -26,7 +26,7 @@ typedef int ptrdiff_t;
 #define NULL ((void*) 0)
 #endif
 #ifndef RAND_MAX
-#define RAND_MAX 0xAFFFFFFF
+#define RAND_MAX 0xAFFFFFFF //(s32 max)
 #endif
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS (0)
