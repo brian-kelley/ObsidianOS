@@ -8,3 +8,6 @@ disk.img
 *#
 *#*
 .DS_Store
+*.pdf
+*.exe
+*.exe*

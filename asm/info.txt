@@ -1,0 +1,42 @@
+---------------------------*
+ ObsidianOS i386 Assembler
+---------------------------*
+32-bit protected mode
+Supports subset of 8086 and 80186 instruction sets
+Informal grammar:
+Lines can begin with whitespace
+  Can end with whitespace + comment
+  Always end with '\n' or EOF
+
+instruction  : <mnemonic> (operands)
+directive    : <directive> (<arg>)
+label        : <text>: 
+data declare : d[bwqt]: <stuff> (chars, string, numbers in dec, hex, bin)
+empty        :
+
+Directives:
+align  <n>            ; insert 0 bytes until aligned to n byte boundary
+global <symbol name>  ; mark symbol as global (TODO: put global symbols in ELF symbol table, now do nothing)
+org <address>      ; assume code is loaded at <address>
+incbin "file.bin"     ; copy file.bin here
+
+Instruction format:
+Prefix (1B or 0B), Opcode (1-3B), ModR/M: 2 bit Mod, 3 bit Reg/Opcode, 3 bit R/M, SIB: 2 bit scale, 3 bit index, 3 bit base, Displacement (1, 2 or 4B), Immediate (1, 2 or 4B)
+
+-------------------------------------------------------------------
+
+Current unsolved issues:
+-Single-pass approach, both input and output as byte streams
+  -have a 64-byte buffer to hold individual tokens (longest possible label)
+  -provide inputByte(char c) function to compiler, or standalone assembler
+  -standalone assembler main() just handles options and input file buffering for speed
+-retroactive label resolution:
+  -Need to resolve several types of label references: absolute (location), relative (8 and 32 bits)
+  -Whether relative offset fits in 8 bits is not known until labels are resolved, and displacements can be added together
+  -Displacement size can change opcode and instruction size, messing up later locations
+  -Current instruction total size needed to compute relative jumps (they are relative to end of jump instruction)
+  -Don't want many seek-writes, or especially shifting of file contents in-place (very slow)
+SOLUTIONS
+  -Use 8-bit displacement for jumps to labels that have already been defined
+  -Use 32-bit if labels not yet defined, so that later resolution works (just seek backward, read, add 32-bit int, write, seek forward)
+

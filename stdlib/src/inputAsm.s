@@ -13,3 +13,4 @@ loadIDT:
 keyboardInterrupt:
 	call keyboardHandler
 	iret
+

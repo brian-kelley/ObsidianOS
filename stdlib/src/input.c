@@ -43,14 +43,16 @@ byte capsLockOn = 0;
 //Reset the keyboard device
 int resetKeyboard()
 {
-	sendCommand:
-	while(readport(0x64) & 2);	    //Wait for input buffer to clear before writing command byte
-	writeport(0x60, 0xFF);			//Send reset command to keyboard device, NOT PS/2 controller
-	while((readport(0x64) & 1) == 0);	//Wait for bit 0 of status register to be set, then read response byte
-	byte result = readport(0x60);
-	if(result == 0xFE)
-		goto sendCommand;
-	else if(result == 0xFA)
+  byte result;
+  do
+  {
+    while(readport(0x64) & 2);	    //Wait for input buffer to clear before writing command byte
+    writeport(0x60, 0xFF);			//Send reset command to keyboard device, NOT PS/2 controller
+    while((readport(0x64) & 1) == 0);	//Wait for bit 0 of status register to be set, then read response byte
+    byte result = readport(0x60);
+  }
+	while(result == 0xFE);
+	if(result == 0xFA)
 	{
 		//Command acknowledged, wait for self-test results
 		while((readport(0x64) & 1) == 0);
@@ -223,3 +225,4 @@ char getASCII(byte scancode)
 			return charVals[scancode];
 	}
 }
+
