@@ -66,10 +66,11 @@ bool hasDigit(Opcode* opc);
 void getOpTypes(Opcode* opc, OUT int* op1, OUT int* op2);
 int getDigit(Opcode* opc);
 
-OperandSet getEmptyOperandSet();                        //get initialized OperandSet
-OperandSet parseOperands();                             //from end of mnemonic, parse operands into OperandSet
-bool opTypesEquivalent(int expected, int parsed);       //whether "parsed" OpType can be used in place of "expected"
-bool matchOperands(Opcode* opc, OperandSet* operands);  //return true if given operands match opcode
+OperandSet getEmptyOperandSet();                            //get initialized OperandSet
+OperandSet parseOperands();                                 //from end of mnemonic, parse operands into OperandSet
+bool opTypesEquivalent(int expected, int parsed);           //whether "parsed" OpType can be used in place of "expected"
+bool matchOperands(Opcode* opc, OperandSet* operands);      //return true if given operands match opcode
+int getInstructionSize(Opcode* opc, OperandSet* operands);  //get number of bytes to encode the instruction
 
 //Binary search tree implementation for labels
 LabelTree initTree();

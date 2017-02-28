@@ -11,3 +11,4 @@ disk.img
 *.pdf
 *.exe
 *.exe*
+*/*test.bin

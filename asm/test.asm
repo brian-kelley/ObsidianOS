@@ -4,4 +4,5 @@ and ebx, ebx ;here is another
 label:
 add eax, esp
 add eax, [ebp + 8]
+xor eax, [ecx + edx]
 

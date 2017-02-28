@@ -896,6 +896,54 @@ bool matchOperands(Opcode* opc, OperandSet* os)
          opTypesEquivalent(expectedType2, os->op2Type);
 }
 
+int getInstructionSize(Opcode* opc, OperandSet* operands)
+{
+  int size = 1;
+  if(opc->flags & HAS_EXPANSION_PREFIX)
+  {
+    size++;
+  }
+  if(operands->sizeOverride)
+  {
+    size++;
+  }
+  if(opc->flags & HAS_MODRM)
+  {
+    size++;
+    if(operands->indexReg != INVALID_REG)
+    {
+      //also need SIB
+      size++;
+    }
+  }
+  int op1Type, op2Type;
+  getOpTypes(opc, &op1Type, &op2Type);
+  if(op1Type == MEM_ABSOLUTE || op2Type == MEM_ABSOLUTE)
+  {
+    //note: oasm won't support address-size override
+    size += 4;
+  }
+  if(op1Type == REG_MEM || op1Type == REG_MEM_8 || op2Type == REG_MEM || op2Type == REG_MEM_8)
+  {
+    if(operands->disp || operands->dispLabel)
+    {
+      size += 4;
+    }
+  }
+  if(op1Type == IMM || op2Type == IMM)
+  {
+    if(operands->sizeOverride)
+      size += 2;
+    else
+      size += 4;
+  }
+  if(op1Type == IMM_8 || op2Type == IMM_8)
+  {
+    size++;
+  }
+  return size;
+}
+
 void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT LabelNode** dispLabel)
 {
   puts("Parsing mem.");
@@ -1004,10 +1052,16 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
         //base or non-scaled index reg
         if(*base == INVALID_REG)
           *base = regID;
-        else if(*scale == INVALID_REG)
-          err("address expression can have at most one base and one index reg");
+        else if(*index == INVALID_REG)
+        {
+          *index = regID;
+          *scale = 1;
+        }
         else
-          *scale = regID;
+        {
+          printf("note: already have base %i and index %i\n", *base, *index);
+          err("address expression can have at most one base and one index reg");
+        }
       }
     }
     else
@@ -1151,6 +1205,7 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
     switch(scale)
     {
       case 1:
+        puts("Have scale = 1, scale field = 0");
         scaleBits = 0;
         break;
       case 2:
@@ -1165,7 +1220,7 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
       default:
         errInternal(__LINE__);
     }
-    *sib = (scale << 6) | (base << 3) | index;
+    *sib = (scaleBits << 6) | (base << 3) | index;
   }
   else
   {
@@ -1207,24 +1262,33 @@ void parseInstruction(char* mneSource, size_t mneLen)
     }
   }
   if(!m)
+  {
     err("unknown mnemonic or label without :");
+  }
   iter += strlen(mne);
   OperandSet os = parseOperands();
+  //need to check for code offset (rel8/rel32) values in place of imm
   int instructionBytes = 0;               //Running total of bytes written for this instruction so far
   //now use the operand types and sizes to look up opcode
   Opcode* opc = NULL;
+  int bestSize = 100;
   for(int i = m->opcodeOffset; i < m->opcodeOffset + m->numOpcodes; i++)
   {
     Opcode* iter = &opcodeTable[i];
     if(matchOperands(iter, &os))
     {
-      opc = iter;
-      break;
+      int iterSize = getInstructionSize(iter, &os);
+      if(iterSize < bestSize)
+      {
+        opc = iter;
+        bestSize = iterSize;
+        break;
+      }
     }
   }
   if(opc == NULL)
   {
-    err("no matching opcode for operand combination");
+    err("no opcode for given operands");
   }
   //emit instruction
   //first, opcode
@@ -1287,10 +1351,15 @@ void parseInstruction(char* mneSource, size_t mneLen)
       //add label reference at current position
       labelAddReference(os.immLabel);
     }
-    if(os.op1Type == IMM)
+    if(os.op1Type == IMM || os.op2Type == IMM)
     {
       writeData(&os.imm, 4);
       instructionBytes += 4;
+    }
+    else if(os.op1Type == IMM_8 || os.op2Type == IMM_8)
+    {
+      writeData(&os.imm, 1);
+      instructionBytes++;
     }
   }
   location += instructionBytes;
@@ -1404,7 +1473,6 @@ void parseLine()
 
 void parse()
 {
-  iter = 0;
   while(iter < len)
   {
     parseLine();
@@ -1539,6 +1607,8 @@ int main(int argc, const char** argv)
   output = fopen(ofn, "w+");
   //input lines start at 1, to follow Vim convention
   lineno = 1;
+  location = 0;
+  iter = 0;
   parse();
   fclose(output);
   return 0;
