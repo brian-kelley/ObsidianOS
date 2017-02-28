@@ -1,8 +1,9 @@
 bits 32
-and eax, eax ;this is an and instruction
-and ebx, ebx ;here is another
-label:
-add eax, esp
-add eax, [ebp + 8]
-xor eax, [ecx + edx]
+mov eax, [myvar1]
+mov edx, [myvar2]
+; eax *= edx (signed)
+imul edx
+;Make some variables
+myvar1: dd 5
+myvar2: dd -2
 

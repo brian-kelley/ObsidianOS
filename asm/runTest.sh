@@ -2,4 +2,4 @@
 echo "ASSEMBLY:"
 cat test.asm
 echo "BINARY:"
-xxd test.bin
+./printbin.exe test.bin

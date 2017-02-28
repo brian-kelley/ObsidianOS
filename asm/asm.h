@@ -32,8 +32,8 @@ typedef struct
 
 typedef struct
 {
-  LabelNode* dispLabel;
-  LabelNode* immLabel;
+  char* dispLabel;
+  char* immLabel;
   int op1Type;          //an OperandType enum value
   int op2Type;
   int reg1;             //1st reg operand
@@ -81,6 +81,9 @@ LabelNode* treeInsert(LabelTree* lt, char* name);
 LabelNode* insertLabel(char* name);
 void labelAddReference(LabelNode* ln);
 
+bool validLabelFirstChar(char c);
+bool validLabelChar(char c);
+
 //get the 3-bit register ID (can be GP, FPU, segment or control)
 int getRegID(char* name, OUT int* regType);
 
@@ -109,7 +112,7 @@ void parseDB();
 void parseDW();
 void parseDD();
 //parse a memory expression
-void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT LabelNode** dispLabel);
+void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT char** dispLabel);
 //construct modR/M byte
 void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, int base, int index, int scale, bool haveDisp, int digit, OUT int* modrm, OUT int* sib);
 //validate and rearrange base/index if necessary, e.g. [esp] or [ebp]

@@ -71,9 +71,10 @@ LabelNode* treeSearch(LabelTree* lt, char* name)
 
 LabelNode* treeInsert(LabelTree* lt, char* name)
 {
-  //no matter what, need space for insertion 
+  //no matter what, need space for an insertion 
   if(lt->nnodes == lt->ncap)
   {
+    puts("***** Reallocating lt nodes!");
     //multiply capacity by 1.5
     int newCap = lt->ncap + (lt->ncap >> 1);
     lt->nodes = realloc(lt->nodes, newCap * sizeof(LabelNode));
@@ -86,10 +87,10 @@ LabelNode* treeInsert(LabelTree* lt, char* name)
   n.nrefs = 0;
   n.ncap = 10;
   n.loc = -1;
+  //new node has no children
   n.l = -1;
   n.r = -1;
   //if tree is empty, create first node
-  LabelNode* insertPos = NULL;
   if(lt->nnodes != 0)
   {
     //search tree for node (get nearest name)
@@ -130,20 +131,18 @@ LabelNode* treeInsert(LabelTree* lt, char* name)
     }
     //add node at end of node list
   }
-  memcpy(&lt->nodes[lt->nnodes], &n, sizeof(LabelNode));
-  insertPos = &lt->nodes[lt->nnodes];
-  lt->nnodes++;
-  return insertPos;
+  lt->nodes[lt->nnodes] = n;
+  return lt->nodes + lt->nnodes++;
 }
 
 bool validLabelFirstChar(char c)
 {
-  return isalpha(c) || strchr("._?", c);
+  return isalpha(c) || (c && strchr("._?", c));
 }
 
 bool validLabelChar(char c)
 {
-  return isalpha(c) || isdigit(c) || strchr("._?$#@-", c);
+  return isalpha(c) || isdigit(c) || (c && strchr("._?$#@-", c));
 }
 
 //note: name is not null-terminated
@@ -151,23 +150,25 @@ bool validLabelChar(char c)
 //this means error checking must be done when labels are actually resolved
 LabelNode* insertLabel(char* name)
 {
-  int len = 0;
-  bool local = *name == '.';
+  int labelLen = 0;
   if(!validLabelFirstChar(*name))
   {
     err("invalid label first character");
   }
-  len++;
-  while(validLabelChar(name[len]))
+  bool local = *name == '.';
+  labelLen++;
+  while(validLabelChar(name[labelLen]))
   {
-    len++;
+    labelLen++;
+    if(labelLen >= 64)
+    {
+      err("label must be shorter than 64 characters");
+    }
   }
-  if(len > 64)
-    err("label must be shorter than 64 characters");
   //note: label not leaked, ownership transferred to localLabels or globalLabels
-  char* label = malloc(1 + len);
-  memcpy(label, name, len);
-  label[len] = 0;
+  char* label = malloc(1 + labelLen);
+  memcpy(label, name, labelLen);
+  label[labelLen] = 0;
   if(local)
     return treeInsert(&localLabels, label);
   else
@@ -309,16 +310,19 @@ int getRegSize(char* name)
 void writeData(void* ptr, int size)
 {
   fwrite(ptr, size, 1, output);
+  location += size;
 }
 
 void writeChar(char c)
 {
   fputc(c, output);
+  location++;
 }
 
 void writeByte(byte b)
 {
   fwrite(&b, 1, 1, output);
+  location++;
 }
 
 bool fitsU8(int val)
@@ -810,14 +814,18 @@ OperandSet parseOperands()
         else
         {
           //label providing immediate value
-          os.immLabel = insertLabel(&code[iter]);
-          iter += strlen(os.immLabel->name);
-          if(os.immLabel->loc >= 0)
+          LabelNode* ln = insertLabel(code + iter);
+          iter += strlen(os.immLabel);
+          if(ln->loc >= 0)
           {
             //already have imm label loc, don't need to use a reference
             //can possibly save 3 bytes this way, by using IMM_8
-            os.imm += os.immLabel->loc;
-            os.immLabel = NULL;
+            os.imm += ln->loc;
+          }
+          else
+          {
+            //will add ref later
+            os.immLabel = ln->name;
           }
           *nextOp = IMM;
         }
@@ -944,9 +952,8 @@ int getInstructionSize(Opcode* opc, OperandSet* operands)
   return size;
 }
 
-void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT LabelNode** dispLabel)
+void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT char** dispLabel)
 {
-  puts("Parsing mem.");
   //parse memory operand
   //code[iter] must be '['
   //iter will be advanced to index after closing ']'
@@ -992,7 +999,7 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
       {
         num += atoi(&code[iter]);
       }
-      while(code[iter] && (isdigit(code[iter])))
+      while(isdigit(code[iter]))
         iter++;
       eatWhitespace();
       if(code[iter] != '*')
@@ -1001,6 +1008,9 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
       }
       else
       {
+        //move past '*'
+        iter++;
+        eatWhitespace();
         //expect a scaled reg next
         regID = getRegID(&code[iter], &regType);
         while(isalpha(code[iter]))
@@ -1059,7 +1069,6 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
         }
         else
         {
-          printf("note: already have base %i and index %i\n", *base, *index);
           err("address expression can have at most one base and one index reg");
         }
       }
@@ -1069,12 +1078,12 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
       //displacement term from label
       if(*dispLabel)
         err("address expression can only use one label");
-      LabelNode* ln = insertLabel(&code[iter]);
+      LabelNode* ln = insertLabel(code + iter);
       iter += strlen(ln->name);
       if(ln->loc == -1)
       {
         //must resolve later
-        *dispLabel = ln;
+        *dispLabel = ln->name;
       }
       else
       {
@@ -1088,8 +1097,7 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
       iter++;
     }
   }
-  puts("Done parsing mem.");
-  printf("Have base = %i, index = %i, scale = %i, disp = %i, dispLabel = %p\n", *base, *index, *scale, *disp, *dispLabel);
+  //move past ']'
   iter++;
 }
 
@@ -1142,9 +1150,7 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
   {
     mod = MOD_MEM_D32;
   }
-  //First, try to arrange base/index/scale in legal way
-  //some arrangements not allowed but can be rearranged to be equivalent but valid
-  if(haveMem)
+  if(base != INVALID_REG || index != INVALID_REG)
   {
     arrangeMemRegs(mod, &base, &index, &scale);
   }
@@ -1220,7 +1226,14 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
       default:
         errInternal(__LINE__);
     }
-    *sib = (scaleBits << 6) | (base << 3) | index;
+    if(index == INVALID_REG)
+    {
+      *sib = (scaleBits << 6) | (0b100 << 3) | base;
+    }
+    else
+    {
+      *sib = (scaleBits << 6) | (index << 3) | base;
+    }
   }
   else
   {
@@ -1268,7 +1281,6 @@ void parseInstruction(char* mneSource, size_t mneLen)
   iter += strlen(mne);
   OperandSet os = parseOperands();
   //need to check for code offset (rel8/rel32) values in place of imm
-  int instructionBytes = 0;               //Running total of bytes written for this instruction so far
   //now use the operand types and sizes to look up opcode
   Opcode* opc = NULL;
   int bestSize = 100;
@@ -1295,7 +1307,6 @@ void parseInstruction(char* mneSource, size_t mneLen)
   if(opc->flags & HAS_EXPANSION_PREFIX)
   {
     writeByte(0x0F);
-    instructionBytes++;
   }
   byte opcode = opc->opcode;
   if(opc->flags & REG_IN_OPCODE)
@@ -1310,9 +1321,8 @@ void parseInstruction(char* mneSource, size_t mneLen)
     }
   }
   writeByte(opc->opcode);
-  instructionBytes++;
   //modrm/sib
-  bool haveMem = os.op1Type == REG_MEM || os.op1Type == REG_MEM_8 || os.op2Type == REG_MEM || os.op2Type == REG_MEM_8;
+  bool haveMem = os.op1Type == REG_MEM || os.op1Type == REG_MEM_8 || os.op2Type == REG_MEM || os.op2Type == REG_MEM_8 || os.disp || os.dispLabel;
   int digit = getDigit(opc);
   if(opc->flags & HAS_MODRM)
   {
@@ -1320,11 +1330,9 @@ void parseInstruction(char* mneSource, size_t mneLen)
     int modrm, sib;
     getModSIB(os.op1Type, os.op2Type, os.reg1, os.reg2, haveMem, os.baseReg, os.indexReg, os.scale, os.disp || os.dispLabel, digit, &modrm, &sib);
     writeByte(modrm);
-    instructionBytes++;
-    if(sib >= 0)
+    if(sib != -1)
     {
-      writeByte(sib);
-      instructionBytes++;
+      writeData(&sib, 1);
     }
   }
   //disp, if exists (currently always 32 bit)
@@ -1335,34 +1343,30 @@ void parseInstruction(char* mneSource, size_t mneLen)
       //add ref to label if used
       if(os.dispLabel)
       {
-        labelAddReference(os.dispLabel);
+        labelAddReference(insertLabel(os.dispLabel));
       }
       //have a disp, even if given constant is 0
       //note: this works fine for mov with moffs (absolute mem without modrm)
       writeData(&os.disp, 4);
-      instructionBytes += 4;
     }
   }
   //immediate, if used (currently can be 1 or 4 bytes, 2 is TODO for op-size override and 16-bit mode)
   if(os.imm || os.immLabel)
   {
-    if(os.immLabel)
-    {
-      //add label reference at current position
-      labelAddReference(os.immLabel);
-    }
     if(os.op1Type == IMM || os.op2Type == IMM)
     {
+      if(os.immLabel)
+      {
+        //add label reference at current location in output file
+        labelAddReference(insertLabel(os.immLabel));
+      }
       writeData(&os.imm, 4);
-      instructionBytes += 4;
     }
     else if(os.op1Type == IMM_8 || os.op2Type == IMM_8)
     {
       writeData(&os.imm, 1);
-      instructionBytes++;
     }
   }
-  location += instructionBytes;
 }
 
 void parseLine()
@@ -1452,6 +1456,13 @@ void parseLine()
     }
     if(idStart[idLen] == ':')
     {
+      if(*idStart != '.')
+      {
+        //a global label is being defined, purge local labels
+        resolveLabels(true);
+        destroyTree(&localLabels);
+        localLabels = initTree();
+      }
       //is a label; validate it and insert in correct tree if not already done
       LabelNode* label = insertLabel(idStart);
       bool local = label->name[0] == '.';
@@ -1460,7 +1471,7 @@ void parseLine()
         err("label redefined");
       //set the label's position to here
       label->loc = location;
-      //continue on same line
+      //continue on same line (past the label and the ':')
       iter += idLen + 1;
     }
     else
@@ -1473,10 +1484,14 @@ void parseLine()
 
 void parse()
 {
+  globalLabels = initTree();
+  localLabels = initTree();
   while(iter < len)
   {
     parseLine();
   }
+  //resolve global lables throughout program
+  resolveLabels(false);
 }
 
 bool hasDigit(Opcode* opc)
@@ -1508,7 +1523,7 @@ void resolveLabels(bool local)
       err("label undefined");
     }
     //iterate over all references and add their location to the existing 4-byte value there
-    for(int j = 0; j < lnode->nrefs; lnode++)
+    for(int j = 0; j < lnode->nrefs; j++)
     {
       int refLoc = lnode->refs[j];
       fseek(output, refLoc, SEEK_SET);
@@ -1526,7 +1541,6 @@ void resolveLabels(bool local)
 void err(const char* str)
 {
   printf("Error on line %lu: %s\n", lineno, str);
-  printf("note: wrote %lu bytes to output.\n", ftell(output));
   exit(1);
 }
 
