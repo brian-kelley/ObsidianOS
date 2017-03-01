@@ -858,6 +858,10 @@ OperandSet parseOperands()
     if(os.op2Type == REG_MEM)
       os.op2Type = REG_MEM_8;
   }
+  else if(opSizeHint == 16)
+  {
+    os.sizeOverride = true;
+  }
   if(!os.immLabel)
   {
     if((assumeSignedImm && -(1 << 7) <= os.imm && os.imm < (1 << 7)) ||
@@ -1234,12 +1238,10 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   //get rm field
   if(haveSIB)
   {
-    puts("rm set to 'have sib' value");
     rm = 0b100;
   }
   else if(mod == MOD_REG)
   {
-    puts("rm set to reg");
     if(op1Type == REG_MEM || op1Type == REG_MEM_8)
     {
       rm = os->reg1;
@@ -1251,18 +1253,15 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   }
   else if(mod == MOD_MEM && os->baseReg == INVALID_REG)
   {
-    puts("correctly found 'just disp' case for rm field");
     //just [disp]
     rm = 0b101;
   }
   else if(mod == MOD_MEM)
   { 
-    puts("rm set to 'have [reg]' addressing");
     rm = os->baseReg;
   }
   else if(mod == MOD_MEM_D32)
   {
-    puts("rm set to 'have [reg + disp]' addressing");
     rm = os->baseReg;
   }
   else
@@ -1303,7 +1302,6 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   {
     *sib = -1;
   }
-  printf("modrm= %x, sib = %x\n", *modrm, *sib);
 }
 
 void parseInstruction(char* mneSource, size_t mneLen)
