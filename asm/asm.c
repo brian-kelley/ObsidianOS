@@ -657,6 +657,7 @@ OperandSet getEmptyOperandSet()
   os.baseReg = INVALID_REG;
   os.indexReg = INVALID_REG;
   os.scale = 1;
+  os.imm = 0;
   os.disp = 0;
   os.hasMem = false;
   os.sizeOverride = false;
@@ -837,13 +838,11 @@ OperandSet parseOperands()
           {
             //already have imm label loc, don't need to use a reference
             //can possibly save 3 bytes this way, by using IMM_8
-            puts("Using already resolved label loc");
             os.imm += ln->loc;
           }
           else
           {
             //will add ref later
-            puts("will create label ref later");
             os.immLabel = ln->name;
           }
           iter += strlen(ln->name);
@@ -876,7 +875,6 @@ OperandSet parseOperands()
         os.op2Type = IMM_8;
     }
   }
-  printf("final imm: %i\n", os.imm);
   return os;
 }
 
@@ -1346,6 +1344,40 @@ void parseInstruction(char* mneSource, size_t mneLen)
   iter += strlen(mne);
   OperandSet os = parseOperands();
   //need to check for code offset (rel8/rel32) values in place of imm
+  //only applies to jXX, which conveniently are only instructions starting with j
+  if(mne[0] == 'j' || !strcmp(mne, "call"))
+  {
+    if(opTypesEquivalent(IMM, os.op1Type) || opTypesEquivalent(IMM, os.op2Type))
+    {
+      //jmp short, jmp near, or direct call
+      //will have code rel in imm field, so add the loc offset ahead of time
+      //also update op type depending on final size, important to do before opcode matching
+      //All "jXX short" instructions are 1 byte opcode + 1 byte rel, so "loc + 2" would be the rel base
+      //note: can only do this if imm already resolved, so check for immLabel
+      if(mne[0] == 'j' && !os.immLabel && fitsI8(os.imm - (location + 2)))
+      {
+        //jmp short
+        os.imm -= (location + 2);
+        if(fitsI8(os.imm))
+        {
+          if(os.op1Type == IMM)
+            os.op1Type = IMM_8;
+          else if(os.op2Type == IMM)
+            os.op2Type = IMM_8;
+        }
+      }
+      else if(mne[0] == 'j' && strcmp(mne, "jmp"))
+      {
+        //jXX near, not jmp, has expansion prefix
+        os.imm -= (location + 6);
+      }
+      else
+      {
+        //call
+        os.imm -= (location + 5);
+      }
+    }
+  }
   //now use the operand types and sizes to look up opcode
   Opcode* opc = NULL;
   int bestSize = 16;
@@ -1436,11 +1468,6 @@ void parseInstruction(char* mneSource, size_t mneLen)
         LabelNode* ln = insertLabel(os.immLabel);
         labelAddReference(ln);
       }
-      if(opc->flags & HAS_CODE_OFFSET)
-      {
-        //know that end of instruction is loc + 4
-        os.imm -= (location + 4);
-      }
       if(!os.immLabel && os.sizeOverride)
       {
         writeData(&os.imm, 2);
@@ -1459,10 +1486,6 @@ void parseInstruction(char* mneSource, size_t mneLen)
       if(os.immLabel)
       {
         err("8-bit imm values with labels not supported");
-      }
-      if(opc->flags & HAS_CODE_OFFSET)
-      {
-        os.imm -= (location + 1);
       }
       writeData(&os.imm, 1);
     }
