@@ -581,7 +581,7 @@ void parseDW()
       }
       else
       {
-        err("invalid word literal.");
+        err("invalid word literal");
       }
     }
     while(isdigit(code[iter]))
@@ -663,6 +663,9 @@ OperandSet parseOperands()
   //"byte", "word" or "dword" before mem (set to 8, 16 or 32 when encountered)
   //if have mem and this is still 0 at end of operands, get from context, otherwise error
   int opSizeHint = 0;
+  //If the user provides a hex imm val, treat it as unsigned (NASM's behavior)
+  //do not condense to 8 bits even if signed val fits
+  bool assumeSignedImm = true;
   //(32-bit mode only): whether operation is on 16-bit reg
   //parse operands until end of line, EOF or comment
   while(code[iter] != '\n' && code[iter] != 0 && code[iter] != ';')
@@ -707,6 +710,7 @@ OperandSet parseOperands()
       {
         err("invalid hex literal");
       }
+      assumeSignedImm = false;
       *nextOp = IMM;
       iter += 2;
       while(isxdigit(code[iter]))
@@ -716,7 +720,14 @@ OperandSet parseOperands()
     }
     else if(isdigit(code[iter]) || code[iter] == '-')
     {
-      sscanf(code + iter, "%i", &os.imm);
+      if(1 != sscanf(code + iter, "%i", &os.imm))
+      {
+        err("invalid imm val");
+      }
+      if(os.imm >= (1 << 7) && os.imm < (1 << 8))
+      {
+        assumeSignedImm = false;
+      }
       if(code[iter] == '-')
       {
         iter++;
@@ -838,13 +849,17 @@ OperandSet parseOperands()
     if(os.op2Type == REG_MEM)
       os.op2Type = REG_MEM_8;
   }
-  if(!os.immLabel && os.imm >= (1 << 7) && os.imm < (1 << 8))
+  if(!os.immLabel)
   {
-    //imm can fit in 8 bits
-    if(os.op1Type == IMM)
-      os.op1Type = IMM_8;
-    else if(os.op2Type == IMM)
-      os.op2Type = IMM_8;
+    if((assumeSignedImm && -(1 << 7) <= os.imm && os.imm < (1 << 7)) ||
+        (!assumeSignedImm && ((unsigned) os.imm) < (1 << 8)))
+    {
+      //imm can fit in 8 bits
+      if(os.op1Type == IMM)
+        os.op1Type = IMM_8;
+      else if(os.op2Type == IMM)
+        os.op2Type = IMM_8;
+    }
   }
   //all imm label references must be 32-bits, even if value could fit
   return os;
@@ -1111,7 +1126,7 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
     //can't have that base reg, substitude into index if possible
     if(*scale != 1 && *index != INVALID_REG)
     {
-      err("can't have esp/ebp + scaled index.");
+      err("can't have esp/ebp + scaled index");
     }
     else
     {
@@ -1321,12 +1336,12 @@ void parseInstruction(char* mneSource, size_t mneLen)
   }
   if(opc == NULL)
   {
-    printf("note: regs are %i, %i\n", os.reg1, os.reg2);
     err("no opcode for given operands");
   }
+  int op1Type, op2Type;
+  getOpTypes(opc, &op1Type, &op2Type);
   //emit instruction
-  //
-  //opcode (with prefixes)
+  //first, opcode prefixes
   if(opc->flags & HAS_EXPANSION_PREFIX)
   {
     writeByte(0x0F);
@@ -1335,6 +1350,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
   {
     writeByte(0x66);
   }
+  //opcode, possibly OR'd with a reg id
   byte opcode = opc->opcode;
   if(opc->flags & REG_IN_OPCODE)
   {
@@ -1380,7 +1396,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
   //immediate, if used (currently can be 1 or 4 bytes, 2 is TODO for op-size override and 16-bit mode)
   if(os.imm || os.immLabel)
   {
-    if(os.op1Type == IMM || os.op2Type == IMM)
+    if(op1Type == IMM || op2Type == IMM)
     {
       if(os.immLabel)
       {
@@ -1389,13 +1405,29 @@ void parseInstruction(char* mneSource, size_t mneLen)
       }
       if(opc->flags & HAS_CODE_OFFSET)
       {
+        puts("asdf");
         //know that end of instruction is loc + 4
         os.imm -= (location + 4);
       }
-      writeData(&os.imm, 4);
+      if(!os.immLabel && os.sizeOverride)
+      {
+        writeData(&os.imm, 2);
+      }
+      else if(!os.sizeOverride)
+      {
+        writeData(&os.imm, 4);
+      }
+      else
+      {
+        err("16-bit imm values with labels not supported");
+      }
     }
-    else if(os.op1Type == IMM_8 || os.op2Type == IMM_8)
+    else if(op1Type == IMM_8 || op2Type == IMM_8)
     {
+      if(os.immLabel)
+      {
+        err("8-bit imm values with labels not supported");
+      }
       writeData(&os.imm, 1);
     }
   }
@@ -1636,7 +1668,7 @@ int main(int argc, const char** argv)
   }
   if(!ifn)
   {
-    puts("Error: no input file given.");
+    puts("Error: no input file given");
     exit(1);
   }
   //get file length

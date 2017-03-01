@@ -42,7 +42,7 @@ typedef struct
   int indexReg;
   int scale;
   int disp;
-  unsigned imm;         //immediate value (always sign-extended if underlying is signed)
+  int imm;         //immediate value (always sign-extended if underlying is signed)
   bool hasMem;
   bool sizeOverride;    //whether operation is on 16-bit regs in 32-bit mode
 } OperandSet;
