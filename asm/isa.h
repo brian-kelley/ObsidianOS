@@ -483,7 +483,7 @@ Opcode opcodeTable[] =
   {0x8A, REG_8 | REG_MEM_8 << 4, HAS_MODRM},
   {0x8B, REG | REG_MEM << 4, HAS_MODRM},
   {0x8C, REG_MEM | SEGMENT_REG << 4, HAS_MODRM},
-  {0x8D, SEGMENT_REG | REG_MEM << 4, HAS_MODRM},
+  {0x8E, SEGMENT_REG | REG_MEM << 4, HAS_MODRM},
   {0xA0, REG_AL | MEM_ABSOLUTE << 4, 0},
   {0xA1, REG_AX | MEM_ABSOLUTE << 4, 0},
   {0xB0, REG_8 | IMM_8 << 4, REG_IN_OPCODE},

@@ -263,7 +263,7 @@ int getRegID(char* name, OUT int* regType)
       case 'g':
         return 5;
       default:
-        return 0xAF;
+        return INVALID_REG;
     }
   }
   if(name[0] == 'e')
@@ -812,6 +812,12 @@ OperandSet parseOperands()
           }
           else if(regType == SEGMENT)
           {
+            if(os.reg1 == INVALID_REG)
+              os.reg1 = regID;
+            else if(os.reg2 == INVALID_REG)
+              os.reg2 = regID;
+            else
+              err("more than two register operands provided");
             *nextOp = SEGMENT_REG;
           }
           else if(regType == CONTROL)
@@ -1189,12 +1195,12 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   //note: r/m is ALWAYS the first operand, unless there are 2 operands (then the 2nd reg is in /reg)
   //set reg field
   //is either a digit, REG/REG_8 id, or left undetermined
-  if(!haveMem && (op1Type == REG || op1Type == REG_8))
+  if(!haveMem && (op1Type == REG || op1Type == REG_8 || op1Type == SEGMENT_REG))
   {
     //2 reg operands, 2nd always goes in reg field
     reg = os->reg1;
   }
-  else if(!haveMem && (op2Type == REG || op2Type == REG_8))
+  else if(!haveMem && (op2Type == REG || op2Type == REG_8 || op2Type == SEGMENT_REG))
   {
     if(os->reg2 == INVALID_REG)
     {
