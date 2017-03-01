@@ -1346,7 +1346,6 @@ void parseInstruction(char* mneSource, size_t mneLen)
       {
         opc = iter;
         bestSize = iterSize;
-        break;
       }
     }
   }
@@ -1380,14 +1379,16 @@ void parseInstruction(char* mneSource, size_t mneLen)
   {
     if(os.reg1 != INVALID_REG)
     {
+      printf("or'ing opcode with reg1: %i\n", os.reg1);
       opcode |= os.reg1;
     }
-    if(os.reg2 != INVALID_REG)
+    else if(os.reg2 != INVALID_REG)
     {
+      printf("or'ing opcode with reg2: %i\n", os.reg2);
       opcode |= os.reg2;
     }
   }
-  writeByte(opc->opcode);
+  writeByte(opcode);
   //modrm/sib
   int digit = getDigit(opc);
   if(opc->flags & HAS_MODRM)
@@ -1413,7 +1414,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
       writeData(&os.disp, 4);
     }
   }
-  //immediate, if used (currently can be 1 or 4 bytes, 2 is TODO for op-size override and 16-bit mode)
+  //immediate, if used (currently can be 1 or 4 bytes, 2 is for op-size override and (TODO) 16-bit mode)
   if(os.imm || os.immLabel)
   {
     if(op1Type == IMM || op2Type == IMM)
