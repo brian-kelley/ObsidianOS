@@ -611,16 +611,16 @@ void parseDD()
   eatWhitespace();
   while(code[iter] != '\n' && code[iter] != ';' && code[iter] != 0)
   {
-    if(code[iter + 1]  == 'x' || code[iter + 1] == 'X')
+    if(code[iter] == '0' && code[iter + 1]  == 'x')
     {
-      iter += 2;
       unsigned val;
       if(1 != sscanf(code + iter, "%x", &val))
       {
         err("invalid dword hex literal");
       }
       writeData(&val, 4);
-      while(isxdigit(code[iter]) != ' ')
+      iter += 2;
+      while(isxdigit(code[iter]))
         iter++;
     }
     else
