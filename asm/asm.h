@@ -114,7 +114,7 @@ void parseDD();
 //parse a memory expression
 void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT char** dispLabel);
 //construct modR/M byte
-void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, int base, int index, int scale, bool haveDisp, int digit, OUT int* modrm, OUT int* sib);
+void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib);
 //validate and rearrange base/index if necessary, e.g. [esp] or [ebp]
 void arrangeMemRegs(int mod, int* base, int* index, int* scale);
 //parse a memory instruction

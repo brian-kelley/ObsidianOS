@@ -215,7 +215,10 @@ int getRegID(char* name, OUT int* regType)
     nameLen++;
   }
   if(nameLen < 2 || nameLen > 3)
+  {
+    //all regs have names that are 2 or 3 chars long
     return INVALID_REG;
+  }
   if(nameLen == 2 && name[1] == 'h')
   {
     *regType = GP8;
@@ -273,7 +276,7 @@ int getRegID(char* name, OUT int* regType)
   {
     *regType = GP16;
   }
-  int gp = getGPRegID(name[1]);
+  int gp = getGPRegID(name[0]);
   if(gp < 4)
   {
     return gp;
@@ -661,7 +664,6 @@ OperandSet parseOperands()
   //if have mem and this is still 0 at end of operands, get from context, otherwise error
   int opSizeHint = 0;
   //(32-bit mode only): whether operation is on 16-bit reg
-  bool regSizeOverride = false;
   //parse operands until end of line, EOF or comment
   while(code[iter] != '\n' && code[iter] != 0 && code[iter] != ';')
   {
@@ -770,15 +772,11 @@ OperandSet parseOperands()
             {
               if(bitsMode == BITS_32 && regType == GP16)
               {
-                regSizeOverride = true;
+                os.sizeOverride = true;
               }
               else if(bitsMode == BITS_16 && regType == GP32)
               {
                 err("can't use 32-bit regs in 16 bit mode");
-              }
-              else if(bitsMode == BITS_32 && regSizeOverride && regType == GP32)
-              {
-                err("can't mix 16 and 32 bit regs in single instruction");
               }
               if(regID == ID_AX)
                 *nextOp = REG_AX;
@@ -815,7 +813,6 @@ OperandSet parseOperands()
         {
           //label providing immediate value
           LabelNode* ln = insertLabel(code + iter);
-          iter += strlen(os.immLabel);
           if(ln->loc >= 0)
           {
             //already have imm label loc, don't need to use a reference
@@ -827,6 +824,7 @@ OperandSet parseOperands()
             //will add ref later
             os.immLabel = ln->name;
           }
+          iter += strlen(ln->name);
           *nextOp = IMM;
         }
       }
@@ -1135,45 +1133,58 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
 //sib is set to -1 if not used
 //
 //opType1 and opType2 are the parsed operand types
-void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, int base, int index, int scale, bool haveDisp, int digit, OUT int* modrm, OUT int* sib)
+void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
 {
+  int op1Type, op2Type;
+  getOpTypes(opc, &op1Type, &op2Type);
   //prepare each field separately, in the low bits of these ints (SHL into place + OR at the end)
   int mod = 0;        // 2 bits, shift left 6
   int reg = 0;        // 3 bits, shift left 3
   int rm = 0;         // 3 bits
   //can easily get mod (currently only 3 cases: 11b = 2nd reg arg, 10b = mem with disp 32, 00b = other
+  bool haveMem = os->op1Type == REG_MEM || os->op1Type == REG_MEM_8 || os->op2Type == REG_MEM || os->op2Type == REG_MEM_8;
   if(!haveMem)
   {
+    //rm field contains a second reg
     mod = MOD_REG;
   }
-  else if(haveDisp)
+  else if((os->disp || os->dispLabel) && os->baseReg != INVALID_REG)
   {
     mod = MOD_MEM_D32;
   }
-  if(base != INVALID_REG || index != INVALID_REG)
+  if(os->baseReg != INVALID_REG || os->indexReg != INVALID_REG)
   {
-    arrangeMemRegs(mod, &base, &index, &scale);
+    arrangeMemRegs(mod, &os->baseReg, &os->indexReg, &os->scale);
   }
   //sib required if:
   //  -have an index reg (with any scale)
   //  -base reg can't be a r/m base (applies to esp, and ebp for mod = 0)
-  bool haveSIB = haveMem && ((index != INVALID_REG) || (mod == MOD_REG && base == ID_BP));
+  bool haveSIB = haveMem && (os->indexReg != INVALID_REG || os->baseReg == ID_SP || (mod == MOD_REG && os->baseReg == ID_BP));
   //note: r/m is ALWAYS the first operand, unless there are 2 operands (then the 2nd reg is in /reg)
   //set reg field
-  if(regOp2 != INVALID_REG)
+  //is either a digit, REG/REG_8 id, or left undetermined
+  if(!haveMem && (op1Type == REG || op1Type == REG_8))
   {
     //2 reg operands, 2nd always goes in reg field
-    reg = regOp2;
+    reg = os->reg1;
   }
-  else if(digit != INVALID_REG)
+  else if(!haveMem && (op2Type == REG || op2Type == REG_8))
   {
-    //opcode requires a digit
-    reg = digit;
+    if(os->reg2 == INVALID_REG)
+    {
+      //2 regs, 2nd one is REG
+      reg = os->reg1;
+    }
+    else
+    {
+      //just 1 reg
+      reg = os->reg2;
+    }
   }
-  else if(haveMem && regOp1 != INVALID_REG)
+  else if(opc->flags & HAS_DIGIT)
   {
-    //2 operands, 1 reg and 1 mem, and reg goes in /reg
-    reg = regOp1;
+    //opcode requires a digit, get as bits 4-6 of opcode flags
+    reg = (opc->flags >> 4) & 0b111;
   }
   //get rm field
   if(haveSIB)
@@ -1182,23 +1193,34 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
   }
   else if(mod == MOD_REG)
   {
-    if(regOp1 != INVALID_REG)
+    if(op1Type == REG_MEM || op1Type == REG_MEM_8)
     {
-      rm = regOp1;
+      rm = os->reg1;
+    }
+    else if(op2Type == REG_MEM || op2Type == REG_MEM_8)
+    {
+      if(os->reg2 == INVALID_REG)
+      {
+        rm = os->reg1;
+      }
+      else
+      {
+        rm = os->reg2;
+      }
     }
   }
-  else if(mod == MOD_MEM && base == INVALID_REG)
+  else if(mod == MOD_MEM && os->baseReg == INVALID_REG)
   {
     //just [disp]
     rm = 0b101;
   }
   else if(mod == MOD_MEM)
   { 
-    rm = base;
+    rm = os->baseReg;
   }
   else if(mod == MOD_MEM_D32)
   {
-    rm = base;
+    rm = os->baseReg;
   }
   else
   {
@@ -1208,10 +1230,9 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
   if(haveSIB)
   {
     int scaleBits = 0;
-    switch(scale)
+    switch(os->scale)
     {
       case 1:
-        puts("Have scale = 1, scale field = 0");
         scaleBits = 0;
         break;
       case 2:
@@ -1226,13 +1247,13 @@ void getModSIB(int opType1, int opType2, int regOp1, int regOp2, bool haveMem, i
       default:
         errInternal(__LINE__);
     }
-    if(index == INVALID_REG)
+    if(os->indexReg == INVALID_REG)
     {
-      *sib = (scaleBits << 6) | (0b100 << 3) | base;
+      *sib = (scaleBits << 6) | (0b100 << 3) | os->baseReg;
     }
     else
     {
-      *sib = (scaleBits << 6) | (index << 3) | base;
+      *sib = (scaleBits << 6) | (os->indexReg << 3) | os->baseReg;
     }
   }
   else
@@ -1300,13 +1321,19 @@ void parseInstruction(char* mneSource, size_t mneLen)
   }
   if(opc == NULL)
   {
+    printf("note: regs are %i, %i\n", os.reg1, os.reg2);
     err("no opcode for given operands");
   }
   //emit instruction
-  //first, opcode
+  //
+  //opcode (with prefixes)
   if(opc->flags & HAS_EXPANSION_PREFIX)
   {
     writeByte(0x0F);
+  }
+  if(os.sizeOverride)
+  {
+    writeByte(0x66);
   }
   byte opcode = opc->opcode;
   if(opc->flags & REG_IN_OPCODE)
@@ -1328,7 +1355,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
   {
     //get the modrm and sib
     int modrm, sib;
-    getModSIB(os.op1Type, os.op2Type, os.reg1, os.reg2, haveMem, os.baseReg, os.indexReg, os.scale, os.disp || os.dispLabel, digit, &modrm, &sib);
+    getModSIB(opc, &os, &modrm, &sib);
     writeByte(modrm);
     if(sib != -1)
     {
@@ -1359,6 +1386,11 @@ void parseInstruction(char* mneSource, size_t mneLen)
       {
         //add label reference at current location in output file
         labelAddReference(insertLabel(os.immLabel));
+      }
+      if(opc->flags & HAS_CODE_OFFSET)
+      {
+        //know that end of instruction is loc + 4
+        os.imm -= (location + 4);
       }
       writeData(&os.imm, 4);
     }
@@ -1523,6 +1555,10 @@ void resolveLabels(bool local)
       err("label undefined");
     }
     //iterate over all references and add their location to the existing 4-byte value there
+    if(lnode->nrefs > 0)
+    {
+      printf("Resolving references to label \"%s\", with loc %#x\n", lnode->name, lnode->loc);
+    }
     for(int j = 0; j < lnode->nrefs; j++)
     {
       int refLoc = lnode->refs[j];
