@@ -1,3 +1,4 @@
 bits 32
-mov al, 255
+mov eax, [ebp + 4]
+mov [ebp + 4], eax
 

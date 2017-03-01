@@ -276,10 +276,17 @@ int getRegID(char* name, OUT int* regType)
   {
     *regType = GP16;
   }
-  int gp = getGPRegID(name[0]);
-  if(gp < 4)
+  if(name[1] == 'x')
   {
-    return gp;
+    int gp = getGPRegID(name[0]);
+    if(gp < 4)
+    {
+      return gp;
+    }
+    else
+    {
+      return INVALID_REG;
+    }
   }
   else if(name[1] == 'p')
   {
@@ -1074,9 +1081,13 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
       {
         //base or non-scaled index reg
         if(*base == INVALID_REG)
+        {
+          printf("Have base reg: %i\n", regID);
           *base = regID;
+        }
         else if(*index == INVALID_REG)
         {
+          printf("Have index reg (unscaled): %i\n", regID);
           *index = regID;
           *scale = 1;
         }

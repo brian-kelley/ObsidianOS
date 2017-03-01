@@ -269,7 +269,6 @@ Mnemonic mneTable[] =
   {"xor", 299, 9}
 };
 
-
 #define NUM_OPCODES (sizeof(opcodeTable) / sizeof(Opcode))
 Opcode opcodeTable[] =
 {
