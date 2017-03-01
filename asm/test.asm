@@ -1,2 +1,3 @@
 bits 32
-push ebp
+add eax, [ecx * 8 + ebp + 0x200]
+

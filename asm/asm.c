@@ -775,7 +775,7 @@ OperandSet parseOperands()
         {
           while(isalpha(code[iter]))
             iter++;
-          if(regType == GP8 || regType == GP16 || regType == GP32)
+          if(regType == GP8 || regType == GP16 || regType == GP32 || regType == SEGMENT)
           {
             if(regType == GP8)
             {
@@ -786,7 +786,7 @@ OperandSet parseOperands()
               else
                 *nextOp = REG_8;
             }
-            else
+            else if(regType == GP16 || regType == GP32)
             {
               if(bitsMode == BITS_32 && regType == GP16)
               {
@@ -803,22 +803,18 @@ OperandSet parseOperands()
               else
                 *nextOp = REG;
             }
-            if(os.reg1 == INVALID_REG)
+            else if(regType == SEGMENT)
+            {
+              *nextOp = SEGMENT_REG;
+            }
+            if(nextOp == &os.op1Type)
+            {
               os.reg1 = regID;
-            else if(os.reg2 == INVALID_REG)
+            }
+            else if(nextOp == &os.op2Type)
+            {
               os.reg2 = regID;
-            else
-              err("more than two register operands provided");
-          }
-          else if(regType == SEGMENT)
-          {
-            if(os.reg1 == INVALID_REG)
-              os.reg1 = regID;
-            else if(os.reg2 == INVALID_REG)
-              os.reg2 = regID;
-            else
-              err("more than two register operands provided");
-            *nextOp = SEGMENT_REG;
+            }
           }
           else if(regType == CONTROL)
           {
@@ -1011,29 +1007,56 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
     int regID;
     int regType;
     eatWhitespace();
-    if(isdigit(code[iter]) || code[iter] == '-')
+    bool nextDispNegative = false;
+    if(code[iter] == '-')
     {
-      int num = 0;
-      //signed numerical constant displacement
-      if(code[iter] == '-')
+      nextDispNegative = true;
+      iter++;
+      eatWhitespace();
+    }
+    if(code[iter] == '0' && code[iter + 1] == 'x')
+    {
+      //hex vals only used for disp
+      unsigned num;
+      if(1 != sscanf(code + iter, "%x", &num))
+      {
+        err("invalid hex disp");
+      }
+      if(num >> 31)
+      {
+        //bigger than INT_MAX
+        err("hex disp too big");
+      }
+      if(nextDispNegative)
+        *disp -= num;
+      else
+        *disp += num;
+      iter += 2;
+      while(isxdigit(code[iter]))
       {
         iter++;
-        eatWhitespace();
-        num -= atoi(&code[iter]);
       }
-      else
-      {
-        num += atoi(&code[iter]);
-      }
+    }
+    else if(isdigit(code[iter]))
+    {
+      //signed numerical constant displacement
+      int num = atoi(&code[iter]);
       while(isdigit(code[iter]))
         iter++;
       eatWhitespace();
       if(code[iter] != '*')
       {
-        *disp += num;
+        if(nextDispNegative)
+          *disp -= num;
+        else
+          *disp += num;
       }
       else
       {
+        if(nextDispNegative)
+        {
+          err("can't subtract scaled index");
+        }
         //move past '*'
         iter++;
         eatWhitespace();
@@ -1173,7 +1196,7 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   int reg = 0;        // 3 bits, shift left 3
   int rm = 0;         // 3 bits
   //can easily get mod (currently only 3 cases: 11b = 2nd reg arg, 10b = mem with disp 32, 00b = other
-  bool haveMem = os->op1Type == REG_MEM || os->op1Type == REG_MEM_8 || os->op2Type == REG_MEM || os->op2Type == REG_MEM_8;
+  bool haveMem = op1Type == REG_MEM || op1Type == REG_MEM_8 || op2Type == REG_MEM || op2Type == REG_MEM_8;
   if(!haveMem)
   {
     //rm field contains a second reg
@@ -1201,16 +1224,7 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   }
   else if(!haveMem && (op2Type == REG || op2Type == REG_8 || op2Type == SEGMENT_REG))
   {
-    if(os->reg2 == INVALID_REG)
-    {
-      //2 regs, 2nd one is REG
-      reg = os->reg1;
-    }
-    else
-    {
-      //just 1 reg
-      reg = os->reg2;
-    }
+    reg = os->reg2;
   }
   else if(opc->flags & HAS_DIGIT)
   {
@@ -1220,37 +1234,35 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   //get rm field
   if(haveSIB)
   {
+    puts("rm set to 'have sib' value");
     rm = 0b100;
   }
   else if(mod == MOD_REG)
   {
+    puts("rm set to reg");
     if(op1Type == REG_MEM || op1Type == REG_MEM_8)
     {
       rm = os->reg1;
     }
     else if(op2Type == REG_MEM || op2Type == REG_MEM_8)
     {
-      if(os->reg2 == INVALID_REG)
-      {
-        rm = os->reg1;
-      }
-      else
-      {
-        rm = os->reg2;
-      }
+      rm = os->reg2;
     }
   }
   else if(mod == MOD_MEM && os->baseReg == INVALID_REG)
   {
+    puts("correctly found 'just disp' case for rm field");
     //just [disp]
     rm = 0b101;
   }
   else if(mod == MOD_MEM)
   { 
+    puts("rm set to 'have [reg]' addressing");
     rm = os->baseReg;
   }
   else if(mod == MOD_MEM_D32)
   {
+    puts("rm set to 'have [reg + disp]' addressing");
     rm = os->baseReg;
   }
   else
@@ -1291,6 +1303,7 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   {
     *sib = -1;
   }
+  printf("modrm= %x, sib = %x\n", *modrm, *sib);
 }
 
 void parseInstruction(char* mneSource, size_t mneLen)
@@ -1335,7 +1348,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
   //need to check for code offset (rel8/rel32) values in place of imm
   //now use the operand types and sizes to look up opcode
   Opcode* opc = NULL;
-  int bestSize = 100;
+  int bestSize = 16;
   for(int i = m->opcodeOffset; i < m->opcodeOffset + m->numOpcodes; i++)
   {
     Opcode* iter = &opcodeTable[i];
@@ -1379,12 +1392,10 @@ void parseInstruction(char* mneSource, size_t mneLen)
   {
     if(os.reg1 != INVALID_REG)
     {
-      printf("or'ing opcode with reg1: %i\n", os.reg1);
       opcode |= os.reg1;
     }
     else if(os.reg2 != INVALID_REG)
     {
-      printf("or'ing opcode with reg2: %i\n", os.reg2);
       opcode |= os.reg2;
     }
   }
@@ -1605,6 +1616,7 @@ void resolveLabels(bool local)
     //label MUST be resolved at this point, is error if not
     if(lnode->loc == -1)
     {
+      printf("undefined label \"%s\"\n", lnode->name);
       err("label undefined");
     }
     //iterate over all references and add their location to the existing 4-byte value there

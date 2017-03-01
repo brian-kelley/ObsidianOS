@@ -36,8 +36,8 @@ typedef struct
   char* immLabel;
   int op1Type;          //an OperandType enum value
   int op2Type;
-  int reg1;             //1st reg operand
-  int reg2;             //2nd reg operand
+  int reg1;             //1st operand reg ID, or INVALID_REG
+  int reg2;             //2nd operand reg ID
   int baseReg;
   int indexReg;
   int scale;
