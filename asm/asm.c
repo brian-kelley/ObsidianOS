@@ -489,10 +489,9 @@ void parseDB()
     //do bounds checking, value > 255 or < -128 is an error
     while(code[iter] != '\n' && code[iter] != ';' && code[iter] != 0)
     {
-      if(code[iter + 1]  == 'x' || code[iter + 1] == 'X')
+      if(code[iter] == '0' && code[iter + 1]  == 'x')
       {
         unsigned val;
-        iter += 2;
         if(1 != sscanf(code + iter, "%x", &val))
         {
           err("invalid byte hex literal");
@@ -545,10 +544,10 @@ void parseDW()
   eatWhitespace();
   while(code[iter] != '\n' && code[iter] != ';' && code[iter] != 0)
   {
-    if(code[iter + 1]  == 'x' || code[iter + 1] == 'X')
+    if(code[iter] == '0' && code[iter + 1]  == 'x')
     {
       unsigned val;
-      if(1 != sscanf(code + iter + 2, "%x", &val))
+      if(1 != sscanf(code + iter, "%x", &val))
       {
         err("invalid hex word literal");
       }
@@ -557,6 +556,7 @@ void parseDW()
         err("word value bigger than u16 max");
       }
       writeData(&val, 2);
+      iter += 2;
       while(isxdigit(code[iter]))
         iter++;
       eatWhitespace();
