@@ -1088,12 +1088,10 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
         //base or non-scaled index reg
         if(*base == INVALID_REG)
         {
-          printf("Have base reg: %i\n", regID);
           *base = regID;
         }
         else if(*index == INVALID_REG)
         {
-          printf("Have index reg (unscaled): %i\n", regID);
           *index = regID;
           *scale = 1;
         }
@@ -1138,7 +1136,8 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
   //for MOD_MEM_D32 (mem with disp), can't have esp as modrm base
   //in both cases, must move the base to the SIB index
   if((mod == MOD_REG && (*base == ID_SP || *base == ID_BP)) ||
-      (mod == MOD_MEM_D32 && *base == ID_SP))
+      (mod == MOD_MEM_D32 && *base == ID_SP) ||
+      (*index == ID_SP))
   {
     //can't have that base reg, substitude into index if possible
     if(*scale != 1 && *index != INVALID_REG)
@@ -1357,6 +1356,14 @@ void parseInstruction(char* mneSource, size_t mneLen)
   }
   int op1Type, op2Type;
   getOpTypes(opc, &op1Type, &op2Type);
+  //get modrm and sib (if needed BEFORE emitting anything, to catch errors earlier)
+  bool haveMem = os.op1Type == REG_MEM || os.op1Type == REG_MEM_8 || os.op2Type == REG_MEM || os.op2Type == REG_MEM_8 || os.disp || os.dispLabel;
+  int modrm = -1;
+  int sib = -1;
+  if(opc->flags & HAS_MODRM)
+  {
+    getModSIB(opc, &os, &modrm, &sib);
+  }
   //emit instruction
   //first, opcode prefixes
   if(opc->flags & HAS_EXPANSION_PREFIX)
@@ -1382,17 +1389,13 @@ void parseInstruction(char* mneSource, size_t mneLen)
   }
   writeByte(opc->opcode);
   //modrm/sib
-  bool haveMem = os.op1Type == REG_MEM || os.op1Type == REG_MEM_8 || os.op2Type == REG_MEM || os.op2Type == REG_MEM_8 || os.disp || os.dispLabel;
   int digit = getDigit(opc);
   if(opc->flags & HAS_MODRM)
   {
-    //get the modrm and sib
-    int modrm, sib;
-    getModSIB(opc, &os, &modrm, &sib);
     writeByte(modrm);
     if(sib != -1)
     {
-      writeData(&sib, 1);
+      writeByte(sib);
     }
   }
   //disp, if exists (currently always 32 bit)
