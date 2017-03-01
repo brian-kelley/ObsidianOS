@@ -837,11 +837,13 @@ OperandSet parseOperands()
           {
             //already have imm label loc, don't need to use a reference
             //can possibly save 3 bytes this way, by using IMM_8
+            puts("Using already resolved label loc");
             os.imm += ln->loc;
           }
           else
           {
             //will add ref later
+            puts("will create label ref later");
             os.immLabel = ln->name;
           }
           iter += strlen(ln->name);
@@ -874,7 +876,7 @@ OperandSet parseOperands()
         os.op2Type = IMM_8;
     }
   }
-  //all imm label references must be 32-bits, even if value could fit
+  printf("final imm: %i\n", os.imm);
   return os;
 }
 
@@ -1424,18 +1426,18 @@ void parseInstruction(char* mneSource, size_t mneLen)
     }
   }
   //immediate, if used (currently can be 1 or 4 bytes, 2 is for op-size override and (TODO) 16-bit mode)
-  if(os.imm || os.immLabel)
+  if(op1Type == IMM_8 || op1Type == IMM || op2Type == IMM_8 || op2Type == IMM)
   {
     if(op1Type == IMM || op2Type == IMM)
     {
       if(os.immLabel)
       {
         //add label reference at current location in output file
-        labelAddReference(insertLabel(os.immLabel));
+        LabelNode* ln = insertLabel(os.immLabel);
+        labelAddReference(ln);
       }
       if(opc->flags & HAS_CODE_OFFSET)
       {
-        puts("asdf");
         //know that end of instruction is loc + 4
         os.imm -= (location + 4);
       }
@@ -1457,6 +1459,10 @@ void parseInstruction(char* mneSource, size_t mneLen)
       if(os.immLabel)
       {
         err("8-bit imm values with labels not supported");
+      }
+      if(opc->flags & HAS_CODE_OFFSET)
+      {
+        os.imm -= (location + 1);
       }
       writeData(&os.imm, 1);
     }
