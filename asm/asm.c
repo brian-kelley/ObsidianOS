@@ -1200,7 +1200,8 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   int reg = 0;        // 3 bits, shift left 3
   int rm = 0;         // 3 bits
   //can easily get mod (currently only 3 cases: 11b = 2nd reg arg, 10b = mem with disp 32, 00b = other
-  bool haveMem = op1Type == REG_MEM || op1Type == REG_MEM_8 || op2Type == REG_MEM || op2Type == REG_MEM_8;
+  //parseOperands sets op type to REG_MEM/REG_MEM_8 if memory encountered
+  bool haveMem = os->op1Type == REG_MEM || os->op1Type == REG_MEM_8 || os->op2Type == REG_MEM || os->op2Type == REG_MEM_8;
   if(!haveMem)
   {
     //rm field contains a second reg
@@ -1221,19 +1222,19 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   //note: r/m is ALWAYS the first operand, unless there are 2 operands (then the 2nd reg is in /reg)
   //set reg field
   //is either a digit, REG/REG_8 id, or left undetermined
-  if(!haveMem && (op1Type == REG || op1Type == REG_8 || op1Type == SEGMENT_REG))
+  if(opc->flags & HAS_DIGIT)
+  {
+    //opcode requires a digit, get as bits 4-6 of opcode flags
+    reg = (opc->flags >> 4) & 0b111;
+  }
+  else if(op1Type == REG || op1Type == REG_8 || op1Type == SEGMENT_REG)
   {
     //2 reg operands, 2nd always goes in reg field
     reg = os->reg1;
   }
-  else if(!haveMem && (op2Type == REG || op2Type == REG_8 || op2Type == SEGMENT_REG))
+  else if(op2Type == REG || op2Type == REG_8 || op2Type == SEGMENT_REG)
   {
     reg = os->reg2;
-  }
-  else if(opc->flags & HAS_DIGIT)
-  {
-    //opcode requires a digit, get as bits 4-6 of opcode flags
-    reg = (opc->flags >> 4) & 0b111;
   }
   //get rm field
   if(haveSIB)
@@ -1242,11 +1243,11 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   }
   else if(mod == MOD_REG)
   {
-    if(op1Type == REG_MEM || op1Type == REG_MEM_8)
+    if((op1Type == REG_MEM || op1Type == REG_MEM_8) && os->reg1 != INVALID_REG)
     {
       rm = os->reg1;
     }
-    else if(op2Type == REG_MEM || op2Type == REG_MEM_8)
+    else if((op2Type == REG_MEM || op2Type == REG_MEM_8) && os->reg2 != INVALID_REG)
     {
       rm = os->reg2;
     }
@@ -1345,7 +1346,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
   OperandSet os = parseOperands();
   //need to check for code offset (rel8/rel32) values in place of imm
   //only applies to jXX, which conveniently are only instructions starting with j
-  if(mne[0] == 'j' || !strcmp(mne, "call"))
+  if(mne[0] == 'j' || !strcmp(mne, "call") || !strncmp(mne, "loop", 4))
   {
     if(opTypesEquivalent(IMM, os.op1Type) || opTypesEquivalent(IMM, os.op2Type))
     {
@@ -1354,7 +1355,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
       //also update op type depending on final size, important to do before opcode matching
       //All "jXX short" instructions are 1 byte opcode + 1 byte rel, so "loc + 2" would be the rel base
       //note: can only do this if imm already resolved, so check for immLabel
-      if(mne[0] == 'j' && !os.immLabel && fitsI8(os.imm - (location + 2)))
+      if((mne[0] == 'j' || !strncmp(mne, "loop", 4)) && !os.immLabel && fitsI8(os.imm - (location + 2)))
       {
         //jmp short
         os.imm -= (location + 2);
@@ -1370,6 +1371,10 @@ void parseInstruction(char* mneSource, size_t mneLen)
       {
         //jXX near, not jmp, has expansion prefix
         os.imm -= (location + 6);
+      }
+      else if(!strncmp(mne, "loop", 4))
+      {
+        err("loop target out of range (rel8)");
       }
       else
       {
