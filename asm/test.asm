@@ -1,1 +1,1 @@
-shl sp, 5
+mov ax, [bp - 8]

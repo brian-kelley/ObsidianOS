@@ -1580,9 +1580,9 @@ void parseInstruction(char* mneSource, size_t mneLen)
       //have a disp, even if given constant is 0
       //note: this works fine for mov with moffs (absolute mem without modrm)
       if(bitsMode == BITS_16)
-        writeData(&os.disp, 4);
-      else
         writeData(&os.disp, 2);
+      else
+        writeData(&os.disp, 4);
     }
   }
   //immediate, if used (currently can be 1 or 4 bytes, 2 is for op-size override and (TODO) 16-bit mode)
