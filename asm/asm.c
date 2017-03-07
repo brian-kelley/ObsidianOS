@@ -1215,7 +1215,7 @@ byte getModRM(Opcode* opc, OperandSet* os)
   {
     reg = os->reg1;
   }
-  else if(op1Type == REG || op1Type == REG_8)
+  else if(op2Type == REG || op2Type == REG_8)
   {
     reg = os->reg2;
   }
