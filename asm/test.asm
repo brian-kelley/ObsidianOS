@@ -1,1 +1,1 @@
-mov ax, [bp - 8]
+times 10 push ax

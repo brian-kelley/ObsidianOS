@@ -859,7 +859,7 @@ OperandSet parseOperands()
     if(os.op2Type == REG_MEM)
       os.op2Type = REG_MEM_8;
   }
-  else if(opSizeHint == 16)
+  else if(bitsMode == BITS_32 && opSizeHint == 16)
   {
     os.sizeOverride = true;
   }
@@ -1163,7 +1163,7 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
   //for MOD_MEM_D32 (mem with disp), can't have esp as modrm base
   //in both cases, must move the base to the SIB index
   if((mod == MOD_REG && (*base == ID_SP || *base == ID_BP)) ||
-      (mod == MOD_MEM_D32 && *base == ID_SP) ||
+      ((mod == MOD_MEM_D32 || mod == MOD_MEM_D8) && *base == ID_SP) ||
       (*index == ID_SP))
   {
     //can't have that base reg, substitude into index if possible
@@ -1203,8 +1203,16 @@ byte getModRM(Opcode* opc, OperandSet* os)
   }
   else if((os->disp || os->dispLabel) && os->baseReg != INVALID_REG)
   {
-    //not actually 32 bits (16), but same thing
-    mod = MOD_MEM_D32;
+    //if disp known now and it fits in 8 bits
+    if(!os->dispLabel && fitsI8(os->disp))
+    {
+      mod = MOD_MEM_D8;
+    }
+    else
+    {
+      //not actually 32 bits (16), but same mod value
+      mod = MOD_MEM_D32;
+    }
   }
   //get reg
   if(opc->flags & HAS_DIGIT)
@@ -1326,7 +1334,14 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   }
   else if((os->disp || os->dispLabel) && os->baseReg != INVALID_REG)
   {
-    mod = MOD_MEM_D32;
+    if(!os->dispLabel && fitsI8(os->disp))
+    {
+      mod = MOD_MEM_D8;
+    }
+    else
+    {
+      mod = MOD_MEM_D32;
+    }
   }
   if(os->baseReg != INVALID_REG || os->indexReg != INVALID_REG)
   {
@@ -1574,12 +1589,10 @@ void parseInstruction(char* mneSource, size_t mneLen)
     {
       //add ref to label if used
       if(os.dispLabel)
-      {
         labelAddReference(insertLabel(os.dispLabel));
-      }
-      //have a disp, even if given constant is 0
-      //note: this works fine for mov with moffs (absolute mem without modrm)
-      if(bitsMode == BITS_16)
+      else if(fitsI8(os.disp))
+        writeData(&os.disp, 1);
+      else if(bitsMode == BITS_16)
         writeData(&os.disp, 2);
       else
         writeData(&os.disp, 4);
