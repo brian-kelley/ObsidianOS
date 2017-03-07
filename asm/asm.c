@@ -1187,6 +1187,123 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
   }
 }
 
+//get modR/M byte, for 16-bit mode
+//like getModSIB, TODO: support 8-bit disp
+byte getModRM(Opcode* opc, OperandSet* os)
+{
+  int mod = 0;
+  int reg = 0;
+  int rm = 0;
+  int op1Type, op2Type;
+  getOpTypes(opc, &op1Type, &op2Type);
+  bool haveMem = os->op1Type == REG_MEM || os->op1Type == REG_MEM_8 || os->op2Type == REG_MEM || os->op2Type == REG_MEM_8;
+  if(!haveMem)
+  {
+    mod = MOD_REG;
+  }
+  else if((os->disp || os->dispLabel) && os->baseReg != INVALID_REG)
+  {
+    //not actually 32 bits (16), but same thing
+    mod = MOD_MEM_D32;
+  }
+  //get reg
+  if(opc->flags & HAS_DIGIT)
+  {
+    reg = (opc->flags >> 4) & 0b111;
+  }
+  else if(op1Type == REG || op1Type == REG_8)
+  {
+    reg = os->reg1;
+  }
+  else if(op1Type == REG || op1Type == REG_8)
+  {
+    reg = os->reg2;
+  }
+  //get rm
+  if(mod == MOD_REG)
+  {
+    if(op1Type == REG_MEM || op1Type == REG_MEM_8)
+    {
+      rm = os->reg1;
+    }
+    else if(op2Type == REG_MEM || op2Type == REG_MEM_8)
+    {
+      rm = os->reg2;
+    }
+  }
+  else
+  {
+    if(os->scale != 1)
+    {
+      err("no address scaling allowed in 16-bit mode");
+    }
+    if(os->indexReg == ID_BX || os->indexReg == ID_BP ||
+        os->baseReg == ID_SI || os->baseReg == ID_DI)
+    {
+      int temp = os->indexReg;
+      os->indexReg = os->baseReg;
+      os->baseReg = temp;
+    }
+    //rm encodes the mem address regs
+    //choose one of the 8 possible values:
+    rm = INVALID_REG;
+    if(os->indexReg == ID_SI || os->indexReg == ID_DI || os->indexReg == INVALID_REG)
+    {
+      if(os->baseReg == ID_BX)
+      {
+        if(os->indexReg == ID_SI)
+        {
+          rm = 0;
+        }
+        else if(os->indexReg == ID_DI)
+        {
+          rm = 1;
+        }
+        else if(os->indexReg == INVALID_REG)
+        {
+          rm = 7;
+        }
+      }
+      else if(os->baseReg == ID_BP)
+      {
+        if(os->indexReg == ID_SI)
+        {
+          rm = 2;
+        }
+        else if(os->indexReg == ID_DI)
+        {
+          rm = 3;
+        }
+        else if(os->indexReg == INVALID_REG)
+        {
+          rm = 6;
+        }
+      }
+      else if(os->baseReg == INVALID_REG)
+      {
+        if(os->indexReg == ID_SI)
+        {
+          rm = 4;
+        }
+        else if(os->indexReg == ID_DI)
+        {
+          rm = 5;
+        }
+      }
+    }
+    if(rm == INVALID_REG)
+    {
+      err("invalid 16-bit address");
+    }
+    if(mod == MOD_MEM && rm == 6)
+    {
+      //don't allow [bp], that rm value replaced with [disp16]
+      mod = MOD_MEM_D32;
+    }
+  }
+  return (mod << 6) | (reg << 3) | rm;
+}
+
 //TODO: use 8-bit disp (mod = 1) when possible
 //sib is set to -1 if not used
 //
@@ -1411,7 +1528,10 @@ void parseInstruction(char* mneSource, size_t mneLen)
   int sib = -1;
   if(opc->flags & HAS_MODRM)
   {
-    getModSIB(opc, &os, &modrm, &sib);
+    if(bitsMode == BITS_16)
+      modrm = getModRM(opc, &os);
+    else
+      getModSIB(opc, &os, &modrm, &sib);
   }
   //emit instruction
   //first, opcode prefixes
@@ -1459,7 +1579,10 @@ void parseInstruction(char* mneSource, size_t mneLen)
       }
       //have a disp, even if given constant is 0
       //note: this works fine for mov with moffs (absolute mem without modrm)
-      writeData(&os.disp, 4);
+      if(bitsMode == BITS_16)
+        writeData(&os.disp, 4);
+      else
+        writeData(&os.disp, 2);
     }
   }
   //immediate, if used (currently can be 1 or 4 bytes, 2 is for op-size override and (TODO) 16-bit mode)
@@ -1473,17 +1596,13 @@ void parseInstruction(char* mneSource, size_t mneLen)
         LabelNode* ln = insertLabel(os.immLabel);
         labelAddReference(ln);
       }
-      if(!os.immLabel && os.sizeOverride)
+      if(os.sizeOverride || bitsMode == BITS_16)
       {
         writeData(&os.imm, 2);
       }
-      else if(!os.sizeOverride)
-      {
-        writeData(&os.imm, 4);
-      }
       else
       {
-        err("16-bit imm values with labels not supported");
+        writeData(&os.imm, 4);
       }
     }
     else if(op1Type == IMM_8 || op2Type == IMM_8)
@@ -1558,6 +1677,37 @@ void parseLine()
     {
       iter++;
     }
+  }
+  else if(!strncmp(iter + code, "times ", 6))
+  {
+    iter += 6;
+    eatWhitespace();
+    int times = parseInt();
+    if(times <= 0)
+    {
+      err("times must be followed by positive integer");
+    }
+    //remember current position in output file
+    //will repeat the bytes that are produced (times - 1) additional times
+    size_t startPos = ftell(output);
+    int startLoc = location;
+    parseLine();
+    //the number of bytes produced per repeat
+    size_t repBytes = ftell(output) - startPos;
+    if(repBytes == 0)
+    {
+      err("times directive followed by line that produced no bytes");
+    }
+    byte buf[16];
+    fseek(output, startPos, SEEK_SET);
+    fread(buf, 1, repBytes, output);
+    fseek(output, 0, SEEK_END);
+    times--;
+    for(size_t i = 0; i < times; i++)
+    {
+      fwrite(buf, 1, repBytes, output);
+    }
+    location += times * repBytes;
   }
   else if(!strncmp(iter + code, "db ", 3))
   {
@@ -1661,10 +1811,11 @@ void resolveLabels(bool local)
       int refLoc = lnode->refs[j];
       fseek(output, refLoc, SEEK_SET);
       int totalValue = 0;
-      fread(&totalValue, 1, 4, output);
+      int readSize = bitsMode == BITS_16 ? 2 : 4;
+      fread(&totalValue, 1, readSize, output);
       fseek(output, refLoc, SEEK_SET);
       totalValue += lnode->loc;
-      fwrite(&totalValue, 1, 4, output);
+      fwrite(&totalValue, 1, readSize, output);
     }
   }
   //return to end of output file to continue writing
