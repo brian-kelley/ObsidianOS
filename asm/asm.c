@@ -1090,6 +1090,10 @@ void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT 
     }
     else if(INVALID_REG != (regID = getRegID(&code[iter], &regType)))
     {
+      if((bitsMode == BITS_16 && regType == GP32) || (bitsMode == BITS_32 && regType == GP16))
+      {
+        err("mem reg size must match mode");
+      }
       //base or index reg (may be scaled)
       while(isalpha(code[iter]))
         iter++;
@@ -1162,28 +1166,21 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
   //for MOD_REG (mem with no disp), can't have esp or ebp as modrm base
   //for MOD_MEM_D32 (mem with disp), can't have esp as modrm base
   //in both cases, must move the base to the SIB index
-  if((mod == MOD_REG && (*base == ID_SP || *base == ID_BP)) ||
-      ((mod == MOD_MEM_D32 || mod == MOD_MEM_D8) && *base == ID_SP) ||
-      (*index == ID_SP))
+  if(*index == ID_SP)
   {
-    //can't have that base reg, substitude into index if possible
-    if(*scale != 1 && *index != INVALID_REG)
+    //attempt to swap index and base
+    if(*scale != 1)
     {
-      err("can't have esp/ebp + scaled index");
+      err("can't have scaled esp");
     }
-    else
-    {
-      //can safely swap base and index
-      int temp = *base;
-      *base = *index;
-      *index = temp;
-      *scale = 1;
-    }
-    //check if still invalid, possible for e.g. [esp + esp]
-    if(*index == ID_SP)
-    {
-      err("invalid addressing regs");
-    }
+    int temp = *base;
+    *base = *index;
+    *index = temp;
+  }
+  //check for validity
+  if(*index == ID_SP)
+  {
+    err("invalid mem regs");
   }
 }
 
@@ -1305,8 +1302,8 @@ byte getModRM(Opcode* opc, OperandSet* os)
     }
     if(mod == MOD_MEM && rm == 6)
     {
-      //don't allow [bp], that rm value replaced with [disp16]
-      mod = MOD_MEM_D32;
+      //don't allow [bp], that rm value replaced with [disp8] (only 1 byte overhead)
+      mod = MOD_MEM_D8;
     }
   }
   return (mod << 6) | (reg << 3) | rm;
@@ -1343,6 +1340,11 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
       mod = MOD_MEM_D32;
     }
   }
+  if(os->baseReg == ID_BP && os->indexReg == INVALID_REG && !os->disp && !os->dispLabel)
+  {
+    //[ebp] special, encode as [ebp + 0]
+    mod = MOD_MEM_D8;
+  }
   if(os->baseReg != INVALID_REG || os->indexReg != INVALID_REG)
   {
     arrangeMemRegs(mod, &os->baseReg, &os->indexReg, &os->scale);
@@ -1350,7 +1352,7 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
   //sib required if:
   //  -have an index reg (with any scale)
   //  -base reg can't be a r/m base (applies to esp, and ebp for mod = 0)
-  bool haveSIB = haveMem && (os->indexReg != INVALID_REG || os->baseReg == ID_SP || (mod == MOD_REG && os->baseReg == ID_BP));
+  bool haveSIB = haveMem && (os->indexReg != INVALID_REG || os->baseReg == ID_SP || (mod == MOD_MEM && os->baseReg == ID_BP));
   //note: r/m is ALWAYS the first operand, unless there are 2 operands (then the 2nd reg is in /reg)
   //set reg field
   //is either a digit, REG/REG_8 id, or left undetermined
@@ -1389,17 +1391,9 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
     //just [disp]
     rm = 0b101;
   }
-  else if(mod == MOD_MEM)
+  else
   { 
     rm = os->baseReg;
-  }
-  else if(mod == MOD_MEM_D32)
-  {
-    rm = os->baseReg;
-  }
-  else
-  {
-    errInternal(__LINE__);
   }
   *modrm = (mod << 6) | (reg << 3) | rm;
   if(haveSIB)
@@ -1419,8 +1413,7 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
       case 8:
         scaleBits = 3;
         break;
-      default:
-        errInternal(__LINE__);
+      default:;
     }
     if(os->indexReg == INVALID_REG)
     {
@@ -1585,14 +1578,18 @@ void parseInstruction(char* mneSource, size_t mneLen)
   //disp, if exists (currently always 32 bit)
   if(haveMem)
   {
-    if(os.disp || os.dispLabel)
+    //get mod back out 
+    byte mod = (modrm >> 6) & 0b11;
+    //add ref to label if used
+    if(os.dispLabel)
     {
-      //add ref to label if used
-      if(os.dispLabel)
-        labelAddReference(insertLabel(os.dispLabel));
-      else if(fitsI8(os.disp))
-        writeData(&os.disp, 1);
-      else if(bitsMode == BITS_16)
+      labelAddReference(insertLabel(os.dispLabel));
+    }
+    else if(mod == MOD_MEM_D8)
+      writeData(&os.disp, 1);
+    else if(mod == MOD_MEM_D32)
+    {
+      if(bitsMode == BITS_16)
         writeData(&os.disp, 2);
       else
         writeData(&os.disp, 4);

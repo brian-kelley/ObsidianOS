@@ -1,1 +1,2 @@
-times 10 push ax
+bits 32
+

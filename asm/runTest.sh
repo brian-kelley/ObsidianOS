@@ -4,6 +4,5 @@ cat test.asm
 echo "BINARY:"
 ./printbin.exe test.bin
 echo "DISASSEMBLY:"
-#ndisasm -u test.bin
-ndisasm test.bin
+ndisasm -u test.bin
 
