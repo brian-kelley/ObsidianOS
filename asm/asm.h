@@ -59,6 +59,15 @@ enum BitsMode
   BITS_32
 };
 
+//Values for mod field in mod/reg/rm
+enum MOD_GROUPS
+{
+  MOD_MEM     = 0,
+  MOD_MEM_D8  = 1,
+  MOD_MEM_D32 = 2,
+  MOD_REG     = 3
+};
+
 //Opcode matching utilities
 //Operand parsing/matching functions
 

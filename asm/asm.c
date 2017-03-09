@@ -74,7 +74,6 @@ LabelNode* treeInsert(LabelTree* lt, char* name)
   //no matter what, need space for an insertion 
   if(lt->nnodes == lt->ncap)
   {
-    puts("***** Reallocating lt nodes!");
     //multiply capacity by 1.5
     int newCap = lt->ncap + (lt->ncap >> 1);
     lt->nodes = realloc(lt->nodes, newCap * sizeof(LabelNode));
@@ -820,10 +819,6 @@ OperandSet parseOperands()
           else if(regType == CONTROL)
           {
             *nextOp = CONTROL_REG;
-          }
-          else if(regType == X87)
-          {
-            *nextOp = FPU_REG;
           }
           else
           {
@@ -1706,7 +1701,7 @@ void parseLine()
     {
       err("times directive followed by line that produced no bytes");
     }
-    byte buf[16];
+    byte* buf = malloc(repBytes);
     fseek(output, startPos, SEEK_SET);
     fread(buf, 1, repBytes, output);
     fseek(output, 0, SEEK_END);
@@ -1716,6 +1711,7 @@ void parseLine()
       fwrite(buf, 1, repBytes, output);
     }
     location += times * repBytes;
+    free(buf);
   }
   else if(!strncmp(iter + code, "db ", 3))
   {
@@ -1806,14 +1802,9 @@ void resolveLabels(bool local)
     //label MUST be resolved at this point, is error if not
     if(lnode->loc == -1)
     {
-      printf("undefined label \"%s\"\n", lnode->name);
       err("label undefined");
     }
     //iterate over all references and add their location to the existing 4-byte value there
-    if(lnode->nrefs > 0)
-    {
-      printf("Resolving references to label \"%s\", with loc %#x\n", lnode->name, lnode->loc);
-    }
     for(int j = 0; j < lnode->nrefs; j++)
     {
       int refLoc = lnode->refs[j];

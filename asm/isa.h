@@ -26,19 +26,21 @@ enum OperandType
   SEGMENT_REG,
   CONTROL_REG,
   REG_DX,         //note: special regs also match REG and REG_MEM (for the correct size)
-  REG_CL,         //in 32 bit mode, REG_AX means ax or eax, depending on size override
+  REG_CL,         //REG_AX means ax or eax, depending on mode and size override
   REG_AL,
   REG_AX,
   MEM_ABSOLUTE,   //absolute mem (for mov only, called "moffs" in manual)
 };
 
-//Values for mod field in mod/reg/rm
-enum MOD_GROUPS
+enum OpTypeFPU
 {
-  MOD_MEM     = 0,
-  MOD_MEM_D8  = 1,
-  MOD_MEM_D32 = 2,
-  MOD_REG     = 3
+  NO_OPERAND_FPU,
+  MEM_32,
+  MEM_64,
+  MEM_80,
+  ST0,
+  STN,
+  REG_86_AX
 };
 
 enum RegType
@@ -66,8 +68,8 @@ enum RegID
 typedef struct
 {
   char mnemonic[8];     //is null-terminated so max length is 7
-  short opcodeOffset;   //index of first opcode in opcode table
-  short numOpcodes;     //number of unique opcodes for this mnemonic
+  short opcodeOffset;
+  short numOpcodes;      //number of unique opcodes for this mnemonic
 } Mnemonic;
 
 //for minimum executable size, bit pack as many opcode attributes as possible
@@ -89,6 +91,14 @@ typedef struct
   byte opTypes;     //low 4 bits are first operand, high 4 are second operand
   byte flags;      //OpcodeFlags1 bit field
 } Opcode;
+
+typedef struct
+{
+  byte opcode1;
+  byte opcode2;
+  byte opTypes;
+  byte flags;
+} OpcodeFPU;
 
 #define NUM_MNEMONICS (sizeof(mneTable) / sizeof(Mnemonic))
 Mnemonic mneTable[] =
@@ -267,6 +277,29 @@ Mnemonic mneTable[] =
   {"xchg", 294, 4},
   {"xlatb", 298, 1},
   {"xor", 299, 9}
+};
+
+//save a tiny bit of time by leaving off the 'f' at the beginning
+#define NUM_MNEMONICS_FPU (sizeof(mneTableFPU) / sizeof(Mnemonic))
+Mnemonic mneTableFPU[] =
+{
+  {"2xm1", 0, 1},
+  {"abs", 1, 1},
+  {"add", 2, 1},
+  {"bld", 3, 1},
+  {"bstp", 4, 1},
+  {"chs", 5, 1},
+  {"clex", 6, 1},
+  {"com", 7, 5},
+  {"comp", 12, 5},
+  {"compp", 17, 1},
+  {"cos", 18, 1},
+  {"decstp", 19, 1},
+  {"disi", 20, 1},
+  {"div", 21, 6},
+  {"divp", 27, 1},
+  {"divr", 28, 6},
+  {"divrp", 34, 1}
 };
 
 #define NUM_OPCODES (sizeof(opcodeTable) / sizeof(Opcode))
