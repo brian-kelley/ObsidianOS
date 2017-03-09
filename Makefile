@@ -1,10 +1,10 @@
-CC=i386-elf-gcc
+CC=tcc
 CFLAGS=-c -ffreestanding -std=gnu99 -Os
 WARNINGS=-Wall -Wextra -Wshadow -Wno-unused-parameter -Wno-strict-aliasing
-OSNAME=goldos
+OSNAME=obsidian
 DESTIMAGE=../disk.img
 
-INCLUDE=-Istdlib/include -IDataStruct/include
+INCLUDE=-Istdlib/include
 
 #K = kernel
 #S = stdlib
@@ -30,23 +30,17 @@ SAO=$(SAS:.a=.o)
 SCO=$(SCS:.c=.o)
 SGO=$(SGS:.s=.o)
 
-DataStructSources=$(wildcard DataStruct/src/*.c)
-DataStructObjects=$(DataStructSources:.c=.o)
-
 all: kernel
-	sudo scripts/makeImage.sh
-	sudo qemu-system-i386 $(DESTIMAGE)
+	#sudo scripts/makeImage.sh
+	#sudo qemu-system-i386 $(DESTIMAGE)
 
-kernel: libc libstruct $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
-	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc -lstruct -lgcc
-	mv $(OSNAME).bin isodir/boot
-	grub-mkrescue -o $(OSNAME).iso isodir
+kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
+	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc
+	#mv $(OSNAME).bin isodir/boot
+	#grub-mkrescue -o $(OSNAME).iso isodir
 	
 libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO) $(SINC)
-	ar rcs libc.a $(SAO) $(SCO) $(SGO)
-
-libstruct: $(DataStructObjects)
-	ar rcs libstruct.a $(DataStructObjects)
+	i386-elf-ar rcs libc.a $(SAO) $(SCO) $(SGO)
 
 clean:
 	rm -f stdlib/src/*.o

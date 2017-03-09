@@ -44,11 +44,12 @@ byte capsLockOn = 0;
 int resetKeyboard()
 {
   byte result;
+sendCommand:
   do
   {
-    while(readport(0x64) & 2);	    //Wait for input buffer to clear before writing command byte
-    writeport(0x60, 0xFF);			//Send reset command to keyboard device, NOT PS/2 controller
-    while((readport(0x64) & 1) == 0);	//Wait for bit 0 of status register to be set, then read response byte
+    while(readport(0x64) & 2);	        //Wait for input buffer to clear before writing command byte
+    writeport(0x60, 0xFF);			        //Send reset command to keyboard device, NOT PS/2 controller
+    while((readport(0x64) & 1) == 0);	  //Wait for bit 0 of status register to be set, then read response byte
     byte result = readport(0x60);
   }
 	while(result == 0xFE);

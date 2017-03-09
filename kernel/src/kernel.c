@@ -10,13 +10,8 @@
 #include "string.h"
 #include "stdio.h"
 #include "math.h"
-#include "list.h"
-#include "vector.h"
 
 extern void demo();
-
-DEFINE_LIST(int)
-DEFINE_VECTOR(int)
 
   /* Note on GCC for i386 types:
 
@@ -119,23 +114,6 @@ void memtest()
       count++;
     }
   }
-}
-
-void printList(intList* l)
-{
-  for(intListIter it = intListBegin(l); it != intListEnd(l); it = it->next)
-    printf("%i\n", it->data);
-}
-
-void printVector(intVector* vec)
-{
-  for(size_t i = 0; i < vec->size; i++)
-  {
-    printf("%-4i ", vec->buf[i]);
-    if(i % 10 == 9)
-      puts("");
-  }
-  puts("");
 }
 
 void kernel_main()

@@ -1484,13 +1484,11 @@ void parseInstruction(char* mneSource, size_t mneLen)
       {
         //jmp short
         os.imm -= (location + 2);
-        if(fitsI8(os.imm))
-        {
-          if(os.op1Type == IMM)
-            os.op1Type = IMM_8;
-          else if(os.op2Type == IMM)
-            os.op2Type = IMM_8;
-        }
+        //test if candidate imm value fits in 8 bits
+        if(os.op1Type == IMM)
+          os.op1Type = IMM_8;
+        else if(os.op2Type == IMM)
+          os.op2Type = IMM_8;
       }
       else if(mne[0] == 'j' && strcmp(mne, "jmp"))
       {

@@ -19,7 +19,7 @@ typedef struct
   int ncap;     //allocated capacity
   int loc;      //address of label, or -1 if not yet defined
   int l;        //index of left subtree, or -1
-  int r;        //  ...    right    ..., or -1
+  int r;        //right subtree, or -1
 } LabelNode;
 
 //Binary search tree for labels
