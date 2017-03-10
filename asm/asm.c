@@ -644,6 +644,25 @@ void parseDD()
   }
 }
 
+void parseRes(int size)
+{
+  iter += 5;
+  eatWhitespace();
+  if(!isdigit(code[iter]))
+  {
+    err("res directives must be followed by number of elements");
+  }
+  int bytes = size * atoi(code + iter);
+  while(isdigit(code[iter]))
+  {
+    iter++;
+  }
+  for(int i = 0; i < bytes; i++)
+  {
+    writeByte(0);
+  }
+}
+
 OperandSet getEmptyOperandSet()
 {
   OperandSet os;
@@ -2020,6 +2039,26 @@ void parseLine()
   else if(!strncmp(iter + code, "dd ", 3))
   {
     parseDD();
+  }
+  else if(!strncmp(iter + code, "resb ", 5))
+  {
+    parseRes(1);
+  }
+  else if(!strncmp(iter + code, "resw ", 5))
+  {
+    parseRes(2);
+  }
+  else if(!strncmp(iter + code, "resd ", 5))
+  {
+    parseRes(4);
+  }
+  else if(!strncmp(iter + code, "resq ", 5))
+  {
+    parseRes(8);
+  }
+  else if(!strncmp(iter + code, "rest ", 5))
+  {
+    parseRes(10);
   }
   else
   {
