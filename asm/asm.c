@@ -663,6 +663,21 @@ OperandSet getEmptyOperandSet()
   return os;
 }
 
+OperandSetFPU getEmptyOperandSetFPU()
+{
+  OperandSetFPU os;
+  os.dispLabel = NULL;
+  os.op1Type = NO_OPERAND_FPU;
+  os.op2Type = NO_OPERAND_FPU;
+  os.reg1 = INVALID_REG;
+  os.reg2 = INVALID_REG;
+  os.baseReg = INVALID_REG;
+  os.indexReg = INVALID_REG;
+  os.scale = 1;
+  os.memSize = 0;               //mem size = 0 means "raw"/unsized
+  return os;
+}
+
 OperandSet parseOperands()
 {
   OperandSet os = getEmptyOperandSet();
@@ -869,6 +884,135 @@ OperandSet parseOperands()
       else if(os.op2Type == IMM)
         os.op2Type = IMM_8;
     }
+  }
+  return os;
+}
+
+/*
+{
+  char* dispLabel;
+  int op1Type;
+  int op2Type;
+  int reg1;
+  int reg2;
+  int baseReg;
+  int indexReg;
+  int scale;
+  int disp;
+  int memSize;
+} OperandSetFPU;
+
+  NO_OPERAND_FPU,
+  MEM_16,
+  MEM_32,
+  MEM_64,
+  MEM_80,
+  MEM_RAW,
+  ST0,
+  STN,
+  REG_86_AX
+ */
+
+OperandSetFPU parseOperandsFPU()
+{
+  OperandSetFPU os = getEmptyOperandSetFPU();
+  while(1)
+  {
+    eatWhitespace();
+    if(code[iter] == ';' || code[iter] == '\n' || code[iter] == 0)
+    {
+      break;
+    }
+    if(os.op2Type != NO_OPERAND_FPU)
+    {
+      err("more than 2 operands provided");
+    }
+    int* nextOp = os.op1Type == NO_OPERAND_FPU ? &os.op1Type : &os.op2Type;
+    if(code[iter] == ',')
+    {
+      iter++;
+      eatWhitespace();
+    }
+    //only possibilities are "ax", "stN", or "[mem]"
+    //no labels as immediates makes parsing easier
+    if(code[iter] == 'a' && code[iter + 1] == 'x' && code[iter + 2])
+    {
+      *nextOp = REG_86_AX;
+      iter += 2;
+    }
+    else if(code[iter] == 's' && code[iter + 1] == 't')
+    {
+      int reg = code[iter + 2] - '0';
+      if(reg < 0 || reg >= INVALID_REG)
+      {
+        err("invalid FPU reg");
+      }
+      if(nextOp == &os.op1Type)
+      {
+        os.reg1 = reg;
+      }
+      else
+      {
+        os.reg2 = reg;
+      }
+      *nextOp = reg == 0 ? ST0 : STN;
+      iter += 3;
+    }
+    else if(code[iter] == '[')
+    {
+      parseMem(&os.baseReg, &os.indexReg, &os.scale, &os.disp, &os.dispLabel);
+      *nextOp = MEM_RAW;
+    }
+    else
+    {
+      //can only be mem size specifier
+      int newMemSize = 0;
+      if(!strncmp(code + iter, "word", 4))
+      {
+        newMemSize = 2;
+        iter += 4;
+      }
+      else if(!strncmp(code + iter, "dword", 5))
+      {
+        newMemSize = 4;
+        iter += 5;
+      }
+      else if(!strncmp(code + iter, "qword", 5))
+      {
+        newMemSize = 8;
+        iter += 5;
+      }
+      else if(!strncmp(code + iter, "tword", 5))
+      {
+        newMemSize = 10;
+        iter += 5;
+      }
+      else
+      {
+        err("invalid operand");
+      }
+      if(os.memSize)
+      {
+        err("memory size redefined");
+      }
+      os.memSize = newMemSize;
+    }
+  }
+  if(os.memSize)
+  {
+    int memOpType;
+    if(os.memSize == 4)
+      memOpType = MEM_32;
+    else if(os.memSize == 8)
+      memOpType = MEM_64;
+    else if(os.memSize == 10)
+      memOpType = MEM_80;
+    if(os.op1Type == MEM_RAW)
+      os.op1Type = memOpType;
+    else if(os.op2Type == MEM_RAW)
+      os.op2Type = memOpType;
+    else
+      err("memory size specifed but no memory operand provided");
   }
   return os;
 }
@@ -1179,6 +1323,27 @@ void arrangeMemRegs(int mod, int* base, int* index, int* scale)
   }
 }
 
+void get86OpWrappers(OpcodeFPU* opc, OperandSetFPU* os, OUT Opcode* wrapperOpcode, OUT OperandSet* wrapperOperands)
+{
+  byte wrapperFlags = 0;
+  if(opc->flags & HAS_MODRM_FPU)
+    wrapperFlags |= HAS_MODRM;
+  //all FPU instructions with modrm have a digit
+  wrapperFlags |= HAS_DIGIT;
+  wrapperFlags |= ((opc->flags >> 4) & 0b111) << 4;
+  *wrapperOperands = getEmptyOperandSet();
+  wrapperOperands->dispLabel = os->dispLabel;
+  wrapperOperands->disp = os->disp;
+  //getModRM only needs to know that there is a mem operand
+  wrapperOperands->op1Type = REG_MEM;
+  wrapperOperands->hasMem = true;
+  wrapperOperands->baseReg = os->baseReg;
+  wrapperOperands->indexReg = os->indexReg;
+  wrapperOperands->scale = os->scale;
+  Opcode temp = {opc->opcode2, REG_MEM | NO_OPERAND << 4, wrapperFlags};
+  *wrapperOpcode = temp;
+}
+
 //get modR/M byte, for 16-bit mode
 //like getModSIB, TODO: support 8-bit disp
 byte getModRM(Opcode* opc, OperandSet* os)
@@ -1427,21 +1592,6 @@ void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib)
 
 void parseInstruction(char* mneSource, size_t mneLen)
 {
-  /* All operand types:
-  NO_OPERAND,
-  REG_MEM_8,
-  REG_MEM,        //16 or 32 bits depending on mode
-  REG_8,
-  REG,            //16 or 32 bits
-  IMM_8,          //8-bit imm
-  IMM,            //16 or 32 bits
-  FPU_REG,
-  SEGMENT_REG,
-  CONTROL_REG,
-  REG_DX,
-  REG_CL,         //also matches REG_MEM_8 and REG_8
-  MEM_ABSOLUTE    //absolute mem (for mov and jmp)
-  */
   if(mneLen > 7)
   {
     err("label not terminated by :");
@@ -1449,6 +1599,14 @@ void parseInstruction(char* mneSource, size_t mneLen)
   char mne[8];
   memcpy(mne, mneSource, mneLen);
   mne[mneLen] = 0;
+  iter += strlen(mne);
+  if(mne[0] == 'f')
+  {
+    //FPU instruction
+    //give FPU instruction as everything after the 'f'
+    parseFPUInstruction(mne + 1);
+    return;
+  }
   Mnemonic* m = NULL;
   for(int i = 0; i < NUM_MNEMONICS; i++)
   {
@@ -1462,7 +1620,6 @@ void parseInstruction(char* mneSource, size_t mneLen)
   {
     err("unknown mnemonic or label without :");
   }
-  iter += strlen(mne);
   OperandSet os = parseOperands();
   //need to check for code offset (rel8/rel32) values in place of imm
   //only applies to jXX, which conveniently are only instructions starting with j
@@ -1568,7 +1725,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
       writeByte(sib);
     }
   }
-  //disp, if exists (currently always 32 bit)
+  //disp
   if(haveMem)
   {
     //get mod back out 
@@ -1579,7 +1736,9 @@ void parseInstruction(char* mneSource, size_t mneLen)
       labelAddReference(insertLabel(os.dispLabel));
     }
     else if(mod == MOD_MEM_D8)
+    {
       writeData(&os.disp, 1);
+    }
     else if(mod == MOD_MEM_D32)
     {
       if(bitsMode == BITS_16)
@@ -1588,7 +1747,7 @@ void parseInstruction(char* mneSource, size_t mneLen)
         writeData(&os.disp, 4);
     }
   }
-  //immediate, if used (currently can be 1 or 4 bytes, 2 is for op-size override and (TODO) 16-bit mode)
+  //immediate, if used
   if(op1Type == IMM_8 || op1Type == IMM || op2Type == IMM_8 || op2Type == IMM)
   {
     if(op1Type == IMM || op2Type == IMM)
@@ -1615,6 +1774,109 @@ void parseInstruction(char* mneSource, size_t mneLen)
         err("8-bit imm values with labels not supported");
       }
       writeData(&os.imm, 1);
+    }
+  }
+}
+
+void parseFPUInstruction(char* mnemonic)
+{
+  //look up mnemonic (skip the 'f' at the front, already accounted for)
+  Mnemonic* mne = NULL;
+  for(int i = 0; i < NUM_MNEMONICS_FPU; i++)
+  {
+    if(!strcmp(mnemonic, mneTableFPU[i].mnemonic))
+    {
+      mne = mneTableFPU + i;
+    }
+  }
+  if(!mne)
+  {
+    err("unknown x87 mnemonic or label without :");
+  }
+  //parse operands
+  OperandSetFPU os = parseOperandsFPU();
+  //pattern match operand types with opcodes
+  OpcodeFPU* opc = NULL;
+  for(int i = mne->opcodeOffset; i < mne->opcodeOffset + mne->numOpcodes; i++)
+  {
+    OpcodeFPU* oit = &opcodeTableFPU[i];
+    int op1Type = oit->opTypes & 0b1111;
+    int op2Type = (oit->opTypes >> 4) & 0b1111;
+    //all op types must match exactly, except ST0 which can be used as STN
+    if((op1Type == os.op1Type || (op1Type == STN && os.op1Type == ST0)) &&
+       (op2Type == os.op2Type || (op2Type == STN && os.op2Type == ST0)))
+    {
+      opc = oit;
+      break;
+    }
+  }
+  if(!opc)
+  {
+    err("no opcode for given operands");
+  }
+  int op1Type = opc->opTypes & 0b1111;
+  int op2Type = (opc->opTypes >> 4) & 0b1111;
+  //get modrm and SIB if needed
+  int modrm = -1;
+  int sib = -1;
+  bool haveModRM = opc->flags & HAS_MODRM_FPU;
+  if(haveModRM)
+  {
+    Opcode wrapperOpcode;
+    OperandSet wrapperOperands;
+    get86OpWrappers(opc, &os, &wrapperOpcode, &wrapperOperands);
+    if(bitsMode == BITS_16)
+    {
+      modrm = getModRM(&wrapperOpcode, &wrapperOperands);
+    }
+    else if(bitsMode == BITS_32)
+    {
+      getModSIB(&wrapperOpcode, &wrapperOperands, &modrm, &sib);
+    }
+  }
+  //emit opcode
+  writeByte(opc->opcode1);
+  if((opc->flags & OPCODE_ONE_BYTE) == 0)
+  {
+    byte opcodeByte2 = opc->opcode2;
+    if(opc->flags & REG_IN_OPCODE_FPU)
+    {
+      if(op1Type == STN)
+        opcodeByte2 += os.reg1;
+      else if(op1Type == STN)
+        opcodeByte2 += os.reg2;
+    }
+    writeByte(opc->opcode2);
+  }
+  //emit the modrm byte
+  if(haveModRM)
+  {
+    //pull out modrm so that disp size is known
+    int mod = (modrm >> 6) & 0b11;
+    int rm = modrm & 0b111;
+    writeByte(modrm);
+    //note: sib is -1 if in 16-bit mode
+    if(sib != -1)
+      writeByte(sib);
+    //emit disp
+    if(mod == MOD_MEM_D8)
+    {
+      writeData(&os.disp, 1);
+    }
+    else if(os.disp || os.dispLabel)
+    {
+      if(os.dispLabel)
+      {
+        labelAddReference(insertLabel(os.dispLabel));
+      }
+      if(bitsMode == BITS_16)
+      {
+        writeData(&os.disp, 2);
+      }
+      else
+      {
+        writeData(&os.disp, 4);
+      }
     }
   }
 }
@@ -1825,12 +2087,6 @@ void err(const char* str)
 {
   printf("Error on line %lu: %s\n", lineno, str);
   exit(1);
-}
-
-void errInternal(int asmLineNo)
-{
-  printf("Internal error: assembler line %i\n", asmLineNo);
-  exit(2);
 }
 
 int main(int argc, const char** argv)

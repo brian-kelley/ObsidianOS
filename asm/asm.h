@@ -9,6 +9,7 @@
 
 #include "isa.h"
 
+//in header, mark pointer arguments as output
 #define OUT
 
 typedef struct 
@@ -47,6 +48,20 @@ typedef struct
   bool sizeOverride;    //whether operation is on 16-bit regs in 32-bit mode
 } OperandSet;
 
+typedef struct
+{
+  char* dispLabel;
+  int op1Type;
+  int op2Type;
+  int reg1;
+  int reg2;
+  int baseReg;
+  int indexReg;
+  int scale;
+  int disp;
+  int memSize;
+} OperandSetFPU;
+
 enum FormatMode
 {
   FLAT,
@@ -76,7 +91,9 @@ void getOpTypes(Opcode* opc, OUT int* op1, OUT int* op2);
 int getDigit(Opcode* opc);
 
 OperandSet getEmptyOperandSet();                            //get initialized OperandSet
+OperandSetFPU getEmptyOperandSetFPU();                      //get initialized OperandSet
 OperandSet parseOperands();                                 //from end of mnemonic, parse operands into OperandSet
+OperandSetFPU parseOperandsFPU();                           //from end of mnemonic, parse operands into OperandSet
 bool opTypesEquivalent(int expected, int parsed);           //whether "parsed" OpType can be used in place of "expected"
 bool matchOperands(Opcode* opc, OperandSet* operands);      //return true if given operands match opcode
 int getInstructionSize(Opcode* opc, OperandSet* operands);  //get number of bytes to encode the instruction
@@ -122,14 +139,19 @@ void parseDW();
 void parseDD();
 //parse a memory expression
 void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT char** dispLabel);
+//get x86 Opcode and OperandSet structs from x87 ones (for getting modrm/sib)
+//the output structs can be uninitialized
+void get86OpWrappers(OpcodeFPU* opc, OperandSetFPU* os, OUT Opcode* wrapperOpcode, OUT OperandSet* wrapperOperands);
 //costruct modR/M byte (16-bit mode)
 byte getModRM(Opcode* opc, OperandSet* os);
 //construct modR/M byte and SIB (32-bit mode)
 void getModSIB(Opcode* opc, OperandSet* os, OUT int* modrm, OUT int* sib);
 //validate and rearrange base/index if necessary, e.g. [esp] or [ebp]
 void arrangeMemRegs(int mod, int* base, int* index, int* scale);
-//parse a memory instruction
-void parseInstruction();
+//parse a regular instruction
+void parseInstruction(char* mneSource, size_t mneLen);
+//parse x87 instruction
+void parseFPUInstruction(char* mne);
 //parse whole input stream
 void parse();
 //resolve all memory 
@@ -137,7 +159,5 @@ void parse();
 void resolveLabels(bool local);
 //print "Error on line <lineno>: <errString>" and exit
 void err(const char* errString);
-//print "Internal error on line <lineno>" and exit, if assembler is correct, impossible to get here
-void errInternal(int asmLineNo);
 #endif
 

@@ -35,9 +35,11 @@ enum OperandType
 enum OpTypeFPU
 {
   NO_OPERAND_FPU,
+  MEM_16,
   MEM_32,
   MEM_64,
   MEM_80,
+  MEM_RAW,
   ST0,
   STN,
   REG_86_AX
@@ -83,6 +85,17 @@ enum OpcodeFlags                    // i386 manual notation:
   DIGIT1 = 1 << 5,
   DIGIT2 = 1 << 6,
   HAS_MODRM = 1 << 7
+};
+
+enum OpcodeFlagsFPU
+{
+  HAS_DIGIT_FPU = 1 << 0,
+  REG_IN_OPCODE_FPU = 1 << 1,
+  HAS_MODRM_FPU = 1 << 2,
+  OPCODE_ONE_BYTE = 1 << 3,
+  DIGIT0_FPU = 1 << 4,
+  DIGIT1_FPU = 1 << 5,
+  DIGIT2_FPU = 1 << 6
 };
 
 typedef struct
@@ -285,21 +298,89 @@ Mnemonic mneTableFPU[] =
 {
   {"2xm1", 0, 1},
   {"abs", 1, 1},
-  {"add", 2, 1},
-  {"bld", 3, 1},
-  {"bstp", 4, 1},
-  {"chs", 5, 1},
-  {"clex", 6, 1},
-  {"com", 7, 5},
-  {"comp", 12, 5},
-  {"compp", 17, 1},
-  {"cos", 18, 1},
-  {"decstp", 19, 1},
-  {"disi", 20, 1},
-  {"div", 21, 6},
-  {"divp", 27, 1},
-  {"divr", 28, 6},
-  {"divrp", 34, 1}
+  {"add", 2, 6},
+  {"addp", 8, 1},
+  {"bld", 9, 1},
+  {"bstp", 10, 1},
+  {"chs", 11, 1},
+  {"clex", 12, 1},
+  {"com", 13, 5},
+  {"comp", 18, 5},
+  {"compp", 23, 1},
+  {"cos", 24, 1},
+  {"decstp", 25, 1},
+  {"disi", 26, 1},
+  {"div", 27, 6},
+  {"divp", 33, 1},
+  {"divr", 34, 6},
+  {"divrp", 40, 1},
+  {"eni", 41, 1},
+  {"free", 42, 1},
+  {"iadd", 43, 2},
+  {"icom", 45, 2},
+  {"icomp", 47, 2},
+  {"idiv", 49, 2},
+  {"idivr", 51, 2},
+  {"ild", 53, 3},
+  {"imul", 56, 2},
+  {"incstp", 58, 1},
+  {"init", 59, 1},
+  {"ist", 60, 2},
+  {"istp", 62, 3},
+  {"isub", 65, 2},
+  {"isubr", 67, 2},
+  {"ld", 69, 4},
+  {"ld1", 73, 1},
+  {"ldcw", 74, 1},
+  {"ldenv", 75, 1},
+  {"ldl2e", 76, 1},
+  {"ldl2t", 77, 1},
+  {"ldlg2", 78, 1},
+  {"ldln2", 79, 1},
+  {"ldpi", 80, 1},
+  {"ldz", 81, 1},
+  {"mul", 82, 6},
+  {"mulp", 88, 1},
+  {"nclex", 89, 1},
+  {"ndisi", 90, 1},
+  {"neni", 91, 1},
+  {"ninit", 92, 1},
+  {"nop", 93, 1},
+  {"nsave", 94, 1},
+  {"nstcw", 95, 1},
+  {"nstenv", 96, 1},
+  {"nstsw", 97, 2},
+  {"patan", 99, 1},
+  {"prem", 100, 1},
+  {"prem1", 101, 1},
+  {"ptan", 102, 1},
+  {"rndint", 103, 1},
+  {"rstor", 104, 1},
+  {"save", 105, 1},
+  {"scale", 106, 1},
+  {"setpm", 107, 1},
+  {"sin", 108, 1},
+  {"sincos", 109, 1},
+  {"sqrt", 110, 1},
+  {"st", 111, 3},
+  {"stcw", 114, 1},
+  {"stenv", 115, 1},
+  {"stp", 116, 3},
+  {"stsw", 119, 2},
+  {"sub", 121, 6},
+  {"subp", 127, 1},
+  {"subr", 128, 6},
+  {"subrp", 134, 1},
+  {"tst", 135, 1},
+  {"ucom", 136, 2},
+  {"ucomp", 138, 2},
+  {"ucompp", 140, 1},
+  {"wait", 141, 1},
+  {"xam", 142, 1},
+  {"xch", 143, 4},
+  {"xtract", 147, 1},
+  {"yl2x", 148, 1},
+  {"yl2xp1", 149, 1}
 };
 
 #define NUM_OPCODES (sizeof(opcodeTable) / sizeof(Opcode))
@@ -758,5 +839,244 @@ Opcode opcodeTable[] =
   {0x33, REG | REG_MEM << 4, HAS_MODRM}
 };
 
-#endif
+#define NUM_OPCODES_FPU (sizeof(opcodeTableFPU) / sizeof(OpcodeFPU))
+OpcodeFPU opcodeTableFPU[] =
+{
+  //f2xm1
+  {0xD9, 0xF0, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fabs
+  {0xD9, 0xE1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fadd
+  {0xDE, 0xC1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xC0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDC, 0xC0, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xC0, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  //faddp
+  {0xDE, 0xC0, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //fbld
+  {0xDF, 0, MEM_80 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  //fbstp
+  {0xDF, 0, MEM_80 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fchs
+  {0xD9, 0xE0, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fclex
+  {0xDB, 0xE2, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fcom
+  {0xDB, 0xD1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xD0, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xD0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  //fcomp
+  {0xD8, 0xD9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xD8, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xD8, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  //fcompp
+  {0xDE, 0xD9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fcos
+  {0xD9, 0xFF, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fdecstp
+  {0xD9, 0xF6, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fdisi
+  {0xDB, 0xE1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fdiv
+  {0xDE, 0xF9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xF0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDC, 0xF8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xF0, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fdivp
+  {0xDE, 0xF8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //fdivr
+  {0xDE, 0xF1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xF8, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDC, 0xF0, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xF8, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fdivrp
+  {0xDE, 0xF0, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //feni
+  {0xDB, 0xE0, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //ffree
+  {0xDD, 0xC0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  //fiadd
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  //ficom
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  //ficomp
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  //fidiv
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fidivr
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fild
+  {0xDF, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  {0xDB, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  {0xDF, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  //fimul
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 1 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 1 << 4},
+  //fincstp
+  {0xD9, 0xF7, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //finit
+  {0xDB, 0xE3, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fist
+  {0xDF, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  {0xDB, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  //fistp
+  {0xDF, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  {0xDB, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  {0xDF, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fisub
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  //fisubr
+  {0xDE, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  {0xDA, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  //fld
+  {0xD9, 0xC0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDB, 0, MEM_80 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  {0xD9, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  {0xDD, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 0 << 4},
+  //fld1
+  {0xD9, 0xE8, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fldcw
+  {0xD9, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  //fldenv
+  {0xD9, 0, MEM_RAW | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  //fldl2e
+  {0xD9, 0xEA, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fldl2t
+  {0xD9, 0xE9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fldlg2
+  {0xD9, 0xEC, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fldln2
+  {0xD9, 0xED, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fldpi
+  {0xD9, 0xEB, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fldz
+  {0xD9, 0xEE, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fmul
+  {0xDE, 0xC9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xC8, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDC, 0xC8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xC8, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 1 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 1 << 4},
+  //fmulp
+  {0xDE, 0xC8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //fnclex
+  {0xDB, 0xE2, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fndisi
+  {0xDB, 0xE1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fneni
+  {0xDB, 0xE0, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fninit
+  {0xDB, 0xE3, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fnop
+  {0xD9, 0xD0, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fnsave
+  {0xDD, 0, MEM_RAW | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fnstcw
+  {0xD9, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fnstenv
+  {0xD9, 0, MEM_RAW | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fnstsw
+  {0xDF, 0xE0, REG_86_AX | NO_OPERAND_FPU << 4, 0},
+  {0xDD, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fpatan
+  {0xD9, 0xF3, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fprem
+  {0xD9, 0xF8, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fprem1
+  {0xD9, 0xF5, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fptan
+  {0xD9, 0xF2, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //frndint
+  {0xD9, 0xFC, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //frstor
+  {0xDD, 0, MEM_RAW | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  //fsave
+  {0xDD, 0, MEM_RAW | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fscale
+  {0xD9, 0xFD, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fsetpm
+  {0xDB, 0xE4, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fsin
+  {0xD9, 0xFE, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fsincos
+  {0xD9, 0xFB, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fsqrt
+  {0xD9, 0xFA, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fst
+  {0xDD, 0xD0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xD9, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  {0xDD, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 2 << 4},
+  //fstcw
+  {0xD9, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fstenv
+  {0xD9, 0, MEM_RAW | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 6 << 4},
+  //fstp
+  {0xDB, 0, MEM_80 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  {0xD9, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  {0xDD, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 3 << 4},
+  //fstsw
+  {0xDF, 0xE0, REG_86_AX | NO_OPERAND_FPU << 4, 0},
+  {0xDD, 0, MEM_16 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 7 << 4},
+  //fsub
+  {0xDE, 0xE9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xE0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDC, 0xE8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xE0, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 4 << 4},
+  //fsubp
+  {0xDE, 0xE8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //fsubr
+  {0xDE, 0xE1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD8, 0xE8, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDC, 0xE0, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0xE8, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD8, 0, MEM_32 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  {0xDC, 0, MEM_64 | NO_OPERAND_FPU << 4, HAS_MODRM_FPU | HAS_DIGIT_FPU | OPCODE_ONE_BYTE | 5 << 4},
+  //fsubrp 
+  {0xDE, 0xE0, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //ftst
+  {0xD9, 0xE4, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fucom
+  {0xDD, 0xE0, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDD, 0xE1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fucomp
+  {0xDD, 0xE8, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xDD, 0xE9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fucompp
+  {0xDA, 0xE9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fwait
+  {0x9B, 0, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, OPCODE_ONE_BYTE},
+  //fxam
+  {0xD9, 0xE5, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fxch
+  {0xD9, 0xC9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  {0xD9, 0xC8, ST0 | STN << 4, REG_IN_OPCODE_FPU},
+  {0xD9, 0xC8, STN | NO_OPERAND_FPU << 4, REG_IN_OPCODE_FPU},
+  {0xD9, 0xC8, STN | ST0 << 4, REG_IN_OPCODE_FPU},
+  //fxtract
+  {0xD9, 0xF4, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fyl2x
+  {0xD9, 0xF1, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0},
+  //fyl2xp1
+  {0xD9, 0xF9, NO_OPERAND_FPU | NO_OPERAND_FPU << 4, 0}
+};
 
+#endif
