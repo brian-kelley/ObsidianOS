@@ -1,6 +1,5 @@
 bits 32
 
-;mydouble: dd 0x0FFF
+fld dword [mydouble]
 
-fld dword [1]
-
+mydouble: dw 0xFFFF

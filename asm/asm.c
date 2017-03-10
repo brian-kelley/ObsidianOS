@@ -1975,6 +1975,40 @@ void parseLine()
     location += times * repBytes;
     free(buf);
   }
+  else if(!strncmp(iter + code, "incbin ", 7))
+  {
+    //get filename as next sequence of non-whitespace
+    iter += 7;
+    eatWhitespace();
+    size_t fnameStart = iter;
+    while(!isspace(code[iter]) && code[iter] != 0)
+    {
+      iter++;
+    }
+    size_t fnameLen = iter - fnameStart;
+    char* fname = malloc(fnameLen + 1);
+    memcpy(fname, code + fnameStart, fnameLen);
+    fname[fnameLen] = 0;
+    FILE* in = fopen(fname, "rb");
+    free(fname);
+    if(!in)
+    {
+      err("could not read file for incbin");
+    }
+    //read and emit entire file (in 512-byte chunks)
+    byte buf[512];
+    while(1)
+    {
+      size_t n = fread(&buf, 1, 512, in);
+      if(n == 0)
+      {
+        break;
+      }
+      fwrite(&buf, 1, n, output);
+      location += n;
+    }
+    fclose(in);
+  }
   else if(!strncmp(iter + code, "db ", 3))
   {
     parseDB();
