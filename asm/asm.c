@@ -605,12 +605,20 @@ void parseDW()
 
 void parseDD()
 {
-  //unlike DB and DD, no size checks are performed - what is read is used
   iter += 2;
   eatWhitespace();
   while(code[iter] != '\n' && code[iter] != ';' && code[iter] != 0)
   {
-    if(code[iter] == '0' && code[iter + 1]  == 'x')
+    //get token length
+    size_t tokStart = iter;
+    while(!isspace(code[iter]) && code[iter] != ',' &&
+        code[iter] != ';' && code[iter] != '\n' && code[iter] != 0)
+    {
+      iter++;
+    }
+    //scan through the token for 'e', indicating sci. not. float
+    bool done = false;
+    if(code[tokStart] == '0' && code[tokStart + 1]  == 'x')
     {
       unsigned val;
       if(1 != sscanf(code + iter, "%x", &val))
@@ -618,22 +626,189 @@ void parseDD()
         err("invalid dword hex literal");
       }
       writeData(&val, 4);
-      iter += 2;
-      while(isxdigit(code[iter]))
-        iter++;
     }
-    else
+    if(!done)
     {
-      int val;
-      if(1 != sscanf(code + iter, "%i", &val))
+      for(size_t i = tokStart; i < iter; i++)
       {
-        err("invalid dword literal");
+        if(code[i] == 'e')
+        {
+          float f;
+          if(1 != sscanf(code + tokStart, "%e", &f))
+          {
+            err("invalid dd item, expected scientific float");
+          }
+          writeData(&f, 4);
+          done = true;
+          break;
+        }
       }
-      writeData(&val, 4);
-      if(code[iter] == '-')
-        iter++;
-      while(isdigit(code[iter]))
-        iter++;
+    }
+    if(!done)
+    {
+      //scan for '.' meaning other float
+      for(size_t i = tokStart; i < iter; i++)
+      {
+        if(code[i] == '.')
+        {
+          float f;
+          if(1 != sscanf(code + tokStart, "%f", &f))
+          {
+            err("invalid dd item, expected float");
+          }
+          writeData(&f, 4);
+          done = true;
+          break;
+        }
+      }
+    }
+    if(!done)
+    {
+      //must be decimal integer 
+      int i;
+      if(1 != sscanf(code + tokStart, "%i", &i))
+      {
+        err("unknown dd item");
+      }
+      writeData(&i, 4);
+    }
+    eatWhitespace();
+    if(code[iter] == ',')
+    {
+      iter++;
+      eatWhitespace();
+    }
+  }
+}
+
+void parseDQ()
+{
+  iter += 2;
+  eatWhitespace();
+  while(code[iter] != '\n' && code[iter] != ';' && code[iter] != 0)
+  {
+    //get token length
+    size_t tokStart = iter;
+    while(!isspace(code[iter]) && code[iter] != ',' &&
+        code[iter] != ';' && code[iter] != '\n' && code[iter] != 0)
+    {
+      iter++;
+    }
+    //scan through the token for 'e', indicating sci. not. float
+    bool done = false;
+    if(code[tokStart] == '0' && code[tokStart + 1]  == 'x')
+    {
+      unsigned long long val;
+      if(1 != sscanf(code + iter, "%llx", &val))
+      {
+        err("invalid dword hex literal");
+      }
+      writeData(&val, 8);
+    }
+    if(!done)
+    {
+      for(size_t i = tokStart; i < iter; i++)
+      {
+        if(code[i] == 'e')
+        {
+          double d;
+          if(1 != sscanf(code + tokStart, "%le", &d))
+          {
+            err("invalid dq item, expected scientific float");
+          }
+          writeData(&d, 8);
+          done = true;
+          break;
+        }
+      }
+    }
+    if(!done)
+    {
+      //scan for '.' meaning other float
+      for(size_t i = tokStart; i < iter; i++)
+      {
+        if(code[i] == '.')
+        {
+          double d;
+          if(1 != sscanf(code + tokStart, "%lf", &d))
+          {
+            err("invalid dq item, expected float");
+          }
+          writeData(&d, 8);
+          done = true;
+          break;
+        }
+      }
+    }
+    if(!done)
+    {
+      //must be decimal integer 
+      long long int i;
+      if(1 != sscanf(code + tokStart, "%lli", &i))
+      {
+        err("unknown dq item");
+      }
+      writeData(&i, 8);
+    }
+    eatWhitespace();
+    if(code[iter] == ',')
+    {
+      iter++;
+      eatWhitespace();
+    }
+  }
+}
+
+void parseDT()
+{
+  iter += 2;
+  eatWhitespace();
+  while(code[iter] != '\n' && code[iter] != ';' && code[iter] != 0)
+  {
+    //get token length
+    size_t tokStart = iter;
+    while(!isspace(code[iter]) && code[iter] != ',' &&
+        code[iter] != ';' && code[iter] != '\n' && code[iter] != 0)
+    {
+      iter++;
+    }
+    //scan through the token for 'e', indicating sci. not. float
+    bool done = false;
+    for(size_t i = tokStart; i < iter; i++)
+    {
+      if(code[i] == 'e')
+      {
+        long double d;
+        if(1 != sscanf(code + tokStart, "%Le", &d))
+        {
+          err("invalid dt item, expected scientific float");
+        }
+        writeData(&d, 10);
+        done = true;
+        break;
+      }
+    }
+    if(!done)
+    {
+      //scan for '.' meaning other float
+      for(size_t i = tokStart; i < iter; i++)
+      {
+        if(code[i] == '.')
+        {
+          long double d;
+          if(1 != sscanf(code + tokStart, "%Lf", &d))
+          {
+            err("invalid dt item, expected float");
+          }
+          writeData(&d, 10);
+          done = true;
+          break;
+        }
+      }
+    }
+    if(!done)
+    {
+      err("unknown dt item");
     }
     eatWhitespace();
     if(code[iter] == ',')
@@ -906,31 +1081,6 @@ OperandSet parseOperands()
   }
   return os;
 }
-
-/*
-{
-  char* dispLabel;
-  int op1Type;
-  int op2Type;
-  int reg1;
-  int reg2;
-  int baseReg;
-  int indexReg;
-  int scale;
-  int disp;
-  int memSize;
-} OperandSetFPU;
-
-  NO_OPERAND_FPU,
-  MEM_16,
-  MEM_32,
-  MEM_64,
-  MEM_80,
-  MEM_RAW,
-  ST0,
-  STN,
-  REG_86_AX
- */
 
 OperandSetFPU parseOperandsFPU()
 {
@@ -2039,6 +2189,14 @@ void parseLine()
   else if(!strncmp(iter + code, "dd ", 3))
   {
     parseDD();
+  }
+  else if(!strncmp(iter + code, "dq ", 3))
+  {
+    parseDQ();
+  }
+  else if(!strncmp(iter + code, "dt ", 3))
+  {
+    parseDT();
   }
   else if(!strncmp(iter + code, "resb ", 5))
   {

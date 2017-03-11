@@ -137,6 +137,8 @@ void parseLine();
 void parseDB();
 void parseDW();
 void parseDD();
+void parseDQ();
+void parseDT();
 void parseRes(int size);
 //parse a memory expression
 void parseMem(OUT int* base, OUT int* index, OUT int* scale, OUT int* disp, OUT char** dispLabel);
