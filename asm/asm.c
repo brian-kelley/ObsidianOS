@@ -389,17 +389,15 @@ int parseInt()
   //parse int, preceded by whitespace, and update iter
   //strtol will provide end of number in numEnd
   eatWhitespace();
-  int val = 1;
-  if(code[iter] == '-')
-  {
-    iter++;
-    val = -1;
-  }
-  if(!isdigit(code[iter]))
+  int val;
+  if(1 != sscanf(code + iter, "%i", &val))
   {
     err("invalid integer");
   }
-  val *= atoi(code + iter);
+  if(code[iter] == '-')
+  {
+    iter++;
+  }
   while(isdigit(code[iter]))
   {
     iter++;
@@ -495,9 +493,6 @@ void parseDB()
         {
           err("invalid byte hex literal");
         }
-        {
-          err("value too big for 8 bits");
-        }
         writeData(&val, 1);
         iter += 2;
         while(isxdigit(code[iter]))
@@ -506,22 +501,16 @@ void parseDB()
       else
       {
         //decimal number
-        int val = 1;
+        int val;
+        if(1 != sscanf(code + iter, "%i", &val))
+        {
+          err("invalid literal");
+        }
+        writeData(&val, 1);
         if(code[iter] == '-')
         {
           iter++;
-          val = -1;
         }
-        if(!isdigit(code[iter])) 
-        {
-          err("invalid byte literal");
-        }
-        val *= atoi(code + iter);
-        if(!fitsU8(val))
-        {
-          err("byte value doesn't fit in 8 bits");
-        }
-        writeData(&val, 1);
         while(isdigit(code[iter]))
         {
           iter++;
@@ -550,10 +539,6 @@ void parseDW()
       {
         err("invalid hex word literal");
       }
-      if(!fitsU16(val))
-      {
-        err("word value bigger than u16 max");
-      }
       writeData(&val, 2);
       iter += 2;
       while(isxdigit(code[iter]))
@@ -562,37 +547,20 @@ void parseDW()
     }
     else
     {
+      int val;
+      if(1 != sscanf(code + iter, "%i", &val))
+      {
+        err("invalid literal");
+      }
+      writeData(&val, 2);
       if(code[iter] == '-')
       {
         iter++;
-        if(!isdigit(code[iter]))
-        {
-          err("invalid word literal");
-        }
-        int val = -atoi(code + iter);
-        if(!fitsU16(val))
-        {
-          err("word literal smaller than i16 min");
-        }
-        writeData(&val, 2);
       }
-      else if(isdigit(code[iter]))
+      while(isdigit(code[iter]))
       {
-        int val = atoi(code + iter);
-        if(!fitsU16(val))
-        {
-          err("word literal bigger than u16 max");
-        }
-        writeData(&val, 2);
+        iter++;
       }
-      else
-      {
-        err("invalid word literal");
-      }
-    }
-    while(isdigit(code[iter]))
-    {
-      iter++;
     }
     eatWhitespace();
     if(code[iter] == ',')
