@@ -1,9 +1,10 @@
 #ifndef ISA_H
 #define ISA_H
 
+#include "types.h"
+
 #define INVALID_REG 8
 
-typedef unsigned char byte;
 typedef unsigned short word;
 typedef unsigned dword;
 

@@ -2288,6 +2288,45 @@ void err(const char* str)
   exit(1);
 }
 
+/***************
+ * ELF emitter *
+ ***************/
+
+ElfHeader getElfHeader()
+{
+  ElfHeader hdr;
+  hdr.ident[0] = 0x7F;
+  hdr.ident[1] = 'E';
+  hdr.ident[2] = 'L';
+  hdr.ident[3] = 'F';
+  hdr.ident[4] = ELF_CLASS;
+  hdr.ident[5] = ELF_DATA;
+  hdr.ident[6] = hdr.version;
+  hdr.type = ET_REL;
+  hdr.machine = ELF_MACHINE;
+  hdr.version = 1;
+  hdr.entry = PROG_LOAD;
+  hdr.phOffset = 0;         //TODO: file offset of program header table
+  hdr.shOffset = 0;         //TODO: file offset of section header table
+  hdr.flags = 0;            //0 for any intel arch
+  hdr.ehSize = sizeof(hdr);
+  hdr.phSize = 
+}
+
+void writeElfHeader(FILE* out)
+{
+  //general configuration values, same for all object files
+  ElfHalf type = 1; //relocatable object file
+  fputs("\x7FELF", out);
+  byte b = ELF_CLASS;
+  fwrite(&b, 1, 1, out);
+  b = ELF_DATA;
+  fwrite(&b, 1, 1, out);
+  b = ELF_VERSION;
+  fwrite(&b, 1, 1, out);
+  fputs("\0\0\0\0\0\0\0\0\0", out);
+}
+
 int main(int argc, const char** argv)
 {
   //const char* ifn = NULL;
