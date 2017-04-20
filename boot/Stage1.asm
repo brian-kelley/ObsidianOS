@@ -10,9 +10,7 @@
 
 bits 16
 
-; Don't know if starting cs:ip is 0x7C0:0 or 0:0x7C00
-; Can't rely on either, so 
-org 0
+; Note: can't rely on either starting cs:ip = 0x7C0:0 or 0:0x7C00
 
 ; set up stack and data right above the 1st stage position
 ; stack will grow towards the data but will never reach it
@@ -87,6 +85,8 @@ pop ax
 inc ax
 add bx, 512
 loopnz readLoop
+
+hlt
 
 ; readLBA reads the sector ax (LBA) to es:bx
 ; handles the LBA -> CHS conversion

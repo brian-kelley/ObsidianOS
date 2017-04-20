@@ -12,19 +12,20 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
+#include "stdbool.h"
 
 typedef unsigned char byte;
 
 //buffer where disk image is constructed
 void* bin;
-int index;
+int binIndex;
 const char* bootFile;
 const char* kernelFile;
 
 void writeByte(byte b)
 {
-  *((byte*) (bin + index)) = b;
-  index++;
+  *((byte*) (bin + binIndex)) = b;
+  binIndex++;
 }
 
 void writeChars(const char* chars, size_t n)
@@ -37,24 +38,24 @@ void writeChars(const char* chars, size_t n)
 
 void writeShort(unsigned short s)
 {
-  *((byte*) (bin + index)) = s & 0xFF;
-  *((byte*) (bin + index + 1)) = s >> 8;
-  index += 2;
+  *((byte*) (bin + binIndex)) = s & 0xFF;
+  *((byte*) (bin + binIndex + 1)) = s >> 8;
+  binIndex += 2;
 }
 
 void writeInt(unsigned i)
 {
-  *((byte*) (bin + index)) = i & 0xFF;
-  *((byte*) (bin + index + 1)) = (s >> 8) & 0xFF;
-  *((byte*) (bin + index + 2)) = (s >> 16) & 0xFF;
-  *((byte*) (bin + index + 3)) = (s >> 24) & 0xFF;
-  index += 4;
+  *((byte*) (bin + binIndex)) = i & 0xFF;
+  *((byte*) (bin + binIndex + 1)) = (i >> 8) & 0xFF;
+  *((byte*) (bin + binIndex + 2)) = (i >> 16) & 0xFF;
+  *((byte*) (bin + binIndex + 3)) = (i >> 24) & 0xFF;
+  binIndex += 4;
 }
 
 void writeBuf(void* buf, size_t n)
 {
-  memcpy(bin + index, buf, n);
-  index += n;
+  memcpy(bin + binIndex, buf, n);
+  binIndex += n;
 }
 
 //add a system, readonly file entry to root directory
@@ -100,7 +101,7 @@ int main(int argc, const char** argv)
   //kernel max size, depends on how and where it is loaded (TBD)
   int kernelMax = 128 * 1024;
   bin = malloc(bytes);
-  index = 0;
+  binIndex = 0;
   bootFile = NULL;
   kernelFile = NULL;
   if(argc == 1)
@@ -131,6 +132,7 @@ int main(int argc, const char** argv)
   }
   else
     err("Bootloader required.");
+  /*
   if(arg < argc && strcmp(argv[arg], "--kernel") == 0)
   {
     arg++;
@@ -141,7 +143,7 @@ int main(int argc, const char** argv)
   }
   else
     err("Kernel required.");
-  unsigned short totalSectors = (size + 511) / 512;
+  */
   int miscFilesStart = arg;
   //write BIOS parameter block
   writeByte(0xEB);
@@ -161,7 +163,7 @@ int main(int argc, const char** argv)
   writeByte(2);                   //FATs
   int maxRootEntries = rootDirSectors * 512 / 32;
   writeShort(maxRootEntries);     //max root dir entries
-  writeShort(totalSectors);       //total sectors on disk
+  writeShort(sectors);            //total sectors on disk
   writeByte(0xF8);                //media descriptor - 0xF8 = HD
   writeShort(sectorsPerFat);      //sectors per FAT
   writeShort(16);                 //sectors per track
@@ -197,23 +199,23 @@ int main(int argc, const char** argv)
       writeByte(0);
   }
   //boot sector signature
-  writeByte(0xAA);
   writeByte(0x55);
-  if(index != 512)
+  writeByte(0xAA);
+  if(binIndex != 512)
     err("Boot sector is not 512 bytes");
   /*
   //2 empty FATs
-  int fat1 = index;
+  int fat1 = binIndex;
   int fat2 = fat1 + 512 * sectorsPerFat;
   for(int i = 0; i < 2 * 512 * sectorsPerFat; i++)
     writeByte(0);
   //empty root directory
-  int rootStart = index;
+  int rootStart = binIndex;
   for(int i = 0; i < 512 * rootDirSectors; i++)
   {
     writeByte(0);
   }
-  int dataArea = index;
+  int dataArea = binIndex;
   //kernel data starting at first data cluster
   {
     FILE* kernel = fopen(kernelFile, "rb");
