@@ -2288,9 +2288,11 @@ void err(const char* str)
   exit(1);
 }
 
-/***************
- * ELF emitter *
- ***************/
+/*
+
+// ***************
+// * ELF emitter *
+// ***************
 
 ElfHeader getElfHeader()
 {
@@ -2326,6 +2328,7 @@ void writeElfHeader(FILE* out)
   fwrite(&b, 1, 1, out);
   fputs("\0\0\0\0\0\0\0\0\0", out);
 }
+*/
 
 int main(int argc, const char** argv)
 {

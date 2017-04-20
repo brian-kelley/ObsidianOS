@@ -93,11 +93,12 @@ int main(int argc, const char** argv)
   int sectors = 2880;
   int bytes = sectors * 512;
   int sectorsPerFat = 9;
-  int rootDirSectors = 14;
+  int rootDirSectors = 13;
+  //with only 1 reserved sector, data area starts at sector 32
   //bootloader max size, will be 448 unless boot sector layout changes
   int bootMax = 448;
   //kernel max size, depends on how and where it is loaded (TBD)
-  int kernelMax = 128*1024;
+  int kernelMax = 128 * 1024;
   bin = malloc(bytes);
   index = 0;
   bootFile = NULL;
@@ -200,6 +201,7 @@ int main(int argc, const char** argv)
   writeByte(0x55);
   if(index != 512)
     err("Boot sector is not 512 bytes");
+  /*
   //2 empty FATs
   int fat1 = index;
   int fat2 = fat1 + 512 * sectorsPerFat;
@@ -232,6 +234,7 @@ int main(int argc, const char** argv)
     fclose(kernel);
     //now that kernel size is known, create root directory entry for kernel.bin
   }
+  */
   //write image from memory
   FILE* out = fopen("obsidian.img", "wb");
   fwrite(bin, 1, bytes, out);
