@@ -1,4 +1,4 @@
-GoldOS Todo list
+ObisidianOS Todo list
 
 Immediate tasks:
 -Make bootloader from scratch
