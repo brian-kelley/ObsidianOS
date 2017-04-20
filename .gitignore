@@ -4,7 +4,7 @@
 *.swp
 *.swo
 goldos.iso
-disk.img
+utils/obsidian.img
 #*
 *#
 *#*

@@ -10,7 +10,7 @@
 
 bits 16
 
-; Note: can't rely on either starting cs:ip = 0x7C0:0 or 0:0x7C00
+; Can't rely on either starting cs:ip being 0x7C0:0 or 0:0x7C00
 
 ; set up stack and data right above the 1st stage position
 ; stack will grow towards the data but will never reach it
@@ -49,22 +49,17 @@ int 0x10
 mov ax, 0xA000
 push ds
 mov ds, ax
-mov byte [0], 0x0
-mov byte [1], 0x1
-mov byte [2], 0x2
-mov byte [3], 0x3
-mov byte [4], 0x4
-mov byte [5], 0x5
-mov byte [6], 0x6
-mov byte [7], 0x7
-mov byte [8], 0x8
-mov byte [9], 0x9
-mov byte [10], 0xA
-mov byte [11], 0xB
-mov byte [12], 0xC
-mov byte [13], 0xD
-mov byte [14], 0xE
-mov byte [15], 0xF
+
+xor cx, cx
+mov dx, 64000
+
+drawLoop:
+mov bx, cx
+mov [bx], cl
+inc cx
+cmp cx, dx
+jne drawLoop
+
 pop ds
 
 ; read the 8k 2nd stage bootloader from FAT filesystem to 0x9C000
