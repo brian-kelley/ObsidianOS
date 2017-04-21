@@ -40,27 +40,36 @@ shr cl, 6
 mov ah, cl
 mov [0], ax
 
+mov ax, 0xB800
+mov gs, ax
+
+mov dx, 0x0700
+
+xor bx, bx
+
+clearScreen:
+mov [gs:bx], dx
+add bx, 2
+cmp bx, 2000
+jne clearScreen
+
+; print cylinders, heads, sectors/track
+mov al, [0]
+xor bx, bx
+call printNum
+inc bx
+mov al, [2]
+call printNum
+inc bx
+mov al, [4]
+call printNum
+
+hlt
+
 ; set video mode to 13h
-mov ah, 0
-mov al, 0x13
-int 0x10
-
-; show some pixels
-mov ax, 0xA000
-push ds
-mov ds, ax
-
-xor cx, cx
-mov dx, 64000
-
-drawLoop:
-mov bx, cx
-mov [bx], cl
-inc cx
-cmp cx, dx
-jne drawLoop
-
-pop ds
+;mov ah, 0
+;mov al, 0x13
+;int 0x10
 
 ; read the 8k 2nd stage bootloader from FAT filesystem to 0x9C000
 mov ax, 0x9C00
@@ -74,12 +83,34 @@ mov cx, 16
 readLoop:
 push ax
 push cx
-call readLBA
+;call readLBA
 pop cx
 pop ax
 inc ax
 add bx, 512
 loopnz readLoop
+
+;xor bx, bx
+;mov word [es:bx], 0x000F
+;mov word [es:bx + 2], 0x000F
+;mov word [es:bx + 4], 0x000F
+
+; show some pixels
+;mov ax, 0xA000
+;push ds
+;mov ds, ax
+
+;xor bx, bx
+;mov dx, 8192
+
+;drawLoop:
+;mov al, [es:bx]
+;mov [bx], al
+;inc bx
+;cmp bx, dx
+;jne drawLoop
+
+pop ds
 
 hlt
 
@@ -113,5 +144,18 @@ readLBA:
   pop dx
   pop ax
   pop bp
+  ret
+
+; print number as ASCII char 33 + al
+; print at column bx in 1st row
+; this can effectively print numbers from 0 to 93
+; preserves all regs
+printNum:
+  push bx
+  add bx, bx
+  add ax, 33
+  mov [gs:bx], al
+  sub ax, 33
+  pop bx
   ret
 

@@ -13,3 +13,4 @@ utils/obsidian.img
 *.exe
 *.exe*
 */*test.bin
+*.bin

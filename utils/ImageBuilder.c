@@ -175,7 +175,7 @@ int main(int argc, const char** argv)
   writeByte(0x29);                //Signature, must be 0x29
   writeInt(0xDEADBEEF);           //Serial number
   writeChars("OBSIDIAN HD", 11);  //volume label string
-  writeChars("FAT12   ", 8);      //system identifier string
+  writeChars("FAT16   ", 8);      //system identifier string
   //Bootloader goes here, gets up to 448 bytes
   {
     FILE* boot = fopen(bootFile, "rb");
@@ -203,6 +203,18 @@ int main(int argc, const char** argv)
   writeByte(0xAA);
   if(binIndex != 512)
     err("Boot sector is not 512 bytes");
+
+  //Debugging via video drawing
+  byte* dataArea = (byte*) bin + 32 * 512;
+  for(int i = 0; i < 4096; i++)
+  {
+    dataArea[i] = i % 2 ? 0 : 1; 
+  }
+  for(int i = 4096; i < 8192; i++)
+  {
+    dataArea[i] = i % 2 ? 2 : 3;
+  }
+
   /*
   //2 empty FATs
   int fat1 = binIndex;
