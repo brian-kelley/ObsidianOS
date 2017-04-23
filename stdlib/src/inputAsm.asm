@@ -5,11 +5,10 @@ extern keyPressed
 extern drawNum
 extern keyboardHandler
 
-section .text
-
+.section .text
 loadIDT:
-  mov edx, [esp + 4]
-	lidt [edx]
+	movl 4(%esp), %edx
+	lidt (%edx)
 	ret
 
 keyboardInterrupt:

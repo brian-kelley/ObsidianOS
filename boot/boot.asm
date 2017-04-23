@@ -108,7 +108,7 @@ add bx, 512
 loopnz readLoop
 
 ; read sector 32 to es:0 (0x500)
-mov ax, 0x21
+mov ax, 0x20
 ;xor bx, bx
 mov bx, 0x0
 call readLBA
