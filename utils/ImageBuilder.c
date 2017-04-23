@@ -240,7 +240,7 @@ int main(int argc, const char** argv)
   fwrite(bin, 1, bytes, out);
   fclose(out);
   free(bin);
-  puts("Bootable floppy image obsidian.img created.");
+  puts("Bootable HDD image obsidian.img created.");
   return 0;
 }
 

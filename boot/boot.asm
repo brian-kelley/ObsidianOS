@@ -66,35 +66,40 @@ mov [bp + 4], cx
 mov ah, 0x8
 xor bx, bx
 mov es, bx
-mov di, bx
+xor di, di
 int 0x13
-; save cylinders to 0x7E00, heads to 0x7E02, sectors/track to 0x7E04
+; save heads to 0x7E00, sectors per track to 0x7E02
 ; sectors/track in cl 5:0
 xor ax, ax
 mov al, cl
 and al, 0x3F
-mov [4], ax
+mov [2], ax
 ; heads in dh
 mov al, dh
-mov [2], ax
-; cylinders: in cl 7:6 (high), and ch 7:0 (low)
-mov al, ch
-shr cl, 6
-mov ah, cl
 mov [0], ax
 
 ; read [bp + 0] sectors (starting at [bp + 2]) to 0x500
-mov ax, 0x50
-mov es, ax
+
+; set video mode to 13h
+mov ah, 0
+mov al, 0x13
+int 0x10
+
+; read 8k (start of kernel) from FAT filesystem to 0x500
+;mov ax, 0x50
+;mov es, ax
 
 ; prepare to read 16 sectors starting at 32 to es:0
 mov ax, [bp + 2]
 mov bx, 0
 mov cx, [bp + 0]
+;mov ax, 32
+;mov bx, 0
+;mov cx, 1
 
-readLoop:
-push ax
-push cx
+;readLoop:
+;push ax
+;push cx
 ;call readLBA
 pop cx
 pop ax
@@ -102,12 +107,11 @@ inc ax
 add bx, 512
 loopnz readLoop
 
-fillFile:
-
-; set video mode to 13h
-mov ah, 0
-mov al, 0x13
-int 0x10
+; read sector 32 to es:0 (0x500)
+mov ax, 0x21
+;xor bx, bx
+mov bx, 0x0
+call readLBA
 
 ; fill with orange (0x2A)
 
@@ -134,18 +138,20 @@ jmp stop
 ; handles the LBA -> CHS conversion
 ; preserves bx
 ; note: div z ==> ax /= z, dx = ax % z
+;xor bx, bx
+;mov dx, 512
+
 readLBA:
-  push bp
-  mov bp, sp
-  ; [bp - 2] = ax = LBA
-  push ax
   ; ax now free for computations
-  div word [4]
-  ; ax = temp, dx = CHS sector - 1
-  inc dx
-  ; dx = CHS sector, save it
-  push dx
+  xor dx, dx
   div word [2]
+  ; ax = total "heads", dx = CHS sector - 1
+  inc dl
+  ; dl = CHS sector
+  ; note: value <= 63
+  mov cl, dl
+  xor dx, dx
+  div word [0]
   ; ax = CHS cylinder
   ; dx = CHS head
   mov dh, dl
@@ -157,8 +163,5 @@ readLBA:
   mov al, 1
   mov dl, 0x80
   int 0x13
-  pop dx
-  pop ax
-  pop bp
   ret
 
