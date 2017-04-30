@@ -131,3 +131,4 @@ void kernel_main()
   resetTermCursor();
   while(1);   //Kernel setup done, everything else triggered by interrupts
 }
+
