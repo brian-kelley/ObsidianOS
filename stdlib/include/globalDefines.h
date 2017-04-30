@@ -7,10 +7,10 @@ typedef uint8_t byte;
 typedef uint16_t word;
 typedef uint32_t dword;
 typedef uint64_t qword;
-typedef dword size_t;
 
 //GCC defines these in stdint/stddef
 #ifndef __GNUC__
+typedef dword size_t;
 typedef long long int intmax_t;
 typedef unsigned long long int uintmax_t;
 typedef int ptrdiff_t;

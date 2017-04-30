@@ -1,5 +1,5 @@
-CC=tcc
-CFLAGS=-c -ffreestanding -std=gnu99 -Os
+CC=gcc
+CFLAGS=-c -ffreestanding -std=gnu99 -Os -m32
 WARNINGS=-Wall -Wextra -Wshadow -Wno-unused-parameter -Wno-strict-aliasing
 OSNAME=obsidian
 DESTIMAGE=../disk.img
@@ -35,24 +35,20 @@ all: kernel
 	#sudo qemu-system-i386 $(DESTIMAGE)
 
 kernel: libc $(KCS) $(KCH) $(KAS) $(KGS) $(KCO) $(KAO) $(KGO)
-	$(CC) -T linker.ld -o $(OSNAME).bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc
+	$(CC) obsidian.bin -static -ffreestanding -std=gnu99 -nostdlib -Os $(KAO) $(KCO) $(KGO) -L. -lc
 	#mv $(OSNAME).bin isodir/boot
 	#grub-mkrescue -o $(OSNAME).iso isodir
 	
 libc: $(SCS) $(SAS) $(SGS) $(SCO) $(SAO) $(SGO) $(SINC)
-	i386-elf-ar rcs libc.a $(SAO) $(SCO) $(SGO)
+	ar rcs libc.a $(SAO) $(SCO) $(SGO)
 
 clean:
 	rm -f stdlib/src/*.o
 	rm -f kernel/src/*.o
 	rm -f $(OSNAME).iso
 
-checkDiskUtils:
-	scripts/checkPrograms.sh
-
 .c.o:
 	$(CC) $(CFLAGS) $(WARNINGS) $(INCLUDE) $< -o $@ 
 .a.o:
 	nasm -felf32 $< -o $@
-.s.o:
-	i386-elf-as $< -o $@
+

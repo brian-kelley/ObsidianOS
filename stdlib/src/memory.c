@@ -29,6 +29,7 @@ enum BlockStatus
 
 void printBlock(Block b)
 {
+    puts("HELLO THIS IS A STRING HI");
     //int* start = &b.levels[0];
     //printf("(%d %d %d %d)", start[0], start[1], start[2], start[3]);
 }

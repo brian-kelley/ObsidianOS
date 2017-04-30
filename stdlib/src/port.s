@@ -1,34 +1,32 @@
-.section .text
+section .text
 
-.global readport
-.global writeport
-.global readportw
-.global writeportw
-.global enableInterrupts
-.global disableInterrupts
+global readport
+global writeport
+global readportw
+global writeportw
+global enableInterrupts
+global disableInterrupts
 
 readport:		//byte readport(dword portNum)
-	movl $0, %edx
-	movl 4(%esp), %edx
-	in %dx, %al
+  mov edx, [esp + 4]
+	in al, dx
 	ret
 
 writeport:		//void writeport(dword portNum, dword value)
-	movl 4(%esp), %edx
-	movl 8(%esp), %eax
-	out %al, %dx
+  mov edx, [esp + 4]
+  mov eax, [esp + 8]
+  out dx, al
 	ret
 
 readportw:		//word readport(dword portNum)
-	movl $0, %edx
-	movl 4(%esp), %edx
-	inw %dx, %ax
+  mov edx, [esp + 4]
+  in ax, dx
 	ret
 
 writeportw:		//void writeport(dword portNum, dword value)
-	movl 4(%esp), %edx
-	movl 8(%esp), %eax
-	outw %ax, %dx
+  mov edx, [esp + 4]
+  mov eax, [esp + 8]
+  out dx, ax
 	ret
 
 enableInterrupts:
@@ -38,3 +36,4 @@ enableInterrupts:
 disableInterrupts:
 	cli
 	ret
+
