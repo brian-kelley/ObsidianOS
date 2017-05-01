@@ -4,21 +4,35 @@
 ; Maybe also show a message on screen.
 
 ; Jobs for 1st stage loader:
+; -Copy self to end of low memory to make room for system image
 ; -Set up stack, segment regs
-; -Get drive geometry (dl has disk # on boot but is always 0x80)
-; -Load 2nd stage bootloader at 0x9C000
+; -Get drive geometry
+; -Load system image sectors at 0x500
+; -Enter protected mode with trivial GDT
+; -Jump to kernel entry point
 
-bits 16
-
-; Can't rely on either starting cs:ip being 0x7C0:0 or 0:0x7C00
+; Can't rely on either starting cs:ip being 0x7C0:0 or 0:0x7C00,
+; so bootloader is completely location independent
 
 ; set up stack and data right above the 1st stage position
-; stack will grow towards the data but will never reach it
-mov ax, 0x7E0
-mov ds, ax
-mov ss, ax
+; stack will grow towards this data but will never reach it
+
+; Note: initial conditions at boot:
+; ax = # of kernel sectors
+; bx = first kernel sector (aka start of FS data area)
+; cx = kernel entry point (absolute memory address)
+; dl = disk # (possibly used for getting drive geometry)
+
+mov si, 0x7E0
+mov ds, si
+mov ss, si
 mov bp, 0x1000
 mov sp, bp
+
+; save ax/bx
+push ax
+push bx
+
 ; get disk geometry
 mov ah, 0x8
 xor bx, bx

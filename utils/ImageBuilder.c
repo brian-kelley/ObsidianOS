@@ -132,7 +132,6 @@ int main(int argc, const char** argv)
   }
   else
     err("Bootloader required.");
-  /*
   if(arg < argc && strcmp(argv[arg], "--kernel") == 0)
   {
     arg++;
@@ -143,7 +142,6 @@ int main(int argc, const char** argv)
   }
   else
     err("Kernel required.");
-  */
   int miscFilesStart = arg;
   //write BIOS parameter block
   writeByte(0xEB);
@@ -204,18 +202,6 @@ int main(int argc, const char** argv)
   if(binIndex != 512)
     err("Boot sector is not 512 bytes");
 
-  //Debugging via video drawing
-  byte* dataArea = (byte*) bin + 32 * 512;
-  for(int i = 0; i < 4096; i++)
-  {
-    dataArea[i] = i % 2 ? 0 : 1; 
-  }
-  for(int i = 4096; i < 8192; i++)
-  {
-    dataArea[i] = i % 2 ? 2 : 3;
-  }
-
-  /*
   //2 empty FATs
   int fat1 = binIndex;
   int fat2 = fat1 + 512 * sectorsPerFat;
@@ -248,7 +234,7 @@ int main(int argc, const char** argv)
     fclose(kernel);
     //now that kernel size is known, create root directory entry for kernel.bin
   }
-  */
+
   //write image from memory
   FILE* out = fopen("obsidian.img", "wb");
   fwrite(bin, 1, bytes, out);

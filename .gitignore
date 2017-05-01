@@ -15,4 +15,4 @@ utils/obsidian.img
 */*test.bin
 *.bin
 build/
-
+*.img
