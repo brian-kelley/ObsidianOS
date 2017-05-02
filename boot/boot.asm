@@ -1,8 +1,6 @@
 ; ObsidianOS bootloader
+;
 ; First stage must fit in 446 bytes (image builder will check)
-; First stage's main job is to load 2nd stage loaded at 0x9C000 (624 K)
-; Maybe also show a message on screen.
-
 ; Jobs for 1st stage loader:
 ; -Copy self to end of low memory to make room for system image
 ; -Set up stack, segment regs
@@ -10,28 +8,56 @@
 ; -Load system image sectors at 0x500
 ; -Enter protected mode with trivial GDT
 ; -Jump to kernel entry point
-
+;
 ; Can't rely on either starting cs:ip being 0x7C0:0 or 0:0x7C00,
 ; so bootloader is completely location independent
-
+;
 ; set up stack and data right above the 1st stage position
 ; stack will grow towards this data but will never reach it
-
+;
 ; Note: initial conditions at boot:
 ; ax = # of kernel sectors
 ; bx = first kernel sector (aka start of FS data area)
 ; cx = kernel entry point (absolute memory address)
 ; dl = disk # (possibly used for getting drive geometry)
+;
+; first, copy whole bootloader from 0x7C00 to 0x9C000
+; then jump to it
 
+; temporarily save cx in sp
+mov sp, cx
+mov si, 0x7C0
+mov ds, si
+mov si, 0x9C00
+mov es, si
+; copy 446 bytes from ds:0 to es:0
+mov cx, 446
+xor si, si
+mov di, si
+rep movs
+; far jump to resume label in new copy
+jmp 0x9C00:resume
+
+resume:
+
+; restore cx
+mov cx, sp
 mov si, 0x7E0
 mov ds, si
 mov ss, si
 mov bp, 0x1000
 mov sp, bp
 
-; save ax/bx
-push ax
+; save ax/bx/cx
+push cx
 push bx
+push ax
+
+mov bp, sp
+; from now on:
+; [bp + 0] = # of kernel sectors to read
+; [bp + 2] = first kernel sector
+; [bp + 4] = kernel entry point
 
 ; get disk geometry
 mov ah, 0x8
@@ -81,9 +107,9 @@ call printNum
 hlt
 
 ; set video mode to 13h
-;mov ah, 0
-;mov al, 0x13
-;int 0x10
+mov ah, 0
+mov al, 0x13
+int 0x10
 
 ; read the 8k 2nd stage bootloader from FAT filesystem to 0x9C000
 mov ax, 0x9C00
@@ -110,19 +136,19 @@ loopnz readLoop
 ;mov word [es:bx + 4], 0x000F
 
 ; show some pixels
-;mov ax, 0xA000
-;push ds
-;mov ds, ax
+mov ax, 0xA000
+push ds
+mov ds, ax
 
 ;xor bx, bx
 ;mov dx, 8192
 
-;drawLoop:
-;mov al, [es:bx]
-;mov [bx], al
-;inc bx
-;cmp bx, dx
-;jne drawLoop
+drawLoop:
+mov al, [es:bx]
+mov [bx], bh
+inc bx
+cmp bx, dx
+jne drawLoop
 
 pop ds
 
