@@ -26,17 +26,18 @@
 
 ; temporarily save cx in sp
 mov sp, cx
-mov si, 0x7C0
-mov ds, si
-mov si, 0x9C00
+mov si, 0x8000
 mov es, si
-; copy 446 bytes from ds:0 to es:0
-mov cx, 446
-xor si, si
-mov di, si
-rep movs
+mov cx, 223
+; zero di
+xor di, di
+; zero ds
+mov ds, di
+mov si, 0x7C00
+; copy 446 bytes (223 words) from ds:0x7C00 (ds:si) to es:0 (es:di)
+rep movsw
 ; far jump to resume label in new copy
-jmp 0x9C00:resume
+jmp 0x4000:resume
 
 resume:
 
