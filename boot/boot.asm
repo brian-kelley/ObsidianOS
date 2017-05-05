@@ -41,7 +41,6 @@ rep movsw
 jmp 0x8000:resume
 
 resume:
-jmp fillFile
 
 ; restore cx
 mov cx, sp
@@ -78,46 +77,15 @@ mov [2], ax
 mov al, dh
 mov [0], ax
 
-; read [bp + 0] sectors (starting at [bp + 2]) to 0x500
-
 ; set video mode to 13h
 mov ah, 0
 mov al, 0x13
 int 0x10
 
-; read 8k (start of kernel) from FAT filesystem to 0x500
-;mov ax, 0x50
-;mov es, ax
-
-; prepare to read 16 sectors starting at 32 to es:0
-mov ax, [bp + 2]
-mov bx, 0
-mov cx, [bp + 0]
-;mov ax, 32
-;mov bx, 0
-;mov cx, 1
-
-;readLoop:
-;push ax
-;push cx
-;call readLBA
-pop cx
-pop ax
-inc ax
-add bx, 512
-loopnz readLoop
-
-; read sector 32 to es:0 (0x500)
-mov ax, 0x20
-;xor bx, bx
-mov bx, 0x0
-call readLBA
-
-; fill with orange (0x2A)
-
 mov ax, 0xA000
 mov es, ax
 
+; fill with orange (0x2A)
 xor bx, bx
 fillLoop:
 mov word [es:bx], 0x2A2A
@@ -126,10 +94,17 @@ inc bx
 cmp bx, 64000 
 jne fillLoop
 
-; read sector into start of video mem to test
-mov ax, 32
+; read first 125 sectors into start of video mem to test reading etc.
+mov ax, 0
 xor bx, bx
+readLoop:
+push ax
 call readLBA
+pop ax
+inc ax
+add bx, 512
+cmp ax, 125
+jne readLoop
 
 stop:
 jmp stop

@@ -211,7 +211,8 @@ int main(int argc, const char** argv)
   int rootStart = binIndex;
   for(int i = 0; i < 512 * rootDirSectors; i++)
   {
-    writeByte(0);
+    //writeByte(0);
+    writeByte(0x2A);
   }
   int dataArea = binIndex;
   //kernel data starting at first data cluster
