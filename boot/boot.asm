@@ -54,16 +54,16 @@ mov sp, bp
 ; save ax/bx/cx
 push ax
 push bx
+push word 0x08
 push cx
 push dx
-push word 0x08
 
 ; from now on:
 ; [bp - 2] = # of kernel sectors to read
 ; [bp - 4] = first kernel sector
 ; [bp - 6] = high word of kernel entry point
 ; [bp - 8] = low word of kernel entry point
-; now, 0x08 as a dword, [bp - 8] provides the full 32-bit address
+; now, 0x08 as a dword, [bp - 10] provides the full 16:32 address
 
 ; get hard disk geometry
 mov ah, 0x8
@@ -120,19 +120,13 @@ adc word [gdtAddr], 0
 cli
 lgdt [ds:gdtPointer]
 
-
 ; enable protected mode
 mov eax, cr0
 or al, 1
 mov cr0, eax
-; set code selector (word) in front of the entry point at [bp - 8]
-;mov word [bp - 10], 0x08
-; jump to kernel entry point (start)
-; that will set up stack, enable interrupts and run kernel main
 
-;stopasdf:
-;hlt
-;jmp stopasdf 
+; jump to kernel entry point (start)
+; start will set up stack and call kernel_main
 mov ax, 0x10
 mov ds, ax
 mov ss, ax
@@ -140,15 +134,13 @@ mov es, ax
 mov fs, ax
 mov gs, ax
 
-jmp 0x08:0x7C9B
-;jmp far [bp - 10]
+JUMP_TO_KERNEL
 
 ; readLBA reads the sector ax (LBA) to es:bx
 ; handles the LBA -> CHS conversion
 ; preserves bx
 ; note: div z ==> ax /= z, dx = ax % z
 
-bits 16
 readLBA:
   ; ax now free for computations
   xor dx, dx

@@ -130,7 +130,10 @@ bootAsm.write("mov cx, " + hex(kernelEntry >> 16) + '\n')
 bootAsm.write("mov dx, " + hex(kernelEntry & 0xFFFF) + '\n')
 # then, include all the original lines of boot/boot.asm
 for line in open("boot/boot.asm").readlines():
-    bootAsm.write(line)
+    if line == "JUMP_TO_KERNEL\n":
+        bootAsm.write("jmp 0x08:" + hex(kernelEntry))
+    else:
+        bootAsm.write(line)
 bootAsm.close()
 
 print("Assembling bootloader...")

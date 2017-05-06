@@ -116,14 +116,16 @@ void memtest()
   }
 }
 
+extern void startDraw();
+
 void kernel_main()
 {
-  //enterMode12H();
+  startDraw();
   for(int i = 0; i < 200; i++)
   {
     for(int j = 0; j < 320; j++)
     {
-      *((byte*) 0xA0000 + i * 320 + j) = i;
+      *((byte*) (0xA0000 + i * 320 + j)) = i;
     }
   }
   while(1);
