@@ -126,6 +126,7 @@ void kernel_main()
       *((byte*) 0xA0000 + i * 320 + j) = i;
     }
   }
+  while(1);
   /*
   clearScreen(4);
   initKeyboard();

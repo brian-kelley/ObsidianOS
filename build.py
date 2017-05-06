@@ -124,9 +124,10 @@ print("Creating bootloader...")
 bootAsm = open(build + "boot.asm", 'w')
 bootAsm.write("org 0x3E\n");
 bootAsm.write("mov ax, " + str(imageSectors) + '\n')
-# TODO: will the start of FS data area be dynamic? Hardcode this for now.
+# FAT16 volume layout always the same, data area starts at sector 32 (see utils/ImageBuilder.c)
 bootAsm.write("mov bx, 32\n")
-bootAsm.write("mov cx, " + hex(kernelEntry) + '\n')
+bootAsm.write("mov cx, " + hex(kernelEntry >> 16) + '\n')
+bootAsm.write("mov dx, " + hex(kernelEntry & 0xFFFF) + '\n')
 # then, include all the original lines of boot/boot.asm
 for line in open("boot/boot.asm").readlines():
     bootAsm.write(line)
@@ -141,5 +142,5 @@ run("./ImageBuilder.exe --boot ../" + build + "boot.bin --kernel ../" + build + 
 run("mv obsidian.img ..")
 os.chdir("..")
 print("Done... starting emulator.")
-run(emulator + " -drive format=raw,media=disk,file=obsidian.img")
+run(emulator + " -no-reboot -drive format=raw,media=disk,file=obsidian.img")
 
