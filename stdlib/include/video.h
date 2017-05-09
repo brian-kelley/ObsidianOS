@@ -5,8 +5,8 @@
 
 extern void writeport(dword portNum, dword value);
 extern byte readport(dword portNum);
-//font binary from assembly file
-extern void* getFontPtr();
+//font binary (see font.bin and font.asm)
+extern byte fontbin[752];
 
 void enterMode12H();
 void clearScreen(byte color);
@@ -16,3 +16,4 @@ void drawChar(char c, int x, int y, byte fg, byte bg);
 void vsync();
 
 #endif
+

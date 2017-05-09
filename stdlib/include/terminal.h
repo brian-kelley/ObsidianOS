@@ -8,8 +8,8 @@
 #include "fatdrv.h"
 #include "stdio.h"
 
-#define TERM_W 80
-#define TERM_H 30
+#define TERM_W 40
+#define TERM_H 25
 
 void initTerminal();
 void terminalKeyListener(byte scancode);

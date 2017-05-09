@@ -125,8 +125,6 @@ mov eax, cr0
 or al, 1
 mov cr0, eax
 
-; jump to kernel entry point (start)
-; start will set up stack and call kernel_main
 mov ax, 0x10
 mov ds, ax
 mov ss, ax
@@ -134,6 +132,8 @@ mov es, ax
 mov fs, ax
 mov gs, ax
 
+; jump to kernel entry point (start)
+; start will set up stack then jump to kernel_main
 JUMP_TO_KERNEL
 
 ; readLBA reads the sector ax (LBA) to es:bx
@@ -181,6 +181,7 @@ dd 0x9DD00
 ;   flags (1 byte)
 ;   more flags + limit 16:19 (1 byte)
 ;   base addr 24:32 (1 byte)
+align 8
 gdt:
 ; null descriptor
 dq 0

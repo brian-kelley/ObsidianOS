@@ -13,7 +13,7 @@
 
 extern void demo();
 
-  /* Note on GCC for i386 types:
+  /* Note on i386 GCC types:
 
      short: 16 bits
      int: 32 bits
@@ -116,17 +116,11 @@ void memtest()
   }
 }
 
-extern void startDraw();
-
 void kernel_main()
 {
-  startDraw();
-  for(int i = 0; i < 200; i++)
+  for(int i = 0; i < 64000; i++)
   {
-    for(int j = 0; j < 320; j++)
-    {
-      *((byte*) (0xA0000 + i * 320 + j)) = i;
-    }
+    *((byte*) (0xA0000 + i)) = 0x2A;
   }
   while(1);
   /*

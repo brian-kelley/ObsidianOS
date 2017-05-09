@@ -8,16 +8,16 @@ import subprocess
 
 # Set up constants
 
-cflags = "-std=c99 -Os -m32 -ffreestanding -nostdlibinc -Istdlib/include -c"
+cflags = "-std=c99 -Os -ffreestanding -nostdlib -Istdlib/include -c"
 # format for assembling machine code (TODO: match output of C compiler on mac and linux)
-objformat = "macho32"
+objformat = "elf32"
 # TODO: set these based on platform (currently just for mac)
 asm = "nasm"
-cc = "gcc"
-ld = "ld"
-nm = "gnm"
-objcopy = "gobjcopy"
-objdump = "gobjdump"
+cc = "i386-elf-gcc"
+ld = "i386-elf-ld"
+nm = "i386-elf-nm"
+objcopy = "i386-elf-objcopy"
+objdump = "i386-elf-objdump"
 emulator = "qemu-system-i386"
 
 # place object files and temporary files in /build
@@ -82,7 +82,7 @@ run(ldCommand)
 # get locations of symbols in the full system blob
 
 print("Getting symbol list...")
-run(nm + " --demangle -v " + build + "system.o &> " + build + "symbols.txt")
+run(nm + " -v " + build + "system.o &> " + build + "symbols.txt")
 
 # get flat binary version of system.o
 
@@ -140,7 +140,7 @@ print("Assembling bootloader...")
 run(asm + " " + build + "boot.asm -fbin -o " + build + "boot.bin");
 print("Building system image...")
 os.chdir("utils")
-run(cc + " ImageBuilder.c -o ImageBuilder.exe")
+run("gcc ImageBuilder.c -o ImageBuilder.exe")
 run("./ImageBuilder.exe --boot ../" + build + "boot.bin --kernel ../" + build + "system.bin")
 run("mv obsidian.img ..")
 os.chdir("..")

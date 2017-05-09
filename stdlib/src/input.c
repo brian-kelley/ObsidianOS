@@ -114,7 +114,7 @@ void initKeyboard()
 	dword idtAddress;
 	dword idtPtr[2];
 	idt[0x21].offsetLower = keyboardAddress & 0xFFFF;
-	idt[0x21].selector = 0x10;
+	idt[0x21].selector = 0x08;
 	idt[0x21].zero = 0;
 	idt[0x21].type_attr = 0x8E;
 	idt[0x21].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
