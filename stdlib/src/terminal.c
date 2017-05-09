@@ -26,6 +26,7 @@ void initTerminal()
   cursorX = 0;
   cursorY = 0;
   printString(welcomeStr);
+  cursorY = 1;
   printString(prompt);
   cursorX = promptLen;
   commandLen = 0;

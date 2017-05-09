@@ -130,8 +130,8 @@ void kernel_main()
   //puts("Hello world");
   //while(1);
   //clearScreen(4);
-  //initKeyboard();
   initTerminal();
+  //initKeyboard();
   /*
   initMM();
   initFPU();

@@ -4,11 +4,11 @@ global pass
 
 extern keyPressed
 extern keyboardHandler
+extern idt
 
 section .text
 loadIDT:
-  mov edx, [esp + 4]
-	lidt [edx]
+	lidt [idt]
   sti
 	ret
 

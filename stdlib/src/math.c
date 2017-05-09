@@ -87,24 +87,75 @@ long double tanhl(long double x)
 	return (e2X - 1) / (e2X + 1);
 }
 
-//Provide custom implementations of libgcc 64-bit math
-unsigned long long __umoddi3(unsigned long long divident, unsigned long long divisor)
+//Need to provide custom implementations of libgcc 64-bit math
+unsigned long long __umoddi3(unsigned long long dividend, unsigned long long divisor)
 {
-  return 0;
+  unsigned long long q = 0;
+  unsigned long long r = 0;
+  for(int i = 63; i >= 0; i--)
+  {
+    r <<= 1;
+    unsigned long long mask = 1ULL << i;
+    if(dividend & mask)
+    {
+      r |= 1;
+    }
+    if(r >= divisor)
+    {
+      r -= divisor;
+      q |= mask;
+    }
+  }
+  return r;
 }
 
-unsigned long long __udivdi3(unsigned long long divident, unsigned long long divisor)
+unsigned long long __udivdi3(unsigned long long dividend, unsigned long long divisor)
 {
-  return 0;
+  unsigned long long q = 0;
+  unsigned long long r = 0;
+  for(int i = 63; i >= 0; i--)
+  {
+    r <<= 1;
+    unsigned long long mask = 1ULL << i;
+    if(dividend & mask)
+    {
+      r |= 1;
+    }
+    if(r >= divisor)
+    {
+      r -= divisor;
+      q |= mask;
+    }
+  }
+  return q;
 }
 
 long long __moddi3(long long dividend, long long divisor)
 {
-  return 0;
+  //C behavior: mod is negative if dividend OR divisor is negative
+  bool sign = (dividend < 0) || (divisor < 0);
+  unsigned long long rem = __umoddi3(dividend < 0 ? -dividend : dividend, divisor < 0 ? -divisor : divisor);
+  if(sign)
+  {
+    return -rem;
+  }
+  else
+  {
+    return rem;
+  }
 }
 
 long long __divdi3(long long dividend, long long divisor)
 {
-  return 0;
+  bool sign = (dividend < 0) ^ (divisor < 0);
+  unsigned long long q = __udivdi3(dividend < 0 ? -dividend : dividend, divisor < 0 ? -divisor : divisor);
+  if(sign)
+  {
+    return -q;
+  }
+  else
+  {
+    return q;
+  }
 }
 

@@ -3,6 +3,7 @@
 
 #include "globalDefines.h"
 
+//in/out a byte through port
 extern void writeport(dword portNum, dword value);
 extern byte readport(dword portNum);
 //font binary (see font.bin and font.asm)

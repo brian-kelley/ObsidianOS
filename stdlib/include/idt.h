@@ -12,13 +12,12 @@ typedef struct
   word offsetHigher;
 } idtEntry;
 
-idtEntry idt[256];
-
-void loadEmptyIDT();
+extern idtEntry idt[256];
 
 //pass - interrupt handler that does nothing
 extern void pass();
-extern void loadIDT(void* idtAddr);
+//load the IDT and re-enable interrupts
+extern void loadIDT();
 
 #endif
 
