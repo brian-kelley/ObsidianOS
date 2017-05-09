@@ -1,16 +1,5 @@
 #include "input.h"
 
-typedef struct
-{
-	word offsetLower;
-	word selector;
-	byte zero;
-	byte type_attr;
-	word offsetHigher;
-} idtEntry;
-
-static idtEntry idt[256];
-
 static char charVals[] =
 {
 	//Chars without Shift

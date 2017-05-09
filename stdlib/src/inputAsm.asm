@@ -1,5 +1,6 @@
 global loadIDT
 global keyboardInterrupt
+global pass
 
 extern keyPressed
 extern keyboardHandler
@@ -14,4 +15,7 @@ loadIDT:
 keyboardInterrupt:
 	call keyboardHandler
 	iret
+
+pass:
+  iret
 

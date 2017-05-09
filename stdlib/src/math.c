@@ -87,4 +87,24 @@ long double tanhl(long double x)
 	return (e2X - 1) / (e2X + 1);
 }
 
+//Provide custom implementations of libgcc 64-bit math
+unsigned long long __umoddi3(unsigned long long divident, unsigned long long divisor)
+{
+  return 0;
+}
+
+unsigned long long __udivdi3(unsigned long long divident, unsigned long long divisor)
+{
+  return 0;
+}
+
+long long __moddi3(long long dividend, long long divisor)
+{
+  return 0;
+}
+
+long long __divdi3(long long dividend, long long divisor)
+{
+  return 0;
+}
 

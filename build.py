@@ -72,11 +72,20 @@ objs = []
 for f in glob.glob("stdlib/src/*.c") + glob.glob("stdlib/src/*.asm") + glob.glob("kernel/src/*.c") + glob.glob("kernel/src/*.asm"):
     objs.append(compile(f))
 
-print("Linking all object files...")
-ldCommand = ld + " -r "
+print("Producing binary system image...")
+ldCommand = ld;
 for o in objs:
-    ldCommand += o + " "
-ldCommand += " -o " + build + "system.o"
+    ldCommand += " " + o
+ldCommand += " -Ttext 0x500 -e _start --oformat binary -o " + build + "system.bin"
+run(ldCommand)
+
+# In addition to the flat binary, generate a relocatable system image (to get entry point location)
+
+print("Producing relocatable system image...")
+ldCommand = ld;
+for o in objs:
+    ldCommand += " " + o
+ldCommand += " -r -o " + build + "system.o"
 run(ldCommand)
 
 # get locations of symbols in the full system blob
@@ -87,7 +96,7 @@ run(nm + " -v " + build + "system.o &> " + build + "symbols.txt")
 # get flat binary version of system.o
 
 print("Getting system binary...")
-run(objcopy + " --set-start 0x500 -O binary " + build + "system.o " + build + "system.bin")
+#run(objcopy + " --set-start 0x500 -O binary " + build + "system.o " + build + "system.bin")
 
 # get entry point as pointer (to add to bootloader)
 # symbol is "start" (in kernel/src/start.asm)
@@ -96,7 +105,7 @@ for line in open(build + "symbols.txt").readlines():
     words = string.split(line)
     if len(words) < 3:
         continue
-    if words[2] == "start":
+    if words[2] == "_start":
         kernelEntry = 0x500 + int(words[0], 16)
         print("System entry point (absolute addr): " + hex(kernelEntry))
         break

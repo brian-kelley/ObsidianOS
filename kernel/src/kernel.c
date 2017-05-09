@@ -74,12 +74,11 @@ void keyPressed(byte scancode, byte pressed)
   //Keyboard interrupts send data here. Send data to user applications etc.
   if(userProc)
   {
-    //give event to user key listeners...
+    //TODO: give event to user program key listeners...
   }
   else
   {
-    //terminal is the current focus
-    //terminal doesn't care about key releases
+    //terminal is the current focus (and ignore releases)
     if(pressed)
       terminalKeyListener(scancode);
   }

@@ -4,6 +4,7 @@
 #include "globalDefines.h"
 #include "video.h"
 #include "terminal.h"
+#include "idt.h"
 
 void keyboardHandler();
 void initKeyboard();
@@ -15,7 +16,6 @@ extern byte altPressed;
 extern byte capsLockOn;
 
 extern void keyboardInterrupt();
-extern void loadIDT(dword* idtPtr);
 extern void drawNum(dword num, int row);
 extern void keyPressed(byte scancode, byte pressed);
 extern void enableInterrupts();	//sti
