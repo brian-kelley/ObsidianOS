@@ -119,13 +119,20 @@ void kernel_main()
 {
   for(int i = 0; i < 64000; i++)
   {
-    *((byte*) (0xA0000 + i)) = 0x2A;
+    *((byte*) (0xA0000 + i)) = 0x0;
   }
-  while(1);
   /*
-  clearScreen(4);
-  initKeyboard();
+  for(int i = 0; i < 26; i++)
+  {
+    drawChar('A' + i, i, 0, 0x00, 0x0F);
+  }
+  */
+  //puts("Hello world");
+  //while(1);
+  //clearScreen(4);
+  //initKeyboard();
   initTerminal();
+  /*
   initMM();
   initFPU();
   ataInit();
@@ -133,7 +140,7 @@ void kernel_main()
   //Begin test
   //End test
   resetTermCursor();
-  while(1);   //Kernel setup done, everything else triggered by interrupts
   */
+  while(1);   //Kernel setup done, everything else triggered by interrupts
 }
 
