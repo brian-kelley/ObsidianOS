@@ -1,20 +1,33 @@
 global loadIDT
 global keyboardInterrupt
 global pass
+global ioWait
 
 extern keyPressed
 extern keyboardHandler
-extern idt
+extern idtDesc
+extern puts
 
 section .text
 loadIDT:
-	lidt [idt]
+  cli
+  lidt [idtDesc]
   sti
-	ret
+  ret
 
 keyboardInterrupt:
-	call keyboardHandler
-	iret
+  cli
+  cld
+  call keyboardHandler
+  sti
+  iret
+
+ioWait:
+  jmp .l1
+  .l1:
+  jmp .l2
+  .l2:
+  ret
 
 pass:
   iret

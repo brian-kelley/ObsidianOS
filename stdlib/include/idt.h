@@ -12,7 +12,14 @@ typedef struct
   word offsetHigher;
 } idtEntry;
 
+typedef struct
+{
+  word size;
+  dword addr;
+} __attribute__ ((packed)) idtPtr;
+
 extern idtEntry idt[256];
+extern idtPtr idtDesc;
 
 //pass - interrupt handler that does nothing
 extern void pass();

@@ -84,54 +84,41 @@ void keyPressed(byte scancode, byte pressed)
   }
 }
 
-//Verify correctness of dynamic allocator
-void memtest()
-{
-  int* ptrs[500];
-  int count = 0;
-  for(int i = 0; i < 500; i++)
-  {
-    //allocate 1, 2, 3, ... 500 int arrays
-    ptrs[i] = malloc((i + 1) * sizeof(int));
-    for(int j = 0; j < i + 1; j++)
-    {
-      ptrs[i][j] = count++;
-    }
-  }
-  //now verify that the values are all what they were assigned
-  count = 0;
-  for(int i = 0; i < 500; i++)
-  {
-    for(int j = 0; j < i + 1; j++)
-    {
-      if(ptrs[i][j] != count)
-      {
-        printf("Failed on array %i of 500\n", i);
-        printString("FATAL MEMORY ERROR!!!!\n");
-        return;
-      }
-      count++;
-    }
-  }
-}
-
-void kernel_main()
+void showPalette()
 {
   for(int i = 0; i < 64000; i++)
   {
     *((byte*) (0xA0000 + i)) = 0x0;
   }
-  /*
-  for(int i = 0; i < 26; i++)
+  for(int i = 0; i < 256; i++)
   {
-    drawChar('A' + i, i, 0, 0x00, 0x0F);
+    int bx = (i % 16) * 8;
+    int by = (i / 16) * 8;
+    for(int x = bx; x < bx + 8; x++)
+    {
+      for(int y = by; y < by + 8; y++)
+      {
+        *((byte*) (0xA0000 + x + 8 + 320 * (y + 8))) = i;
+      }
+    }
   }
-  */
-  //puts("Hello world");
-  //while(1);
-  //clearScreen(4);
+  for(int i = 0; i < 10; i++)
+  {
+    drawChar('0' + i, 1 + i, 0, 0xF, 0);
+    drawChar('0' + i, 0, 1 + i, 0xF, 0);
+  }
+  for(int i = 0; i < 6; i++)
+  {
+    drawChar('A' + i, 11 + i, 0, 0xF, 0);
+    drawChar('A' + i, 0, 11 + i, 0xF, 0);
+  }
+}
+
+void kernel_main()
+{
   initTerminal();
-  //initKeyboard();
+  initKeyboard();
+  while(1);
   /*
   initMM();
   initFPU();

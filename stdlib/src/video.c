@@ -18,12 +18,24 @@ void drawChar(char c, int x, int y, byte fg, byte bg)
 {
   int sx = x * 8;
   int sy = y * 8;
-  if(c < '!' || c > '~')
-    return;
-  byte* glyph = fontbin + 8 * (c - '!');
   byte* iter = (byte*) (0xA0000 + sx + sy * 320);
-  //stride is from right edge of character to left edge of char on next line
   const int stride = 312;
+  if(c < '!' || c > '~')
+  {
+    //non-visible character, clear that region
+    for(int i = 0; i < 8; i++)
+    {
+      for(int j = 0; j < 8; j++)
+      {
+        *iter = bg;
+        iter++;
+      }
+      iter += stride;
+    }
+    return;
+  }
+  byte* glyph = fontbin + 8 * (c - '!');
+  //stride is from right edge of character to left edge of char on next line
   for(int row = 0; row < 8; row++)
   {
     for(byte mask = 0x1; mask; mask <<= 1)

@@ -132,7 +132,7 @@ mov es, ax
 mov fs, ax
 mov gs, ax
 
-; jump to kernel entry point (start)
+; build.py replaces this line with jump to kernel entry point (start)
 ; start will set up stack then jump to kernel_main
 JUMP_TO_KERNEL
 
@@ -169,7 +169,7 @@ readLBA:
 gdtPointer:
 ; size, in bytes (minus 1)
 gdtSize:
-dw 23
+dw 24
 ; flat 32-bit ptr to gdt (need to add 0x3E + gdt to this)
 gdtAddr:
 dd 0x9DD00
@@ -185,14 +185,14 @@ align 8
 gdt:
 ; null descriptor
 dq 0
-; code descriptor (selector 08h)
+; kernel code descriptor (08h)
 dw 0xFFFF
 dw 0
 db 0
 db 0b10011010 ; access byte
 db 0b11001111 ; flags and limit 16:19
 db 0
-; data descriptor (selector 10h)
+; data descriptor (10h)
 dw 0xFFFF
 dw 0
 db 0
