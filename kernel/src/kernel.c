@@ -79,7 +79,7 @@ void keyPressed(byte scancode, byte pressed)
   else
   {
     //terminal is the current focus (and ignore releases)
-    if(pressed)
+    if(pressed == true)
       terminalKeyListener(scancode);
   }
 }

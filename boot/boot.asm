@@ -169,7 +169,7 @@ readLBA:
 gdtPointer:
 ; size, in bytes (minus 1)
 gdtSize:
-dw 24
+dw 23
 ; flat 32-bit ptr to gdt (need to add 0x3E + gdt to this)
 gdtAddr:
 dd 0x9DD00

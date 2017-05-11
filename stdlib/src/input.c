@@ -85,45 +85,9 @@ void initKeyboard()
   idt[0x20].zero = 0;
   idt[0x20].type_attr = 0x8E;
   idt[0x20].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
-  //clear keyboard data buffer
-  /*
-  int garbage = 0;
-  while(readport(0x64) & KB_CAN_READ)
-  {
-    readport(0x60);
-    garbage++;
-  }
-  printf("Read %i garbage bytes in KB buffer.\n", garbage);
-  //enable keyboard communication in case it was disabled
-  byte kbCode = 0;
-  kbCode = keyboardCommand(0xAE);
-  if(0xFA != kbCode)
-  {
-    printf("ERROR: couldn't enable KB communication (code %#hhx)\n", kbCode);
-    int asdf = 10;
-    while(asdf--)
-    {
-      kbCode = getKeyboardData();
-      printf("Note: got another byte %#hhx\n", kbCode);
-    }
-  }
-  //disable keyboard scanning
-  kbCode = keyboardCommand(0xF5);
-  if(0xFA != kbCode)
-  {
-    printf("ERROR: couldn't disable KB scanning (code %#hhx)\n", kbCode);
-    while(1);
-  }
-  //disable keyboard
-  kbCode = keyboardCommand(0xFF);
-  if(kbCode != 0xAA)
-  {
-    printf("ERROR: Keyboard reset failed (code %#hhx)\n", kbCode);
-    while(1);
-  }
-  */
-  //enableKeyboardScancodes();
-  //enable keybaord
+  //disable 2nd PS/2 port (mouse)
+  while(getKeyboardStatus() & KB_CAN_WRITE);
+  writeport(0x64, 0xAD);
   //In PIC, remap master and slave IRQ handlers to 1 (0x21)
   //this makes the keyboard interrupt 0x21 (matching IDT entry above)
   writeport(0x20, 0x11);
@@ -150,26 +114,23 @@ void initKeyboard()
   //First 2 bytes are size, next 4 bytes = idtAddress pointer
   idtPtr[0] = (sizeof(idtEntry) * 256 - 1) + ((idtAddress & 0xFFFF) << 16);
   idtPtr[1] = idtAddress >> 16;
+  //clear keyboard's data buffer
+  while(keyboardHasOutput())
+  {
+    getKeyboardData();
+  }
   loadIDT();
-  //writeport(0x21, 0xFD);
-  //enable keyboard scanning
-  //keyboardCommand(0xF4);
 }
 
 void keyboardHandler()
 {
-  puts("In keyboard handler...");
   bool pressed = true;	//Assume pressed, set to 0 if released
   byte dataIn = getKeyboardData();
   if(dataIn & 0x80)
   {
-    pressed = 0;
+    pressed = false;
     dataIn &= 0x7F;
   }
-  if(pressed)
-    printf("Key pressed (scancode %hhx)\n", dataIn);
-  else
-    printf("Key released (scancode %hhx)\n", dataIn);
   //now dataIn contains just the keycode, bit 7 clear
   //Process special keys
   switch((Scancode) dataIn)
@@ -200,7 +161,6 @@ void keyboardHandler()
     default:;
   }
   keyPressed(dataIn, pressed);
-  //drawNum(dataIn, 28);
   //signal EOI
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
