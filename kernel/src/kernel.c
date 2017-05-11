@@ -69,7 +69,7 @@ char hexFromBits(byte bits)	//put in low 4
   }
 }
 
-void keyPressed(byte scancode, byte pressed)
+void keyPressed(byte scancode, bool pressed)
 {
   //Keyboard interrupts send data here. Send data to user applications etc.
   if(userProc)
@@ -79,8 +79,10 @@ void keyPressed(byte scancode, byte pressed)
   else
   {
     //terminal is the current focus (and ignore releases)
-    if(pressed == true)
+    if(pressed)
+    {
       terminalKeyListener(scancode);
+    }
   }
 }
 

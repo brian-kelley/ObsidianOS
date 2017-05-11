@@ -30,10 +30,14 @@ static char charVals[] =
   0, 0, 0, 0, 0
 };
 
+//global declarations
 byte shiftPressed = 0;
 byte ctrlPressed = 0;
 byte altPressed = 0;
 byte capsLockOn = 0;
+
+KeyQueue keyQueue;
+bool inListener;
 
 #define KB_CAN_READ 1
 #define KB_CAN_WRITE 2
@@ -76,6 +80,9 @@ byte keyboardCommand(byte command)
 
 void initKeyboard()
 {
+  keyQueue.head= 0;
+  keyQueue.size= 0;
+  inListener = false;
   dword idtAddress;
   dword idtPtr[2];
   //set up keyboard interrupt handler (0x21)
@@ -124,44 +131,67 @@ void initKeyboard()
 
 void keyboardHandler()
 {
-  bool pressed = true;	//Assume pressed, set to 0 if released
   byte dataIn = getKeyboardData();
-  if(dataIn & 0x80)
+  //Insert data into queue immediately
+  if(keyQueue.size == KEY_QUEUE_MAX)
   {
-    pressed = false;
-    dataIn &= 0x7F;
+    //keyQueue full, is an unrecoverable error
+    puts("");
+    puts("ERROR: Keyboard event buffer full!");
+    while(1); //hang
   }
-  //now dataIn contains just the keycode, bit 7 clear
-  //Process special keys
-  switch((Scancode) dataIn)
-  {
-    case KEY_LEFTSHIFT:
-    case KEY_RIGHTSHIFT:
-      if(pressed)
-        shiftPressed = 1;
-      else
-        shiftPressed = 0;
-      break;
-    case KEY_CAPSLOCK:
-      if(pressed)
-        capsLockOn = capsLockOn ? 0 : 1;
-      break;
-    case KEY_LEFTALT:
-      if(pressed)
-        altPressed = 1;
-      else
-        altPressed = 0;
-      break;
-    case KEY_LEFTCONTROL:
-      if(pressed)
-        ctrlPressed = 1;
-      else
-        ctrlPressed = 0;
-      break;
-    default:;
-  }
-  keyPressed(dataIn, pressed);
+  //insert event into queue
+  keyQueue.data[(keyQueue.head + keyQueue.size) % KEY_QUEUE_MAX] = dataIn;
+  keyQueue.size++;
   //signal EOI
+  if(!inListener)
+  {
+    inListener = true;
+    while(keyQueue.size > 0)
+    {
+      bool pressed = true;	//Assume pressed, set to 0 if released
+      byte event = keyQueue.data[keyQueue.head];
+      keyQueue.size--;
+      keyQueue.head = (keyQueue.head + 1) % KEY_QUEUE_MAX;
+      if(event & 0x80)
+      {
+        pressed = false;
+        event &= 0x7F;
+      }
+      //now dataIn contains just the keycode, bit 7 clear
+      //Process special keys
+      switch((Scancode) event)
+      {
+        case KEY_LEFTSHIFT:
+        case KEY_RIGHTSHIFT:
+          if(pressed)
+            shiftPressed = 1;
+          else
+            shiftPressed = 0;
+          break;
+        case KEY_CAPSLOCK:
+          if(pressed)
+            capsLockOn = capsLockOn ? 0 : 1;
+          break;
+        case KEY_LEFTALT:
+          if(pressed)
+            altPressed = 1;
+          else
+            altPressed = 0;
+          break;
+        case KEY_LEFTCONTROL:
+          if(pressed)
+            ctrlPressed = 1;
+          else
+            ctrlPressed = 0;
+          break;
+        default:;
+      }
+      keyPressed(event, pressed);
+    }
+    inListener = false;
+  }
+  //re-enable IRQ1 and interrupts in genreal
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
 }

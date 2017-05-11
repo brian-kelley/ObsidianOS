@@ -21,6 +21,23 @@ extern void keyPressed(byte scancode, byte pressed);
 extern void enableInterrupts();	//sti
 extern void disableInterrupts();	//cli
 
+#define KEY_QUEUE_MAX 16
+
+//Ring buffer for key events
+typedef struct
+{
+  byte data[KEY_QUEUE_MAX];
+  int head;
+  int size;
+} KeyQueue;
+
+extern KeyQueue keyQueue;
+
+//if inListener, don't call high-level key event listener, just add key to queue and return
+//the previously running listener will return and then see that there are more events to process
+//this preserves order of events visible to programs, while keeping key events responsive
+extern bool inListener;
+
 //define Scancode type
 typedef enum
 {

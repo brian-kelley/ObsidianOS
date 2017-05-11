@@ -16,10 +16,8 @@ loadIDT:
   ret
 
 keyboardInterrupt:
-  cli
   cld
   call keyboardHandler
-  sti
   iret
 
 ioWait:

@@ -22,7 +22,7 @@ static volatile byte runningDemo = 0;
 
 void initTerminal()
 {
-  clearTerminal(0);
+  memset(buffer, ' ', TERM_W * TERM_H);
   cursorX = 0;
   cursorY = 0;
   printString(welcomeStr);
@@ -282,7 +282,7 @@ void parseCommand(char* start)
   else if(strcmp("cd", cmd) == 0)
     cd(NULL);
   else if(strcmp("clear", cmd) == 0)
-    clearTerminal(1);
+    clearTerminal(false);
   else if(strcmp("demo", cmd) == 0)
   {
     runningDemo = true;
@@ -291,7 +291,7 @@ void parseCommand(char* start)
   /* DO THE COMMAND */
 }
 
-void clearTerminal(byte commandMode)
+void clearTerminal(bool showPrompt)
 {
   //Clear buffer
   for(int i = 0; i < TERM_H; i++)
@@ -302,7 +302,7 @@ void clearTerminal(byte commandMode)
     }
   }
   cursorY = 0;
-  if(commandMode)
+  if(showPrompt)
   {
     printString(prompt);
     cursorX = promptLen;
@@ -405,7 +405,7 @@ void demo()
   puts("");
   double theta = 0;
   double omega = 0.2; //added to theta each line
-  double amplitude = 40;
+  double amplitude = 20;
   int h, left, right;
   //a Ctrl+C interrupt will jump out of loop
   for(int j = 0; j < 200; j++)
@@ -414,18 +414,19 @@ void demo()
     theta += omega;
     if(theta > 2 * PI)
       theta -= 2 * PI;
-    left = 40 - h;
-    right = 40;
+    left = 20 - h;
+    right = 20;
     if(left > right)
     {
       right = left;
-      left = 40;
+      left = 20;
     }
     for(int i = 0; i < left; i++)
       putchar(' ');
     for(int i = left; i < right; i++)
       putchar('-');
-    for(int i = right; i < 80; i++)
+    for(int i = right; i < 40; i++)
       putchar(' ');
   }
 }
+
