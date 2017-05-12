@@ -30,7 +30,6 @@ void initTerminal()
   printString(prompt);
   cursorX = promptLen;
   commandLen = 0;
-  printf("Hello from initTerminal(), buffer is at %p\n", buffer);
 }
 
 void terminalKeyListener(byte scancode)

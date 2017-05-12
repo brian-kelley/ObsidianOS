@@ -10,6 +10,7 @@
 #include "string.h"
 #include "stdio.h"
 #include "math.h"
+#include "events.h"
 
 extern void demo();
 
@@ -120,7 +121,16 @@ void kernel_main()
 {
   initTerminal();
   initKeyboard();
-  while(1);
+  while(1)
+  {
+    Event e = getNextEvent();
+    //call event handler
+    if(e.type == KEY_EVENT && e.e.key.pressed)
+    {
+      terminalKeyListener(e.e.key.scancode);
+    }
+    //discard other events for now
+  }
   /*
   initMM();
   initFPU();

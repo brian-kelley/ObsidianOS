@@ -131,8 +131,91 @@ void initKeyboard()
 
 void keyboardHandler()
 {
-  byte dataIn = getKeyboardData();
+  disableInterrupts();
+  int dataBytes = 0;
+  if(getKeyboardStatus() & (1 << 5))
+  {
+    //mouse event
+    while(getKeyboardStatus() & KB_CAN_READ)
+    {
+      readport(0x60);
+      ioWait();
+    }
+  }
+  else
+  {
+    byte event = getKeyboardData();
+    bool pressed = true;
+    if(event & 0x80)
+    {
+      pressed = false;
+      event &= 0x7F;
+    }
+    //now dataIn contains just the keycode, bit 7 clear
+    //Process special keys
+    switch((Scancode) event)
+    {
+      case KEY_LEFTSHIFT:
+      case KEY_RIGHTSHIFT:
+        if(pressed)
+          shiftPressed = 1;
+        else
+          shiftPressed = 0;
+        break;
+      case KEY_CAPSLOCK:
+        if(pressed)
+          capsLockOn = capsLockOn ? 0 : 1;
+        break;
+      case KEY_LEFTALT:
+        if(pressed)
+          altPressed = 1;
+        else
+          altPressed = 0;
+        break;
+      case KEY_LEFTCONTROL:
+        if(pressed)
+          ctrlPressed = 1;
+        else
+          ctrlPressed = 0;
+        break;
+      default:;
+    }
+    keyPressed(event, pressed);
+  }
+  //re-enable IRQ1
+  writeport(0x20, 0x20);
+  writeport(0xA0, 0x20);
+  enableInterrupts();
+}
+
+  /*
+  printf("Got %i PS/2 bytes: ");
+  for(int i = 0; i < dataBytes; i++)
+  {
+    printf("%#hhx ", data[i]);
+  }
+  puts("");
+  */
+  /*
+  //read "PS/2 controller output port"
+  while(getKeyboardStatus() & KB_CAN_WRITE);
+  writeport(0x64, 0xD0);
+  byte controllerPort = getKeyboardData();
+  printf("Got controller port byte: %#hhx\n", controllerPort);
+  bool keyboard = false;
+  if(controllerPort & (1 << 4))
+  {
+    keyboard = true;
+  }
+  if(!keyboard)
+  {
+    puts("Mouse event, ignoring for now.");
+    return;
+  }
+  */
+  //byte dataIn = getKeyboardData();
   //Insert data into queue immediately
+  /*
   if(keyQueue.size == KEY_QUEUE_MAX)
   {
     //keyQueue full, is an unrecoverable error
@@ -144,57 +227,11 @@ void keyboardHandler()
   keyQueue.data[(keyQueue.head + keyQueue.size) % KEY_QUEUE_MAX] = dataIn;
   keyQueue.size++;
   //signal EOI
-  if(!inListener)
-  {
-    inListener = true;
-    while(keyQueue.size > 0)
-    {
-      bool pressed = true;	//Assume pressed, set to 0 if released
-      byte event = keyQueue.data[keyQueue.head];
-      keyQueue.size--;
-      keyQueue.head = (keyQueue.head + 1) % KEY_QUEUE_MAX;
-      if(event & 0x80)
-      {
-        pressed = false;
-        event &= 0x7F;
-      }
-      //now dataIn contains just the keycode, bit 7 clear
-      //Process special keys
-      switch((Scancode) event)
-      {
-        case KEY_LEFTSHIFT:
-        case KEY_RIGHTSHIFT:
-          if(pressed)
-            shiftPressed = 1;
-          else
-            shiftPressed = 0;
-          break;
-        case KEY_CAPSLOCK:
-          if(pressed)
-            capsLockOn = capsLockOn ? 0 : 1;
-          break;
-        case KEY_LEFTALT:
-          if(pressed)
-            altPressed = 1;
-          else
-            altPressed = 0;
-          break;
-        case KEY_LEFTCONTROL:
-          if(pressed)
-            ctrlPressed = 1;
-          else
-            ctrlPressed = 0;
-          break;
-        default:;
-      }
-      keyPressed(event, pressed);
-    }
-    inListener = false;
-  }
-  //re-enable IRQ1 and interrupts in genreal
-  writeport(0x20, 0x20);
-  writeport(0xA0, 0x20);
-}
+  bool pressed = true;	//Assume pressed, set to 0 if released
+  byte event = keyQueue.data[keyQueue.head];
+  keyQueue.size--;
+  keyQueue.head = (keyQueue.head + 1) % KEY_QUEUE_MAX;
+  */
 
 char getASCII(byte scancode)
 {
