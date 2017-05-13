@@ -56,7 +56,7 @@ static const int daysPerMonth[] = {
   31
 };
 
-static bool bcd;
+static bool bcd = true;
 
 //read a CMOS reg
 //does BCD->binary conversion if needed
@@ -105,7 +105,8 @@ static RTC getRTC()
 void initTime()
 {
   writeport(0x70, 0x0B);
-  bcd = readport(0x71) & 0x4;
+  //bcd = readport(0x71) & 0x4;
+  bcd = true;
 }
 
 //get human readable time from struct tm
@@ -183,15 +184,19 @@ time_t time(time_t* t)
   }
   //assume RTC year >= 70 means 19XX, and < 70 means 20XX
   unsigned year = rtc.year >= 70 ? 1900 + rtc.year : 2000 + rtc.year;
+  printf("Year: %u\n", year);
   unsigned leapDays = (1 + year - 1970) / 4;
   if(rtc.mon > 2 && rtc.year % 4 == 0)
   {
     //current year also leap year, and time is past February so another leap day passed
     leapDays++;
   }
+  printf("%u leap days since 1970.\n", leapDays);
   time_t unixTime = 365 * year + leapDays;
+  printf("%x days since 1-1-70\n");
   unixTime *= (24 * 3600);
   unixTime += rtc.hour * 3600 + rtc.min * 60 + rtc.sec;
+  printf("Wall time today is: %hhu:%hhu:%hhu\n", rtc.hour, rtc.min, rtc.sec);
   if(t)
   {
     *t = unixTime;

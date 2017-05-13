@@ -3,6 +3,7 @@
 static dword partitionStart; //first sector of partition
 
 extern int printf(const char* fmt, ...);
+extern void puts(const char* str);
 
 int ataInit()
 {
@@ -18,11 +19,12 @@ int ataInit()
 //ATA PIO driver functions (reset, read sector, write sector)
 int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
 {
+    printf("Reading sector %u\n", sector);
     //sector is relative to partition, so add partition start sector
     sector += partitionStart;
     //wait for BSY to clear and RDY to set
     byte status;
-    int timeoutCounter = 10000;
+    int timeoutCounter = 1000;
     do
     {
         status = readport(0x1F7);
@@ -30,6 +32,7 @@ int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
         if(timeoutCounter == 0)
         {
             ataInit();	//reset drive
+            puts("Failed, resetting...");
             timeoutCounter = 10000; //try again
         }
     }
@@ -49,6 +52,7 @@ int readsector(dword sector, byte* buf) //buf must have 512 bytes allocated
     while(!(status & (1 << 3)) || !(status & (1 << 6)) || status & (1 << 7));
     for(int i = 0; i < 256; i++)
     {
+      //printf("%i\n", i);
         word data = readportw(0x1F0);
         buf[i * 2] = data & 0xFF;
         buf[i * 2 + 1] = (data & 0xFF00) >> 8;

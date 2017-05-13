@@ -338,6 +338,7 @@ void ls(const char* args)
   /* TEMPORARY TEST VERSION */
   //iterate through root directory entries and print populated ones
   printf("max %i entries in root\n", getMaxRootEntries());
+  return;
   for(int i = 0; i < getMaxRootEntries(); i++)
   {
     DirEntry ent = getRootDirEntry(i);

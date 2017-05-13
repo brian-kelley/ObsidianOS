@@ -14,20 +14,22 @@
 
 extern void demo();
 
-  /* Note on i386 GCC types:
+/* Note on i386 GCC types:
 
-     short: 16 bits
-     int: 32 bits
-     long int: 32 bits
-     long long int: 64 bits
-     float: 32 bits
-     double: 64 bits
-     long double: 96 bits in memory for 8-byte alignment but is actually 80 bit precision
-     */
+short: 16 bits
+int: 32 bits
+long int: 32 bits
+long long int: 64 bits
+float: 32 bits
+double: 64 bits
+long double: 96 bits in memory for 8-byte alignment but is actually 80 bit precision
+*/
 
-  extern byte getFontVal();
-  extern void initFPU();	    //mathAsm.asm
-  byte userProc = 0;	//0 if in terminal and 1 if running user program
+extern byte getFontVal();
+extern void initTime();     //time.c
+extern void initFPU();	    //mathAsm.asm
+
+bool userProc = 0;	//0 if in terminal and 1 if running user program
 
 char hexFromBits(byte bits)	//put in low 4
 {
@@ -119,9 +121,15 @@ void showPalette()
 
 void kernel_main()
 {
+  initTime();
   initTerminal();
+  initFPU();
+  ataInit();
+  initFatDriver();
   initKeyboard();
-  while(1);
+  byte buf[512];
+  //readsector(0, buf);
+  //hexdump(buf, 512);
   /*
   {
     Event e = getNextEvent();
@@ -133,9 +141,6 @@ void kernel_main()
     //discard other events for now
   }
   initMM();
-  initFPU();
-  ataInit();
-  initFatDriver();
   //Begin test
   //End test
   resetTermCursor();

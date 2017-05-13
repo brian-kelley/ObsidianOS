@@ -6,10 +6,8 @@
 
 #define CLOCKS_PER_SEC 1024
 
-void initTime();
-
 //avoid 2038 problem!
-typedef unsigned long long time_t;
+typedef unsigned /*long*/ long time_t;
 //even with 32-bit clock, wraparound only happens once in 1000 hours
 typedef size_t clock_t;
 
