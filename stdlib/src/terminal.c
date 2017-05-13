@@ -282,6 +282,8 @@ void parseCommand(char* start)
     cd(NULL);
   else if(strcmp("clear", cmd) == 0)
     clearTerminal(false);
+  else if(strcmp("date", cmd) == 0)
+    printf("UNIX time: %llx\n", time(NULL));
   else if(strcmp("demo", cmd) == 0)
   {
     runningDemo = true;

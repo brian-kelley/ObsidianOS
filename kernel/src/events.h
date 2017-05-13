@@ -3,37 +3,38 @@
 
 #define EVENT_QUEUE_MAX 64
 
+#include "globalDefines.h"
+
 //Obsidian event system
 
-enum EventType
+enum
 {
   KEY_EVENT,        //Key press or release
   MOTION_EVENT,     //Mouse motion
-  BUTTON_EVENT,     //Mouse button press or release
-  CLOCK_EVENT       //RTC 1024 Hz clock
+  BUTTON_EVENT      //Mouse button press or release
 };
 
-typedef struct KeyEvent
+typedef struct
 {
   byte scancode;
   bool pressed;
-};
+} KeyEvent;
 
-typedef struct MotionEvent
+typedef struct
 {
   short dx;
   short dy;
-};
+} MotionEvent;
 
-typedef struct ButtonEvent
+typedef struct
 {
   short button;
   bool pressed;
-};
+} ButtonEvent;
 
-typedef struct ClockEvent {};
+typedef struct {} ClockEvent;
 
-typedef struct Event
+typedef struct 
 {
   int type;
   union
@@ -43,7 +44,7 @@ typedef struct Event
     ButtonEvent button;
     ClockEvent clock;
   } e;
-};
+} Event;
 
 void initEvents();
 void addEvent(Event e);

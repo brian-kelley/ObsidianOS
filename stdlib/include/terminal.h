@@ -7,6 +7,7 @@
 #include "input.h"
 #include "fatdrv.h"
 #include "stdio.h"
+#include "time.h"
 
 #define TERM_W 40
 #define TERM_H 25

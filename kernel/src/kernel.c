@@ -121,7 +121,8 @@ void kernel_main()
 {
   initTerminal();
   initKeyboard();
-  while(1)
+  while(1);
+  /*
   {
     Event e = getNextEvent();
     //call event handler
@@ -131,7 +132,6 @@ void kernel_main()
     }
     //discard other events for now
   }
-  /*
   initMM();
   initFPU();
   ataInit();
