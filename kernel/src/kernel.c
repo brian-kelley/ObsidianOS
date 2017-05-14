@@ -127,9 +127,6 @@ void kernel_main()
   ataInit();
   initFatDriver();
   initKeyboard();
-  byte buf[512];
-  //readsector(0, buf);
-  //hexdump(buf, 512);
   /*
   {
     Event e = getNextEvent();

@@ -96,8 +96,8 @@ static int printSigned(long long int, FILE* f, PrintFlags* pf);
 static int printUnsigned(unsigned long long int, FILE* f, PrintFlags* pf);
 static int printFloat(long double, FILE* f, PrintFlags* pf);
 //Specific cases for different data
-static int printUnsignedDec(unsigned long long int num, FILE* f, PrintFlags* pf);
-static int printSignedDec(long long int num, FILE* f, PrintFlags* pf);
+static int printUnsignedDec(unsigned long long val, FILE* f, PrintFlags* pf);
+static int printSignedDec(long long val, FILE* f, PrintFlags* pf);
 static int printOctal(unsigned long long int num, FILE* f, PrintFlags* pf);
 static int printHex(unsigned long long int num, FILE* f, PrintFlags* pf);
 static int printCstring(const char* str, FILE* f, PrintFlags* pf);
@@ -194,33 +194,65 @@ static int charToOct(char digit)
 //local utility functions for printing different types
 //each returns the number of characters actually printed to stdout
 
-static int printUnsignedDec(unsigned long long int num, FILE* f, PrintFlags* pf)
+const unsigned long long tenPowers[19] = {
+  1ULL,
+  10ULL,
+  100ULL,
+  1000ULL,
+  10000ULL,
+  100000ULL,
+  1000000ULL,
+  10000000ULL,
+  100000000ULL,
+  1000000000ULL,
+  10000000000ULL,
+  100000000000ULL,
+  1000000000000ULL,
+  10000000000000ULL,
+  100000000000000ULL,
+  1000000000000000ULL,
+  10000000000000000ULL,
+  100000000000000000ULL,
+  1000000000000000000ULL
+};
+
+//Print any unsigned int as decimal in buf, returning length (# digits)
+static void printDecimal(char* buf, unsigned long long val)
 {
-  char buf[32];
-  char* iter = buf;
-  char* numStart = iter;
-  if(num == 0)
-    *(iter++) = '0';
+  if(val == 0)
+  {
+    buf[0] = '0';
+    buf[1] = 0;
+  }
   else
   {
-    while(num > 0)
+    //Use division by repeated subtraction
+    //Definitely faster than using a 64-bit long division/remainder for each digit
+    int level = 18;
+    while(tenPowers[level] > val)
     {
-      *(iter++) = decToChar(num % 10);
-      num /= 10;
+      level--;
     }
+    int charIndex = 0;
+    while(level >= 0)
+    {
+      buf[charIndex] = '0';
+      while(val >= tenPowers[level])
+      {
+        buf[charIndex]++;
+        val -= tenPowers[level];
+      }
+      level--;
+      charIndex++;
+    }
+    buf[charIndex] = 0;
   }
-  //now iter points to char after the last digit
-  *iter = 0;
-  char* numEnd = iter - 1;
-  //reverse all chars between numStart and numEnd (inclusive)
-  while(numStart < numEnd)
-  {
-    char temp = *numStart;
-    *numStart = *numEnd;
-    *numEnd = temp;
-    numStart++;
-    numEnd--;
-  }
+}
+
+static int printUnsignedDec(unsigned long long val, FILE* f, PrintFlags* pf)
+{
+  char buf[32];
+  printDecimal(buf, val);
   char pad = ' ';
   if(pf->zeroPad)
     pad = '0';
@@ -232,36 +264,15 @@ static int printSignedDec(long long int num, FILE* f, PrintFlags* pf)
   char buf[32];
   char* iter = buf;
   if(num < 0)
+  {
     *(iter++) = '-';
+    num = -num;
+  }
   else if(pf->spaceForSign)
     *(iter++) = ' ';
   else if(pf->forceSign)
     *(iter++) = '+';
-  if(num < 0)
-    num = -num;
-  char* numStart = iter;
-  if(num == 0)
-    *(iter++) = '0';
-  else
-  {
-    while(num > 0)
-    {
-      *(iter++) = decToChar(num % 10);
-      num /= 10;
-    }
-  }
-  //now iter points to char after the last digit
-  *iter = 0;
-  char* numEnd = iter - 1;
-  //reverse all chars between numStart and numEnd (inclusive)
-  while(numStart < numEnd)
-  {
-    char temp = *numStart;
-    *numStart = *numEnd;
-    *numEnd = temp;
-    numStart++;
-    numEnd--;
-  }
+  printDecimal(iter, num);
   char pad = ' ';
   if(pf->zeroPad)
     pad = '0';
@@ -693,49 +704,49 @@ int vfprintf(FILE* stream, const char* format, va_list arg)
             //Integers:
           case S8:
             {
-              int val = va_arg(arg, char);
+              i64 val = va_arg(arg, char);
               charsPrinted += printSigned(val, stream, &pf);
               break;
             }
           case U8:
             {
-              unsigned val = va_arg(arg, unsigned char);
+              u64 val = va_arg(arg, unsigned char);
               charsPrinted += printUnsigned(val, stream, &pf);
               break;
             }
           case S16:
             {
-              int val = va_arg(arg, short);
+              i64 val = va_arg(arg, short);
               charsPrinted += printSigned(val, stream, &pf);
               break;
             }
           case U16:
             {
-              unsigned val = va_arg(arg, unsigned short);
+              u64 val = va_arg(arg, unsigned short);
               charsPrinted += printUnsigned(val, stream, &pf);
               break;
             }
           case S32:
             {
-              int val = va_arg(arg, int);
+              i64 val = va_arg(arg, int);
               charsPrinted += printSigned(val, stream, &pf);
               break;
             }
           case U32:
             {
-              unsigned val = va_arg(arg, unsigned int);
+              u64 val = va_arg(arg, unsigned int);
               charsPrinted += printUnsigned(val, stream, &pf);
               break;
             }
           case S64:
             {
-              long long val = va_arg(arg, long long);
+              i64 val = va_arg(arg, long long);
               charsPrinted += printSigned(val, stream, &pf);
               break;
             }
           case U64:
             {
-              unsigned long long val = va_arg(arg, unsigned long long);
+              u64 val = va_arg(arg, unsigned long long);
               charsPrinted += printUnsigned(val, stream, &pf);
               break;
             }

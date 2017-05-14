@@ -88,6 +88,7 @@ static RTC getRTC()
 {
   RTC rtc;
   RTC temp;
+  while(rtcUpdating());
   do
   {
     temp = rtc;
