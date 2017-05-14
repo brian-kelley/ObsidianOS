@@ -6,9 +6,8 @@
 
 #define CLOCKS_PER_SEC 1024
 
-//avoid 2038 problem!
-typedef unsigned /*long*/ long time_t;
-//even with 32-bit clock, wraparound only happens once in 1000 hours
+typedef unsigned long long time_t;
+//Use 32-bit clock for performance. Wraparound only happens once in 1000 hours.
 typedef size_t clock_t;
 
 struct tm
@@ -22,8 +21,9 @@ struct tm
   int tm_wday;
   int tm_yday;
   int tm_isdst;
-} ; 
+}; 
 
+//Standard functions
 char* asctime(const struct tm* t);          //get human readable time from struct tm
 clock_t clock();                            //get current clock ticks
 char* ctime(const time_t* t);               //get human readable time from time_t
@@ -33,6 +33,11 @@ struct tm* localtime(const time_t* t);      //convert time_t to tm, in local tim
 time_t mktime(struct tm* t);                //convert tm (local) to time_t (inverse of localtime)
 size_t strftime(char* str, size_t maxsize, const char* fmt, const struct tm* t);  //formatted time
 time_t time(time_t* t);                     //return time, and if t set *t to time also
+
+//Custom functions
+void setTimezone(int offset);
+int getTimezone();
+void dateCommand();
 
 #endif
 
