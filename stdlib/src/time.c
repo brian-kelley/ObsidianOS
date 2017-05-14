@@ -7,7 +7,7 @@ static int timezone= -6;
 
 void setTimezone(int offset)
 {
-  //sanity check?
+  //sanity check
   if(offset > 12 || offset < -12)
   {
     puts("ERROR: Timezone out of range -12 to 12");
@@ -77,7 +77,7 @@ static const char* months[] = {
   "December"
 };
 
-static const char* weeks[] = {
+static const char* weekdays[] = {
   "Sunday",
   "Monday",
   "Tuesday",
@@ -164,8 +164,8 @@ void initTime()
 char* asctime(const struct tm* t)
 {
   //Format: "Mmm Www dd hh:mm:ss yyyy"
-  sprintf(ctimeBuf, "%.3s %.3s %02i %02i:%02i%02i %04i\n", months[t->tm_mon],
-      weeks[t->tm_wday], t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, t->tm_year);
+  sprintf(ctimeBuf, "%.3s %.3s %02i %02i:%02i:%02i %04i\n", months[t->tm_mon],
+      weekdays[t->tm_wday], t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, t->tm_year);
   return ctimeBuf;
 }
 
@@ -195,10 +195,10 @@ struct tm* gmtime(const time_t* t)
   time_t daySeconds = *t % (24 * 3600);
   time_t days = *t / (24 * 3600);
   tmState.tm_sec = daySeconds % 60;
-  daySeconds -= tmState.tm_sec;
-  tmState.tm_min = daySeconds / 60;
-  daySeconds -= 60 * tmState.tm_min;
-  tmState.tm_hour = daySeconds / 3600;
+  daySeconds /= 60;
+  //daySeconds is now minutes
+  tmState.tm_min = daySeconds % 60;
+  tmState.tm_hour = daySeconds / 60;
   //get exact number of complete leap years since 1970
   //subtract 2 regular years (for 1970 and 1971), then add one for 1972,
   //  plus one for every complete 4-year cycle after that
@@ -247,14 +247,159 @@ time_t mktime(struct tm* t)
 {
   time_t days = (t->tm_year - 1970) * 365 + t->tm_yday;
   days += (1 + t->tm_year - 1970) / 4;
-  return days * (24 * 3600) + (t->tm_hour + timezone) * 3600 + t->tm_min * 60 + t->tm_sec;
+  return days * (24 * 3600) + (t->tm_hour - timezone) * 3600 + t->tm_min * 60 + t->tm_sec;
 }
 
 //formatted time
 size_t strftime(char* str, size_t maxsize, const char* fmt, const struct tm* t)
 {
-  //TODO
-  return 0;
+  //maxsize includes the \0: ignore that to compare to output directly
+  maxsize--;
+  size_t output = 0;
+  for(const char* iter = fmt; *iter; iter++)
+  {
+    if(*iter != '%')
+    {
+      str[output++] = *iter;
+      if(output == maxsize)
+        return 0;
+    }
+    else
+    {
+      //TODO: handle week-based calendar correctly
+      //Make a temporary buffer to store just this value
+      //that way, bounds checking can happen in one place
+      char buf[32];
+      iter++;
+      switch(*iter)
+      {
+        case 'a':
+          memcpy(buf, weekdays[t->tm_wday], 3);
+          buf[3] = 0;
+          break;
+        case 'A':
+          strcpy(buf, weekdays[t->tm_wday]);
+          break;
+        case 'b':
+        case 'h':
+          memcpy(buf, months[t->tm_mon], 3);
+          buf[3] = 0;
+          break;
+        case 'B':
+          strcpy(buf, months[t->tm_mon]);
+          break;
+        case 'c':
+          {
+            char* formatTime = asctime(t);
+            strcpy(buf, formatTime);
+          }
+          break;
+        case 'C':
+          sprintf(buf, "%02i", t->tm_year / 100);
+          break;
+        case 'd':
+          sprintf(buf, "%02i", t->tm_mday);
+          break;
+        case 'x':
+        case 'D':
+          sprintf(buf, "%02i/%02i/%02i", t->tm_mon + 1, t->tm_mday, t->tm_year % 100);
+          break;
+        case 'e':
+          sprintf(buf, "%2i", t->tm_mon);
+          break;
+        case 'F':
+          sprintf(buf, "%04i-%02i-%02i", t->tm_year, t->tm_mon + 1, t->tm_mday);
+          break;
+        case 'H':
+          sprintf(buf, "%02i", t->tm_hour);
+          break;
+        case 'I':
+          sprintf(buf, "%02i", ((t->tm_hour) + 11) % 12 + 1);
+          break;
+        case 'j':
+          sprintf(buf, "%03i", t->tm_yday);
+          break;
+        case 'm':
+          sprintf(buf, "%02i", t->tm_mon + 1);
+          break;
+        case 'M':
+          sprintf(buf, "%02i", t->tm_min);
+          break;
+        case 'n':
+          buf[0] = '\n';
+          buf[1] = 0;
+          break;
+        case 'p':
+          {
+            buf[1] = 'M';
+            buf[2] = 0;
+            if(t->tm_hour >= 12)
+              buf[0] = 'P';
+            else
+              buf[0] = 'A';
+            break;
+          }
+        case 'r':
+          {
+            int hour12 = ((t->tm_hour) + 11) % 12 + 1;
+            char amPM = t->tm_hour >= 12 ? 'p' : 'a';
+            sprintf(buf, "%02i:%02i:%02i %cm", hour12, t->tm_min, t->tm_sec, amPM);
+            break;
+          }
+        case 'R':
+          sprintf(buf, "%02i:%02i", t->tm_hour, t->tm_min);
+          break;
+        case 'S':
+          sprintf(buf, "%02i", t->tm_sec);
+          break;
+        case 't':
+          buf[0] = '\t';
+          buf[1] = 0;
+          break;
+        case 'T':
+        case 'X':
+          sprintf(buf, "%02i:%02i:%02i", t->tm_hour, t->tm_min, t->tm_sec);
+          break;
+        case 'u':
+          //Monday is 1, and range is 1-7
+          sprintf(buf, "%i", t->tm_wday == 0 ? 7 : t->tm_wday);
+          break;
+        case 'U':
+        case 'V':
+        case 'W':
+          sprintf(buf, "%02i", t->tm_yday / 7);
+          break;
+        case 'w':
+          sprintf(buf, "%i", t->tm_wday);
+          break;
+        case 'z':
+          sprintf(buf, "%+i", 100 * timezone);
+          break;
+        case 'Z':
+          sprintf(buf, "UTC%+i\n", timezone);
+          break;
+        case 'g':
+        case 'y':
+          sprintf(buf, "%02i", t->tm_year % 100);
+          break;
+        case 'G':
+        case 'Y':
+          sprintf(buf, "%04i", t->tm_year);
+          break;
+        case '%':
+          buf[0] = '%';
+          buf[1] = 0;
+          break;
+      }
+      size_t buflen = strlen(buf);
+      if(buflen > maxsize - output)
+        return 0;
+      memcpy(str + output, buf, buflen);
+      output += buflen;
+    }
+  }
+  str[output++] = 0;
+  return output;
 }
 
 //return time, and if t != NULL, also set *t to time
@@ -295,7 +440,8 @@ void dateCommand()
   //Date command, modeled after OS X version
   time_t ut = time(NULL);
   struct tm* t = localtime(&ut);
-  printf("%.3s %.3s %02i %02i:%02i:%02i UTC%+i %04i\n", months[t->tm_mon],
-      weeks[t->tm_wday], t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, getTimezone(), t->tm_year);
+  char buf[64];
+  strftime(buf, 64, "%a, %b %d %Y, %r %Z", t);
+  puts(buf);
 }
 

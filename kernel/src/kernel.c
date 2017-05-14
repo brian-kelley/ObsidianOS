@@ -127,6 +127,10 @@ void kernel_main()
   ataInit();
   initFatDriver();
   initKeyboard();
+  time_t unixTime = time(NULL);
+  struct tm* gmt = gmtime(&unixTime);
+  char* str = asctime(gmt);
+  puts(str);
   /*
   {
     Event e = getNextEvent();

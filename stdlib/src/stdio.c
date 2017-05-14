@@ -3,6 +3,9 @@
 FILE* stdout = NULL;
 FILE* stdin = NULL;
 
+FILE stringPrinter;
+FILE stringReader;
+
 byte tmpFiles[TMP_MAX] = {0};
 
 enum SizeSpec
@@ -115,6 +118,8 @@ static void byteToStream(byte b, FILE* stream)
 {
   if(stream == NULL)	//stdout (TODO: Make stdout a proper FILE)
     printChar(b);
+  else if(stream == &stringPrinter)
+    *(stringPrinter.buffer++) = b;
   else
   {
     if(!stream->canWrite)
@@ -651,7 +656,14 @@ int scanf(const char* format, ...)
 
 int sprintf(char* str, const char* format, ...)
 {
-  return 0;
+  va_list arg;
+  va_start(arg, format);
+  stringPrinter.buffer = str;
+  int num = vfprintf(&stringPrinter, format, arg);
+  va_end(arg);
+  //null-terminate
+  byteToStream(0, &stringPrinter);
+  return num;
 }
 
 int sscanf(const char* str, const char* format, ...)

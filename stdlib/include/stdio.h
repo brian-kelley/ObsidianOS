@@ -15,25 +15,25 @@ typedef size_t fpos_t;
 
 enum F_ERROR
 {
-	NO_ERROR = 0,
-	HARD_FAULT = 1,		//serious hardware or ATA driver problem!
-	ILLEGAL_WRITE = 2,	//attempted writing to unwritable file
-	FILE_NOT_OPEN = 3	//attempted to use a FILE handle not registerd with kernel  
+  NO_ERROR = 0,
+  HARD_FAULT = 1,		//serious hardware or ATA driver problem!
+  ILLEGAL_WRITE = 2,	//attempted writing to unwritable file
+  FILE_NOT_OPEN = 3	//attempted to use a FILE handle not registerd with kernel  
 };
 
 typedef struct
 {
-    size_t pos;           //position in file/stream, if applicable
-    byte* buffer;
-    size_t bufsize;       //size of buffer, default is BUFSIZ, set with setvbuf
-    size_t parentCluster; //cluster of the parent directory (0 for root)
-    size_t parentIndex;   //index of dir entry within parent cluster
-    size_t bufOffset;     //byte offset of the start of buffer
-    int err;              //error state (an F_ERROR value)
-    bool canWrite;        //true if mode is write or append
-    bool ungetFilled;     //true if unget is holding a value
-    byte unget;           //hold value from ungetc()
-    bool eof;             //true if read or write past end of file attempted
+  size_t pos;           //position in file/stream, if applicable
+  byte* buffer;
+  size_t bufsize;       //size of buffer, default is BUFSIZ, set with setvbuf
+  size_t parentCluster; //cluster of the parent directory (0 for root)
+  size_t parentIndex;   //index of dir entry within parent cluster
+  size_t bufOffset;     //byte offset of the start of buffer
+  int err;              //error state (an F_ERROR value)
+  bool canWrite;        //true if mode is write or append
+  bool ungetFilled;     //true if unget is holding a value
+  byte unget;           //hold value from ungetc()
+  bool eof;             //true if read or write past end of file attempted
 } FILE;
 
 #define BUF_SIZE 512
