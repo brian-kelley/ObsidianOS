@@ -51,3 +51,4 @@ extern word readportw(dword port);
 extern void writeportw(dword port, dword data);
 
 #endif
+

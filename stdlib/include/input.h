@@ -7,6 +7,7 @@
 #include "idt.h"
 
 void keyboardHandler();
+void mouseHandler();
 void initKeyboard();
 char getASCII(byte scancode);
 void initASCIIValues();
@@ -16,6 +17,7 @@ extern byte altPressed;
 extern byte capsLockOn;
 
 extern void keyboardInterrupt();
+extern void mouseInterrupt();
 extern void drawNum(dword num, int row);
 extern void keyPressed(byte scancode, byte pressed);
 extern void enableInterrupts();	//sti

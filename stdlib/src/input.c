@@ -92,11 +92,18 @@ void initKeyboard()
   idt[0x20].zero = 0;
   idt[0x20].type_attr = 0x8E;
   idt[0x20].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
+  //set up mouse interrupt handler (0x2C)
+  dword mouseAddress = (dword) mouseInterrupt; 
+  idt[0x2B].offsetLower = mouseAddress & 0xFFFF;
+  idt[0x2B].selector = 0x08;
+  idt[0x2B].zero = 0;
+  idt[0x2B].type_attr = 0x8E;
+  idt[0x2B].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
   //disable 2nd PS/2 port (mouse)
   while(getKeyboardStatus() & KB_CAN_WRITE);
   writeport(0x64, 0xAD);
-  //In PIC, remap master and slave IRQ handlers to 1 (0x21)
-  //this makes the keyboard interrupt 0x21 (matching IDT entry above)
+  //In PIC, remap master and slave IRQ handlers to 0 (0x20)
+  //this makes the keyboard interrupt 0x20 (matching IDT entry above)
   writeport(0x20, 0x11);
   ioWait();
   writeport(0xA0, 0x11);
@@ -133,105 +140,83 @@ void keyboardHandler()
 {
   disableInterrupts();
   int dataBytes = 0;
-  if(getKeyboardStatus() & (1 << 5))
+  byte event = getKeyboardData();
+  bool pressed = true;
+  if(event & 0x80)
   {
-    //mouse event
-    while(getKeyboardStatus() & KB_CAN_READ)
-    {
-      readport(0x60);
-      ioWait();
-    }
+    pressed = false;
+    event &= 0x7F;
   }
-  else
+  //now dataIn contains just the keycode, bit 7 clear
+  //Process special keys
+  switch((Scancode) event)
   {
-    byte event = getKeyboardData();
-    bool pressed = true;
-    if(event & 0x80)
-    {
-      pressed = false;
-      event &= 0x7F;
-    }
-    //now dataIn contains just the keycode, bit 7 clear
-    //Process special keys
-    switch((Scancode) event)
-    {
-      case KEY_LEFTSHIFT:
-      case KEY_RIGHTSHIFT:
-        if(pressed)
-          shiftPressed = 1;
-        else
-          shiftPressed = 0;
-        break;
-      case KEY_CAPSLOCK:
-        if(pressed)
-          capsLockOn = capsLockOn ? 0 : 1;
-        break;
-      case KEY_LEFTALT:
-        if(pressed)
-          altPressed = 1;
-        else
-          altPressed = 0;
-        break;
-      case KEY_LEFTCONTROL:
-        if(pressed)
-          ctrlPressed = 1;
-        else
-          ctrlPressed = 0;
-        break;
-      default:;
-    }
-    keyPressed(event, pressed);
+    case KEY_LEFTSHIFT:
+    case KEY_RIGHTSHIFT:
+      if(pressed)
+        shiftPressed = 1;
+      else
+        shiftPressed = 0;
+      break;
+    case KEY_CAPSLOCK:
+      if(pressed)
+        capsLockOn = capsLockOn ? 0 : 1;
+      break;
+    case KEY_LEFTALT:
+      if(pressed)
+        altPressed = 1;
+      else
+        altPressed = 0;
+      break;
+    case KEY_LEFTCONTROL:
+      if(pressed)
+        ctrlPressed = 1;
+      else
+        ctrlPressed = 0;
+      break;
+    default:;
   }
-  //re-enable IRQ1
+  keyPressed(event, pressed);
+  //signal EOI
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
   enableInterrupts();
 }
 
-  /*
-  printf("Got %i PS/2 bytes: ");
-  for(int i = 0; i < dataBytes; i++)
+void mouseHandler()
+{
+  puts("Hello from mouse handler!");
+  disableInterrupts();
+  //read the 3 byte mouse packet through PS/2 controller
+  byte packet1 = getKeyboardData();
+  byte packet2 = getKeyboardData();
+  byte packet3 = getKeyboardData();
+  //dx/dy are signed 9 bit values
+  int dx = packet2;
+  int dy = packet3;
+  if(packet1 & (1 << 4))
   {
-    printf("%#hhx ", data[i]);
+    //dx is negative, set sign-bit and sign extend
+    dx |= (0xFF) << 24;
+    dx |= (0xFF) << 16;
+    dx |= (0xFF) << 8;
   }
-  puts("");
-  */
-  /*
-  //read "PS/2 controller output port"
-  while(getKeyboardStatus() & KB_CAN_WRITE);
-  writeport(0x64, 0xD0);
-  byte controllerPort = getKeyboardData();
-  printf("Got controller port byte: %#hhx\n", controllerPort);
-  bool keyboard = false;
-  if(controllerPort & (1 << 4))
+  if(packet1 & (1 << 5))
   {
-    keyboard = true;
+    //dy is negative, set sign-bit and sign extend
+    dy |= (0xFF) << 24;
+    dy |= (0xFF) << 16;
+    dy |= (0xFF) << 8;
   }
-  if(!keyboard)
+  if(dx != 0 || dy != 0)
   {
-    puts("Mouse event, ignoring for now.");
-    return;
+    printf("dx: %i, dy: %i\n", dx, dy);
   }
-  */
-  //byte dataIn = getKeyboardData();
-  //Insert data into queue immediately
-  /*
-  if(keyQueue.size == KEY_QUEUE_MAX)
-  {
-    //keyQueue full, is an unrecoverable error
-    puts("");
-    puts("ERROR: Keyboard event buffer full!");
-    while(1); //hang
-  }
-  //insert event into queue
-  keyQueue.data[(keyQueue.head + keyQueue.size) % KEY_QUEUE_MAX] = dataIn;
-  keyQueue.size++;
   //signal EOI
-  bool pressed = true;	//Assume pressed, set to 0 if released
-  byte event = keyQueue.data[keyQueue.head];
-  keyQueue.size--;
-  keyQueue.head = (keyQueue.head + 1) % KEY_QUEUE_MAX;
-  */
+  writeport(0x20, 0x20);
+  writeport(0xA0, 0x20);
+  enableInterrupts();
+}
 
 char getASCII(byte scancode)
 {

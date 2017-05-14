@@ -35,6 +35,7 @@ typedef struct
 static char ctimeBuf[32];
 static struct tm tmState;
 //RTC interrupt handler increments clockCounter
+//clockCounter / CLOCKS_PER_SEC gives uptime
 clock_t clockCounter = 0;
 
 enum {

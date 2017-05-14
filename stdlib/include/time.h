@@ -6,9 +6,9 @@
 
 #define CLOCKS_PER_SEC 1024
 
-typedef unsigned long long time_t;
-//Use 32-bit clock for performance. Wraparound only happens once in 1000 hours.
-typedef size_t clock_t;
+typedef u64 time_t;
+//32 bit would wraparound in 1000 hours
+typedef u64 clock_t;
 
 struct tm
 {

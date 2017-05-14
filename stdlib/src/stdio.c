@@ -800,7 +800,11 @@ int vprintf(const char* format, va_list arg)
 
 int vsprintf(char* s, const char* format, va_list arg)
 {
-  return 0;
+  stringPrinter.buffer = s;
+  int num = vfprintf(&stringPrinter, format, arg);
+  //null-terminate
+  byteToStream(0, &stringPrinter);
+  return num;
 }
 
 int fgetc(FILE* stream)

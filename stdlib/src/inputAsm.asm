@@ -1,10 +1,13 @@
 global loadIDT
+; the actual input interrupt handlers (ending with iret)
 global keyboardInterrupt
+global mouseInterrupt
 global pass
 global ioWait
 
 extern keyPressed
 extern keyboardHandler
+extern mouseHandler
 extern idtDesc
 extern puts
 
@@ -18,6 +21,11 @@ loadIDT:
 keyboardInterrupt:
   cld
   call keyboardHandler
+  iret
+
+mouseInterrupt:
+  cld
+  call mouseHandler
   iret
 
 ioWait:
