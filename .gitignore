@@ -15,4 +15,5 @@ utils/obsidian.img
 */*test.bin
 *.bin
 *.img
+*.vdi
 temp/

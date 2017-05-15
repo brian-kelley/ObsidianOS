@@ -112,6 +112,15 @@ void initKeyboard()
   idt[0x2C].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
   //enable PS/2 mouse packets and IRQ
   {
+    //reset mouse
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0xD4);
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x60, 0xFF);
+    while(getKeyboardStatus() & KB_CAN_READ)
+    {
+      getKeyboardData();
+    }
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0x20);
     byte mouseStatus = getKeyboardData();
@@ -133,6 +142,11 @@ void initKeyboard()
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0xA8);
     getKeyboardData();
+    //enable packet streaming
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0xD4);
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x60, 0xF4);
   }
   //In PIC, remap master and slave IRQ handlers to 0 (0x20)
   //this makes the keyboard interrupt 0x20 (matching IDT entry above)
@@ -165,11 +179,32 @@ void initKeyboard()
   {
     getKeyboardData();
   }
+  //load IDT then enable interrupts
   loadIDT();
+}
+
+void requestMousePacket(byte* packet)
+{
+  //flush KB data buffer
+  while(getKeyboardStatus() & KB_CAN_READ)
+  {
+    getKeyboardData();
+  }
+  while(getKeyboardStatus() & KB_CANT_WRITE);
+  writeport(0x64, 0xD4);
+  while(getKeyboardStatus() & KB_CANT_WRITE);
+  writeport(0x60, 0xEB);
+  //get ACK
+  getKeyboardData();
+  //read the 3 byte packet
+  packet[0] = getKeyboardData();
+  packet[1] = getKeyboardData();
+  packet[2] = getKeyboardData();
 }
 
 void keyboardHandler()
 {
+  /*
   disableInterrupts();
   int dataBytes = 0;
   byte event = getKeyboardData();
@@ -208,8 +243,9 @@ void keyboardHandler()
       break;
     default:;
   }
-  //keyPressed(event, pressed);
+  keyPressed(event, pressed);
   //signal EOI
+  */
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
   enableInterrupts();
@@ -220,20 +256,27 @@ int mouseY = 100;
 
 void mouseHandler()
 {
-  disableInterrupts();
+  //disableInterrupts();
   //read the 3 byte mouse packet through PS/2 controller
-  byte packet1 = getKeyboardData();
-  byte packet2 = getKeyboardData();
-  byte packet3 = getKeyboardData();
+  byte packet[3];
+  packet[0] = getKeyboardData();
+  packet[1] = getKeyboardData();
+  packet[2] = getKeyboardData();
+  //flush extraneous ps/2 data
+  while(getKeyboardStatus() & KB_CAN_READ)
+  {
+    getKeyboardData();
+  }
+  printf("Mouse packet: %hhx %hhx %hhx\n", packet[0], packet[1], packet[2]);
   //dx/dy are signed 9 bit values
-  unsigned short dxs = packet2;
-  unsigned short dys = packet3;
-  if(packet1 & (1 << 4))
+  unsigned short dxs = packet[1];
+  unsigned short dys = packet[2];
+  if(packet[0] & (1 << 4))
   {
     //dx is negative, set sign-bit and sign extend
     dxs |= (0xFF) << 8;
   }
-  if(packet1 & (1 << 5))
+  if(packet[0] & (1 << 5))
   {
     //dy is negative, set sign-bit and sign extend
     dys |= (0xFF) << 8;
@@ -245,9 +288,18 @@ void mouseHandler()
     //printf("%i %i\n", dx, dy);
     byte* fb = (byte*) 0xA0000;
     fb[mouseX + mouseY * 320] = 0x0;
-    mouseX += dx / 8;
-    mouseY += dy / 8;
-    fb[mouseX + mouseY * 320] = 0x2A;
+    //clamp to screen
+    mouseX += dx;
+    mouseY -= dy;
+    if(mouseX < 0)
+      mouseX = 0;
+    if(mouseY < 0)
+      mouseY = 0;
+    if(mouseX >= 320)
+      mouseX = 319;
+    if(mouseY >= 200)
+      mouseY = 199;
+    fb[mouseX + mouseY * 320] = 0xF;
   }
   //signal EOI
   writeport(0x20, 0x20);

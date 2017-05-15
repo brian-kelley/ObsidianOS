@@ -119,6 +119,9 @@ void showPalette()
   }
 }
 
+void requestMousePacket(byte* packet);
+void mouseHandler(byte* packet);
+
 void kernel_main()
 {
   initTime();
@@ -128,7 +131,6 @@ void kernel_main()
   initFatDriver();
   initKeyboard();
   while(1);
-  //clearScreen(0);
   /*
   {
     Event e = getNextEvent();
