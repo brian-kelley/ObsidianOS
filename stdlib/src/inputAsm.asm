@@ -36,5 +36,9 @@ ioWait:
   ret
 
 pass:
+  push .str
+  call puts
+  add esp, 4
   iret
 
+.str: db 'pass', 0

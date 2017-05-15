@@ -40,7 +40,7 @@ KeyQueue keyQueue;
 bool inListener;
 
 #define KB_CAN_READ 1
-#define KB_CAN_WRITE 2
+#define KB_CANT_WRITE 2
 
 //get keyboard status byte
 byte getKeyboardStatus()
@@ -68,7 +68,7 @@ byte keyboardCommand(byte command)
   while(result == 0xFE && retry)
   {
     //Wait for bit 1 of status reg to clear, means input buffer is empty
-    while(getKeyboardStatus() & KB_CAN_WRITE);
+    while(getKeyboardStatus() & KB_CANT_WRITE);
     //issue command
     writeport(0x64, command);
     //wait for response, then read it
@@ -87,21 +87,53 @@ void initKeyboard()
   dword idtPtr[2];
   //set up keyboard interrupt handler (0x21)
   dword keyboardAddress = (dword) keyboardInterrupt;
+  dword passAddr = (dword) pass;
+  //first, set all IRQ handlers to "pass"
+  for(int i = 0x20; i < 0x30; i++)
+  {
+    idt[i].offsetLower = passAddr & 0xFFFF;
+    idt[i].selector = 0x08;
+    idt[i].zero = 0;
+    idt[i].type_attr = 0x8E;
+    idt[i].offsetHigher = (passAddr & 0xFFFF0000) >> 16;
+  }
+  //set up keyboard interrupt handler (IRQ 1)
   idt[0x20].offsetLower = keyboardAddress & 0xFFFF;
   idt[0x20].selector = 0x08;
   idt[0x20].zero = 0;
   idt[0x20].type_attr = 0x8E;
   idt[0x20].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
-  //set up mouse interrupt handler (0x2C)
+  //set up mouse interrupt handler (IRQ 12)
   dword mouseAddress = (dword) mouseInterrupt; 
-  idt[0x2B].offsetLower = mouseAddress & 0xFFFF;
-  idt[0x2B].selector = 0x08;
-  idt[0x2B].zero = 0;
-  idt[0x2B].type_attr = 0x8E;
-  idt[0x2B].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
-  //disable 2nd PS/2 port (mouse)
-  while(getKeyboardStatus() & KB_CAN_WRITE);
-  writeport(0x64, 0xAD);
+  idt[0x2C].offsetLower = mouseAddress & 0xFFFF;
+  idt[0x2C].selector = 0x08;
+  idt[0x2C].zero = 0;
+  idt[0x2C].type_attr = 0x8E;
+  idt[0x2C].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
+  //enable PS/2 mouse packets and IRQ
+  {
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0x20);
+    byte mouseStatus = getKeyboardData();
+    //set bit 1 to enable IRQ
+    mouseStatus |= (1 << 1);
+    //clear bit 5 to enable mouse clock
+    mouseStatus &= ~(1 << 5);
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0x60);
+    ioWait();
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x60, mouseStatus);
+    //get ACK, if it exists
+    ioWait();
+    if(getKeyboardStatus() & KB_CAN_READ)
+    {
+      readport(0x60);
+    }
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0xA8);
+    getKeyboardData();
+  }
   //In PIC, remap master and slave IRQ handlers to 0 (0x20)
   //this makes the keyboard interrupt 0x20 (matching IDT entry above)
   writeport(0x20, 0x11);
@@ -176,41 +208,46 @@ void keyboardHandler()
       break;
     default:;
   }
-  keyPressed(event, pressed);
+  //keyPressed(event, pressed);
   //signal EOI
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
   enableInterrupts();
 }
 
+int mouseX = 160;
+int mouseY = 100;
+
 void mouseHandler()
 {
-  puts("Hello from mouse handler!");
   disableInterrupts();
   //read the 3 byte mouse packet through PS/2 controller
   byte packet1 = getKeyboardData();
   byte packet2 = getKeyboardData();
   byte packet3 = getKeyboardData();
   //dx/dy are signed 9 bit values
-  int dx = packet2;
-  int dy = packet3;
+  unsigned short dxs = packet2;
+  unsigned short dys = packet3;
   if(packet1 & (1 << 4))
   {
     //dx is negative, set sign-bit and sign extend
-    dx |= (0xFF) << 24;
-    dx |= (0xFF) << 16;
-    dx |= (0xFF) << 8;
+    dxs |= (0xFF) << 8;
   }
   if(packet1 & (1 << 5))
   {
     //dy is negative, set sign-bit and sign extend
-    dy |= (0xFF) << 24;
-    dy |= (0xFF) << 16;
-    dy |= (0xFF) << 8;
+    dys |= (0xFF) << 8;
   }
+  int dx = (short) dxs;
+  int dy = (short) dys;
   if(dx != 0 || dy != 0)
   {
-    printf("dx: %i, dy: %i\n", dx, dy);
+    //printf("%i %i\n", dx, dy);
+    byte* fb = (byte*) 0xA0000;
+    fb[mouseX + mouseY * 320] = 0x0;
+    mouseX += dx / 8;
+    mouseY += dy / 8;
+    fb[mouseX + mouseY * 320] = 0x2A;
   }
   //signal EOI
   writeport(0x20, 0x20);

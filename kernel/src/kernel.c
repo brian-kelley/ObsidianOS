@@ -127,10 +127,8 @@ void kernel_main()
   ataInit();
   initFatDriver();
   initKeyboard();
-  time_t unixTime = time(NULL);
-  struct tm* gmt = gmtime(&unixTime);
-  char* str = asctime(gmt);
-  puts(str);
+  while(1);
+  //clearScreen(0);
   /*
   {
     Event e = getNextEvent();
@@ -146,6 +144,5 @@ void kernel_main()
   //End test
   resetTermCursor();
   */
-  while(1);   //Kernel setup done, everything else triggered by interrupts
 }
 
