@@ -128,6 +128,7 @@ void initKeyboard()
   idt[0x2C].zero = 0;
   idt[0x2C].type_attr = 0x8E;
   idt[0x2C].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
+  */
   //enable PS/2 mouse packets and IRQ
   {
     //enable second PS/2 port
@@ -149,7 +150,7 @@ void initKeyboard()
     //DON'T set bit 1 to NOT enable IRQ 12 for mouse
     //mouseStatus |= (1 << 1);
     //clear bit 5 to enable mouse clock
-    //mouseStatus &= ~(1 << 5);
+    mouseStatus &= ~(1 << 5);
     //send updated mouse status byte
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0x60);
@@ -167,7 +168,7 @@ void initKeyboard()
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0xD4);
     while(getKeyboardStatus() & KB_CANT_WRITE);
-    writeport(0x60, 0xF5);
+    writeport(0x60, 0xF4);
     if((ack = getKeyboardData()) != 0xFA)
     {
       printf("Failed to disable packet streaming: code %hhx\n", ack);
@@ -194,7 +195,6 @@ void initKeyboard()
     byte s3 = getKeyboardData();
     printf("Mouse status after init: %hhx %hhx %hhx\n", s1, s2, s3);
   }
-*/
   //In PIC, remap master and slave IRQ handlers to 0 (0x20)
   //this makes the keyboard interrupt 0x20 (matching IDT entry above)
   writeport(0x20, 0x11);
@@ -314,8 +314,7 @@ int mouseY = 100;
 
 void pollMouse()
 {
-  puts("Polling");
-  disableInterrupts();
+  //disableInterrupts();
   //read ps/2 controller output port byte
   while(getKeyboardStatus() & KB_CANT_WRITE);
   writeport(0x64, 0xD0);
@@ -329,7 +328,7 @@ void pollMouse()
   }
   byte packet[3];
   requestMousePacket(packet);
-  enableInterrupts();
+  //enableInterrupts();
   //check if mouse has a packet
   //dx/dy are signed 9 bit values
   unsigned short dxs = packet[1];
