@@ -1,5 +1,7 @@
 #include "input.h"
 
+u64 clockCounter = 0;
+
 void drawChar(char c, int x, int y, byte fg, byte bg);
 
 extern void pass();
@@ -60,6 +62,13 @@ byte getKeyboardData()
   return readport(0x60);
 }
 
+byte readControllerOutputPort()
+{
+  while(getKeyboardStatus() & KB_CANT_WRITE);
+  writeport(0x64, 0xD0);
+  return getKeyboardData();
+}
+
 //Send a command to the PS/2 controller (NOT the actual keyboard device)
 byte keyboardCommand(byte command)
 {
@@ -80,8 +89,8 @@ byte keyboardCommand(byte command)
 
 void initKeyboard()
 {
-  keyQueue.head= 0;
-  keyQueue.size= 0;
+  keyQueue.head = 0;
+  keyQueue.size = 0;
   inListener = false;
   dword idtAddress;
   dword idtPtr[2];
@@ -89,7 +98,7 @@ void initKeyboard()
   dword keyboardAddress = (dword) keyboardInterrupt;
   dword passAddr = (dword) pass;
   //first, set all IRQ handlers to "pass"
-  for(int i = 0x20; i < 0x30; i++)
+  for(int i = 0x20; i < 0xFF; i++)
   {
     idt[i].offsetLower = passAddr & 0xFFFF;
     idt[i].selector = 0x08;
@@ -103,8 +112,17 @@ void initKeyboard()
   idt[0x20].zero = 0;
   idt[0x20].type_attr = 0x8E;
   idt[0x20].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
-  //set up mouse interrupt handler (IRQ 12)
-  dword mouseAddress = (dword) mouseInterrupt; 
+
+  //set up RTC interrupt handler (IRQ 8)
+  dword rtcAddress = (dword) rtcInterrupt;
+  idt[0x28].offsetLower = rtcAddress & 0xFFFF;
+  idt[0x28].selector = 0x08;
+  idt[0x28].zero = 0;
+  idt[0x28].type_attr = 0x8E;
+  idt[0x28].offsetHigher = (rtcAddress & 0xFFFF0000) >> 16;
+
+  /*
+  dword mouseAddress = (dword) mouseInterrupt;
   idt[0x2C].offsetLower = mouseAddress & 0xFFFF;
   idt[0x2C].selector = 0x08;
   idt[0x2C].zero = 0;
@@ -112,6 +130,10 @@ void initKeyboard()
   idt[0x2C].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
   //enable PS/2 mouse packets and IRQ
   {
+    //enable second PS/2 port
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0xA8);
+    getKeyboardData();
     //reset mouse
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0xD4);
@@ -124,30 +146,55 @@ void initKeyboard()
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0x20);
     byte mouseStatus = getKeyboardData();
-    //set bit 1 to enable IRQ
-    mouseStatus |= (1 << 1);
+    //DON'T set bit 1 to NOT enable IRQ 12 for mouse
+    //mouseStatus |= (1 << 1);
     //clear bit 5 to enable mouse clock
-    mouseStatus &= ~(1 << 5);
+    //mouseStatus &= ~(1 << 5);
+    //send updated mouse status byte
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0x60);
     ioWait();
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x60, mouseStatus);
-    //get ACK, if it exists
+    //get ACK, if it was sent
     ioWait();
     if(getKeyboardStatus() & KB_CAN_READ)
     {
       readport(0x60);
     }
-    while(getKeyboardStatus() & KB_CANT_WRITE);
-    writeport(0x64, 0xA8);
-    getKeyboardData();
-    //enable packet streaming
+    byte ack;
+    //enable mouse
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0xD4);
     while(getKeyboardStatus() & KB_CANT_WRITE);
-    writeport(0x60, 0xF4);
+    writeport(0x60, 0xF5);
+    if((ack = getKeyboardData()) != 0xFA)
+    {
+      printf("Failed to disable packet streaming: code %hhx\n", ack);
+      while(1);
+    }
+    //enable mouse remote mode (for on-demand packet requests)
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0xD4);
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x60, 0xF0);
+    if((ack = getKeyboardData()) != 0xFA)
+    {
+      printf("Failed to set remote mode: code %hhx\n", ack);
+      while(1);
+    }
+    //get and print mouse status bytes
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x64, 0xD4);
+    while(getKeyboardStatus() & KB_CANT_WRITE);
+    writeport(0x60, 0xE9);
+    getKeyboardData();
+    byte s1 = getKeyboardData();
+    byte s2 = getKeyboardData();
+    byte s3 = getKeyboardData();
+    printf("Mouse status after init: %hhx %hhx %hhx\n", s1, s2, s3);
   }
+*/
   //In PIC, remap master and slave IRQ handlers to 0 (0x20)
   //this makes the keyboard interrupt 0x20 (matching IDT entry above)
   writeport(0x20, 0x11);
@@ -179,12 +226,24 @@ void initKeyboard()
   {
     getKeyboardData();
   }
-  //load IDT then enable interrupts
   loadIDT();
+  disableInterrupts();
+  //load IDT then enable interrupts
+  //enable RTC interrupts
+  writeport(0x70, 0x8B);
+  byte prev = readport(0x71);
+  writeport(0x70, 0x8B);
+  writeport(0x71, prev | 0x40);
+  //read register C to clear any previous interrupts
+  //this also re-enables NMI
+  writeport(0x70, 0xC);
+  readport(0x71);
+  enableInterrupts();
 }
 
 void requestMousePacket(byte* packet)
 {
+retry:
   //flush KB data buffer
   while(getKeyboardStatus() & KB_CAN_READ)
   {
@@ -195,18 +254,19 @@ void requestMousePacket(byte* packet)
   while(getKeyboardStatus() & KB_CANT_WRITE);
   writeport(0x60, 0xEB);
   //get ACK
-  getKeyboardData();
+  if(0xFA != getKeyboardData())
+  {
+    goto retry;
+  }
   //read the 3 byte packet
   packet[0] = getKeyboardData();
   packet[1] = getKeyboardData();
   packet[2] = getKeyboardData();
+  printf("%hhx %hhx %hhx\n", packet[0], packet[1], packet[2]);
 }
 
 void keyboardHandler()
 {
-  /*
-  disableInterrupts();
-  int dataBytes = 0;
   byte event = getKeyboardData();
   bool pressed = true;
   if(event & 0x80)
@@ -245,29 +305,32 @@ void keyboardHandler()
   }
   keyPressed(event, pressed);
   //signal EOI
-  */
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
-  enableInterrupts();
 }
 
 int mouseX = 160;
 int mouseY = 100;
 
-void mouseHandler()
+void pollMouse()
 {
-  //disableInterrupts();
-  //read the 3 byte mouse packet through PS/2 controller
-  byte packet[3];
-  packet[0] = getKeyboardData();
-  packet[1] = getKeyboardData();
-  packet[2] = getKeyboardData();
-  //flush extraneous ps/2 data
-  while(getKeyboardStatus() & KB_CAN_READ)
+  puts("Polling");
+  disableInterrupts();
+  //read ps/2 controller output port byte
+  while(getKeyboardStatus() & KB_CANT_WRITE);
+  writeport(0x64, 0xD0);
+  ioWait();
+  byte controllerOutput = getKeyboardData();
+  if(controllerOutput & (1 << 5) == 0)
   {
-    getKeyboardData();
+    //no mouse packet to process
+    puts("no packet");
+    return;
   }
-  printf("Mouse packet: %hhx %hhx %hhx\n", packet[0], packet[1], packet[2]);
+  byte packet[3];
+  requestMousePacket(packet);
+  enableInterrupts();
+  //check if mouse has a packet
   //dx/dy are signed 9 bit values
   unsigned short dxs = packet[1];
   unsigned short dys = packet[2];
@@ -301,10 +364,14 @@ void mouseHandler()
       mouseY = 199;
     fb[mouseX + mouseY * 320] = 0xF;
   }
-  //signal EOI
+}
+
+void mouseHandler()
+{
+  putchar('M');
+  pollMouse();
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
-  enableInterrupts();
 }
 
 char getASCII(byte scancode)
@@ -332,5 +399,16 @@ char getASCII(byte scancode)
     else
       return charVals[scancode];
   }
+}
+
+void rtcHandler()
+{
+  clockCounter++;
+  //read RTC register C to enable the next tick
+  writeport(0x70, 0xC);
+  ioWait();
+  readport(0x71);
+  writeport(0x20, 0x20);
+  writeport(0xA0, 0x20);
 }
 

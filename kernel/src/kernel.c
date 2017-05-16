@@ -119,8 +119,7 @@ void showPalette()
   }
 }
 
-void requestMousePacket(byte* packet);
-void mouseHandler(byte* packet);
+void pollMouse();
 
 void kernel_main()
 {
@@ -130,8 +129,16 @@ void kernel_main()
   ataInit();
   initFatDriver();
   initKeyboard();
-  while(1);
+  while(1)
+  {
+    clock_t pollTime = clock() + 17;
+    while(clock() < pollTime);
+    pollMouse();
+  }
   /*
+  {
+    pollMouse();
+  }
   {
     Event e = getNextEvent();
     //call event handler

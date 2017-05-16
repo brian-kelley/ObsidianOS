@@ -18,6 +18,7 @@ extern byte capsLockOn;
 
 extern void keyboardInterrupt();
 extern void mouseInterrupt();
+extern void rtcInterrupt();
 extern void drawNum(dword num, int row);
 extern void keyPressed(byte scancode, byte pressed);
 extern void enableInterrupts();	//sti
