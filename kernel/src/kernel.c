@@ -130,6 +130,7 @@ void kernel_main()
   ataInit();
   initFatDriver();
   initKeyboard();
+  resetTermCursor();
   while(1)
   {
     Event ev = getNextEvent();
@@ -166,9 +167,15 @@ void kernel_main()
           break;
         }
       case BUTTON_EVENT:
-        //putchar('B');
         {
-          //TODO
+          if(ev.e.button.button == LEFT_BUTTON && ev.e.button.pressed)
+          {
+            //left click
+          }
+          else if(ev.e.button.button == RIGHT_BUTTON && ev.e.button.pressed)
+          {
+            //right click
+          }
           break;
         }
       default:;

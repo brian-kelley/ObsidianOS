@@ -134,6 +134,7 @@ void initKeyboard()
 
   //enable PS/2 mouse packets and IRQ
   {
+    byte ack;
     //enable second PS/2 port
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0xA8);
@@ -147,12 +148,13 @@ void initKeyboard()
     {
       getKeyboardData();
     }
+    //get compaq status byte
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0x20);
     byte mouseStatus = getKeyboardData();
-    //DON'T set bit 1 to NOT enable IRQ 12 for mouse
+    //set bit 1 to enable IRQ 12 for mouse
     mouseStatus |= (1 << 1);
-    //clear bit 5 to enable mouse clock
+    //clear bit 5 to enable mouse internal clock
     mouseStatus &= ~(1 << 5);
     //send updated mouse status byte
     while(getKeyboardStatus() & KB_CANT_WRITE);
@@ -162,11 +164,7 @@ void initKeyboard()
     writeport(0x60, mouseStatus);
     //get ACK, if it was sent
     ioWait();
-    if(getKeyboardStatus() & KB_CAN_READ)
-    {
-      readport(0x60);
-    }
-    byte ack;
+    flushKeyboardData();
     //enable mouse packet streaming
     while(getKeyboardStatus() & KB_CANT_WRITE);
     writeport(0x64, 0xD4);
@@ -229,57 +227,46 @@ void initKeyboard()
 void keyboardHandler()
 {
   byte status = getKeyboardStatus();
-  if(status & (1 << 5))
+  byte event = getKeyboardData();
+  bool pressed = true;
+  if(event & 0x80)
   {
-    packet[packetBytes++] = status;
-    if(packetBytes == 3)
-    {
-      processMousePacket();
-    }
+    pressed = false;
+    event &= 0x7F;
   }
-  else
+  switch((Scancode) event)
   {
-    byte event = getKeyboardData();
-    bool pressed = true;
-    if(event & 0x80)
-    {
-      pressed = false;
-      event &= 0x7F;
-    }
-    switch((Scancode) event)
-    {
-      case KEY_LEFTSHIFT:
-      case KEY_RIGHTSHIFT:
-        if(pressed)
-          shiftPressed = 1;
-        else
-          shiftPressed = 0;
-        break;
-      case KEY_CAPSLOCK:
-        if(pressed)
-          capsLockOn = capsLockOn ? 0 : 1;
-        break;
-      case KEY_LEFTALT:
-        if(pressed)
-          altPressed = 1;
-        else
-          altPressed = 0;
-        break;
-      case KEY_LEFTCONTROL:
-        if(pressed)
-          ctrlPressed = 1;
-        else
-          ctrlPressed = 0;
-        break;
-      default:
-        {
-          Event ev;
-          ev.type = KEY_EVENT;
-          ev.e.key.scancode = event;
-          ev.e.key.pressed = pressed;
-          addEvent(ev);
-        }
-    }
+    case KEY_LEFTSHIFT:
+    case KEY_RIGHTSHIFT:
+      if(pressed)
+        shiftPressed = 1;
+      else
+        shiftPressed = 0;
+      break;
+    case KEY_CAPSLOCK:
+      if(pressed)
+        capsLockOn = capsLockOn ? 0 : 1;
+      break;
+    case KEY_LEFTALT:
+      if(pressed)
+        altPressed = 1;
+      else
+        altPressed = 0;
+      break;
+    case KEY_LEFTCONTROL:
+      if(pressed)
+        ctrlPressed = 1;
+      else
+        ctrlPressed = 0;
+      break;
+    default:
+      {
+        Event ev;
+        ev.type = KEY_EVENT;
+        ev.e.key.scancode = event;
+        ev.e.key.pressed = pressed;
+        addEvent(ev);
+      }
   }
   //signal EOI
   writeport(0x20, 0x20);
@@ -322,8 +309,8 @@ static void processMousePacket()
     //create mouse motion event
     Event ev;
     ev.type = MOTION_EVENT;
-    ev.e.motion.dx = dx / 8;
-    ev.e.motion.dy = -dy / 8;
+    ev.e.motion.dx = dx / 2;
+    ev.e.motion.dy = -dy / 2;
     addEvent(ev);
   }
   //test for button state change

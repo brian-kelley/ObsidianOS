@@ -45,20 +45,22 @@ void initFatDriver()
   fatInfo.hiddenSectors = *((dword*) &sectorBuf[28]);
   if(fatInfo.sectorSize != 512)
   {
-    printString("\nError: Disk formatted with sector size other than 512 bytes.\n");
+    puts("\nError: Disk formatted with sector size other than 512 bytes.\n");
     while(1); //halt, leave that message on the screen
   }
-  printf("%i hidden sectors\n", fatInfo.hiddenSectors);
-  printf("%i reserved sectors\n", fatInfo.reserved);
+  //printf("%i hidden sectors\n", fatInfo.hiddenSectors);
+  //printf("%i reserved sectors\n", fatInfo.reserved);
   fat1 = fatInfo.reserved; //first sector after boot sector
   fat2 = fat1 + fatInfo.sectorsPerFat;
   rootStart = fat2 + fatInfo.sectorsPerFat;
   int offset = rootStart * 512;
+  /*
   printf("root starts at byte %#x\n", offset);
   printf("fat1 starts at %i\n", fat1);
   printf("fat2 starts at %i\n", fat2);
-  printf("????root entries start at sector %i\n", rootStart);
+  printf("root entries start at sector %i\n", rootStart);
   printf("clusters start at %i\n", dataStart);
+  */
   dataStart = rootStart + fatInfo.maxRootEntries * 32 / 512;
   numClusters = (fatInfo.totalSectors - dataStart) / fatInfo.spc;
   logicalFatBuf = (word*) malloc(2 * numClusters);
@@ -199,7 +201,7 @@ word allocCluster(word last, bool first)
   }
   if(dest == -1)
   {
-    printString("\nError: Not enough disk space to complete operation.\n");
+    puts("\nError: Not enough disk space to complete operation.\n");
     return 0xFFFF;
   }
   logicalFatBuf[dest] = 0xFFFF;
@@ -308,7 +310,7 @@ DirEntry getRootDirEntry(int index)
   DirEntry rv;
   if(index < 0 || index >= fatInfo.maxRootEntries)
   {
-    printString("Error: Root directory entry request out of range.");
+    puts("Error: Root directory entry request out of range.");
     return rv;
   }
   byte sec[512];
