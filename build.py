@@ -8,7 +8,7 @@ import subprocess
 
 # Set up constants
 
-cflags = "-std=c99 -Os -ffreestanding -nostdlib -Istdlib/include -c"
+cflags = "-std=c99 -Os -ffreestanding -nostdlib -Istdlib/include -Igraphics/include -c"
 # format for assembling machine code (TODO: match output of C compiler on mac and linux)
 objformat = "elf32"
 # TODO: set these based on platform (currently just for mac)
@@ -19,6 +19,9 @@ nm = "i386-elf-nm"
 objcopy = "i386-elf-objcopy"
 objdump = "i386-elf-objdump"
 emulator = "qemu-system-i386"
+
+#All object files to link together into system binary
+objs = []
 
 # place object files and temporary files in /build
 build = "temp/"
@@ -32,11 +35,19 @@ for f in glob.iglob("stdlib/include/*.h"):
     if iterTime > includeModifyTime:
         includeModifyTime = iterTime
 
+#####################
+#  BUILD UTILITIES  #
+#####################
+
 def run(cmd):
     rv = subprocess.call(cmd, shell=True)
     if rv != 0:
         print("!!!! Error executing command: \"" + cmd + "\"")
         sys.exit(1)
+
+def makeDir(path):
+    if not os.path.isdir(path):
+        os.mkdir(path)
 
 # Compile C or assembly source file (only if source modified more recently than output, like make)
 def compile(f):
@@ -62,15 +73,23 @@ def compile(f):
         objsModified = True
     return output
 
-# build libc objects
+def build_module(module):
+    moduleBuild = build + module
+    makeDir(moduleBuild)
+    srcPath = module + "/src"
+    makeDir(moduleBuild)
+    for f in glob.glob(srcPath + "/*.c") + glob.glob(srcPath + "/*.asm"):
+        objs.append(compile(f))
 
-if not os.path.isdir(build):
-    os.mkdir(build)
+##################
+#  SYSTEM BUILD  #
+##################
 
-objs = []
+makeDir(build)
 
-for f in glob.glob("stdlib/src/*.c") + glob.glob("stdlib/src/*.asm") + glob.glob("kernel/src/*.c") + glob.glob("kernel/src/*.asm"):
-    objs.append(compile(f))
+build_module("kernel")
+build_module("stdlib")
+build_module("graphics")
 
 print("Producing binary system image...")
 ldCommand = ld;
@@ -89,14 +108,8 @@ ldCommand += " -r -o " + build + "system.o"
 run(ldCommand)
 
 # get locations of symbols in the full system blob
-
 print("Getting symbol list...")
 run(nm + " -v " + build + "system.o &> " + build + "symbols.txt")
-
-# get flat binary version of system.o
-
-print("Getting system binary...")
-#run(objcopy + " --set-start 0x500 -O binary " + build + "system.o " + build + "system.bin")
 
 # get entry point as pointer (to add to bootloader)
 # symbol is "start" (in kernel/src/start.asm)
