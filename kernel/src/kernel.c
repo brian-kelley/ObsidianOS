@@ -119,7 +119,8 @@ void showPalette()
   }
 }
 
-void pollMouse();
+static int mouseX = 160;
+static int mouseY = 100;
 
 void kernel_main()
 {
@@ -131,27 +132,44 @@ void kernel_main()
   initKeyboard();
   while(1)
   {
-    clock_t pollTime = clock() + 17;
-    while(clock() < pollTime);
-    pollMouse();
-  }
-  /*
-  {
-    pollMouse();
-  }
-  {
-    Event e = getNextEvent();
+    while(!haveEvent());
+    Event ev = getNextEvent();
     //call event handler
-    if(e.type == KEY_EVENT && e.e.key.pressed)
+    switch(ev.type)
     {
-      terminalKeyListener(e.e.key.scancode);
+      case KEY_EVENT:
+        if(ev.e.key.pressed)
+        {
+          terminalKeyListener(ev.e.key.scancode);
+        }
+        break;
+      case MOTION_EVENT:
+        {
+          byte* fb = (byte*) 0xA0000;
+          //clear previous cursor pixel
+          fb[mouseX + mouseY * 320] = 0x0;
+          //update mouse position
+          mouseX += ev.e.motion.dx / 8;
+          mouseY += ev.e.motion.dy / 8;
+          //clamp mouse pos to screen
+          if(mouseX < 0)
+            mouseX = 0;
+          if(mouseY < 0)
+            mouseY = 0;
+          if(mouseX >= 320)
+            mouseX = 319;
+          if(mouseY >= 200)
+            mouseY = 199;
+          //draw cursor in new position
+          fb[mouseX + mouseY * 320] = 0xF;
+          break;
+        }
+      case BUTTON_EVENT:
+        {
+          //TODO
+          break;
+        }
     }
-    //discard other events for now
   }
-  initMM();
-  //Begin test
-  //End test
-  resetTermCursor();
-  */
 }
 

@@ -14,6 +14,12 @@ enum
   BUTTON_EVENT      //Mouse button press or release
 };
 
+enum
+{
+  LEFT_BUTTON,
+  RIGHT_BUTTON
+};
+
 typedef struct
 {
   byte scancode;
@@ -32,8 +38,6 @@ typedef struct
   bool pressed;
 } ButtonEvent;
 
-typedef struct {} ClockEvent;
-
 typedef struct 
 {
   int type;
@@ -42,12 +46,12 @@ typedef struct
     KeyEvent key;
     MotionEvent motion;
     ButtonEvent button;
-    ClockEvent clock;
   } e;
 } Event;
 
 void initEvents();
 void addEvent(Event e);
+bool haveEvent();
 Event getNextEvent();
 
 #endif

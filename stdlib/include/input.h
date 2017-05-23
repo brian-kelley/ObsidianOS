@@ -5,6 +5,7 @@
 #include "video.h"
 #include "terminal.h"
 #include "idt.h"
+#include "events.h"
 
 void keyboardHandler();
 void mouseHandler();
@@ -16,30 +17,13 @@ extern byte ctrlPressed;
 extern byte altPressed;
 extern byte capsLockOn;
 
-extern void keyboardInterrupt();
-extern void mouseInterrupt();
-extern void rtcInterrupt();
+extern void keyboardISR();
+extern void mouseISR();
+extern void rtcISR();
 extern void drawNum(dword num, int row);
 extern void keyPressed(byte scancode, byte pressed);
-extern void enableInterrupts();	//sti
-extern void disableInterrupts();	//cli
-
-#define KEY_QUEUE_MAX 16
-
-//Ring buffer for key events
-typedef struct
-{
-  byte data[KEY_QUEUE_MAX];
-  int head;
-  int size;
-} KeyQueue;
-
-extern KeyQueue keyQueue;
-
-//if inListener, don't call high-level key event listener, just add key to queue and return
-//the previously running listener will return and then see that there are more events to process
-//this preserves order of events visible to programs, while keeping key events responsive
-extern bool inListener;
+extern void enableInterrupts();	    //sti
+extern void disableInterrupts();	  //cli
 
 //define Scancode type
 typedef enum

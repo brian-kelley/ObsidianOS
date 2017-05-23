@@ -1,8 +1,8 @@
 global loadIDT
 ; the actual input interrupt handlers (ending with iret)
-global keyboardInterrupt
-global mouseInterrupt
-global rtcInterrupt
+global keyboardISR
+global mouseISR
+global rtcISR
 global pass
 global ioWait
 
@@ -20,22 +20,18 @@ loadIDT:
   sti
   ret
 
-keyboardInterrupt:
-  cli
+keyboardISR:
   cld
   call keyboardHandler
   sti
   iret
 
-mouseInterrupt:
-  cli
-  cld
-  call mouseHandler
+mouseISR:
+  call mouseHandler 
   sti
   iret
 
-rtcInterrupt:
-  cli
+rtcISR:
   call rtcHandler
   sti
   iret

@@ -36,3 +36,8 @@ Event getNextEvent()
   return e;
 }
 
+bool haveEvent()
+{
+  return eventSize > 0;
+}
+
