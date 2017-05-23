@@ -21,18 +21,26 @@ loadIDT:
   ret
 
 keyboardISR:
+  pusha
   cld
   call keyboardHandler
+  popa
   sti
   iret
 
 mouseISR:
+  pusha
+  cld
   call mouseHandler 
+  popa
   sti
   iret
 
 rtcISR:
+  pusha
+  cld
   call rtcHandler
+  popa
   sti
   iret
 
@@ -44,9 +52,18 @@ ioWait:
   ret
 
 pass:
-  push .str
-  call puts
-  add esp, 4
+  ;push .str
+  ;call puts
+  ;add esp, 4
+  pusha
+  cld
+  ; signal EOI on master PIC
+  mov al, 0x20
+  mov dx, 0x20
+  out dx, al
+  popa
+  sti
   iret
 
 .str: db 'pass', 0
+

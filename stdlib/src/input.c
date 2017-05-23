@@ -34,6 +34,7 @@ static char charVals[] =
 
 static byte packet[3];
 static int packetBytes = 0;
+static void processMousePacket();
 
 //global declarations
 byte shiftPressed = 0;
@@ -72,6 +73,14 @@ byte readControllerOutputPort()
   return getKeyboardData();
 }
 
+void flushKeyboardData()
+{
+  while(keyboardHasOutput())
+  {
+    getKeyboardData();
+  }
+}
+
 //Send a command to the PS/2 controller (NOT the actual keyboard device)
 byte keyboardCommand(byte command)
 {
@@ -94,15 +103,20 @@ void initKeyboard()
 {
   dword idtAddress;
   dword idtPtr[2];
-  //set up keyboard interrupt handler (0x21)
-  dword keyboardAddress = (dword) keyboardISR;
-  //set up keyboard interrupt handler (IRQ 1)
-  idt[0x20].offsetLower = keyboardAddress & 0xFFFF;
+  //set up PIT (system timer) interrupt handler (IRQ 0)
+  dword passAddr = (dword) pass;
+  idt[0x20].offsetLower = passAddr & 0xFFFF;
   idt[0x20].selector = 0x08;
   idt[0x20].zero = 0;
   idt[0x20].type_attr = 0x8E;
-  idt[0x20].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
-
+  idt[0x20].offsetHigher = (passAddr & 0xFFFF0000) >> 16;
+  //set up keyboard interrupt handler (IRQ 1)
+  dword keyboardAddress = (dword) keyboardISR;
+  idt[0x21].offsetLower = keyboardAddress & 0xFFFF;
+  idt[0x21].selector = 0x08;
+  idt[0x21].zero = 0;
+  idt[0x21].type_attr = 0x8E;
+  idt[0x21].offsetHigher = (keyboardAddress & 0xFFFF0000) >> 16;
   //set up RTC interrupt handler (IRQ 8)
   dword rtcAddress = (dword) rtcISR;
   idt[0x28].offsetLower = rtcAddress & 0xFFFF;
@@ -110,7 +124,7 @@ void initKeyboard()
   idt[0x28].zero = 0;
   idt[0x28].type_attr = 0x8E;
   idt[0x28].offsetHigher = (rtcAddress & 0xFFFF0000) >> 16;
-
+  //set up mouse isr (IRQ 12)
   dword mouseAddress = (dword) mouseISR;
   idt[0x2C].offsetLower = mouseAddress & 0xFFFF;
   idt[0x2C].selector = 0x08;
@@ -214,46 +228,58 @@ void initKeyboard()
 
 void keyboardHandler()
 {
-  byte event = getKeyboardData();
-  bool pressed = true;
-  if(event & 0x80)
+  byte status = getKeyboardStatus();
+  if(status & (1 << 5))
   {
-    pressed = false;
-    event &= 0x7F;
+    packet[packetBytes++] = status;
+    if(packetBytes == 3)
+    {
+      processMousePacket();
+    }
   }
-  switch((Scancode) event)
+  else
   {
-    case KEY_LEFTSHIFT:
-    case KEY_RIGHTSHIFT:
-      if(pressed)
-        shiftPressed = 1;
-      else
-        shiftPressed = 0;
-      break;
-    case KEY_CAPSLOCK:
-      if(pressed)
-        capsLockOn = capsLockOn ? 0 : 1;
-      break;
-    case KEY_LEFTALT:
-      if(pressed)
-        altPressed = 1;
-      else
-        altPressed = 0;
-      break;
-    case KEY_LEFTCONTROL:
-      if(pressed)
-        ctrlPressed = 1;
-      else
-        ctrlPressed = 0;
-      break;
-    default:
-      {
-        Event ev;
-        ev.type = KEY_EVENT;
-        ev.e.key.scancode = event;
-        ev.e.key.pressed = pressed;
-        addEvent(ev);
-      }
+    byte event = getKeyboardData();
+    bool pressed = true;
+    if(event & 0x80)
+    {
+      pressed = false;
+      event &= 0x7F;
+    }
+    switch((Scancode) event)
+    {
+      case KEY_LEFTSHIFT:
+      case KEY_RIGHTSHIFT:
+        if(pressed)
+          shiftPressed = 1;
+        else
+          shiftPressed = 0;
+        break;
+      case KEY_CAPSLOCK:
+        if(pressed)
+          capsLockOn = capsLockOn ? 0 : 1;
+        break;
+      case KEY_LEFTALT:
+        if(pressed)
+          altPressed = 1;
+        else
+          altPressed = 0;
+        break;
+      case KEY_LEFTCONTROL:
+        if(pressed)
+          ctrlPressed = 1;
+        else
+          ctrlPressed = 0;
+        break;
+      default:
+        {
+          Event ev;
+          ev.type = KEY_EVENT;
+          ev.e.key.scancode = event;
+          ev.e.key.pressed = pressed;
+          addEvent(ev);
+        }
+    }
   }
   //signal EOI
   writeport(0x20, 0x20);
@@ -265,57 +291,62 @@ void mouseHandler()
   packet[packetBytes++] = getKeyboardData();
   if(packetBytes == 3)
   {
-    packetBytes = 0;
-    //check if mouse has a packet
-    //dx/dy are signed 9 bit values
-    unsigned short dxs = packet[1];
-    unsigned short dys = packet[2];
-    if(packet[0] & (1 << 4))
-    {
-      //dx is negative, set sign-bit and sign extend
-      dxs |= 0xFF << 8;
-    }
-    if(packet[0] & (1 << 5))
-    {
-      //dy is negative, set sign-bit and sign extend
-      dys |= 0xFF << 8;
-    }
-    //test for motion
-    int dx = (short) dxs;
-    int dy = (short) dys;
-    if(dx != 0 || dy != 0)
-    {
-      //create mouse motion event
-      Event ev;
-      ev.type = MOTION_EVENT;
-      ev.e.motion.dx = dx;
-      ev.e.motion.dy = dy;
-      addEvent(ev);
-    }
-    //test for button state change
-    bool leftDown = packet[0] & 1;
-    bool rightDown = packet[0] & 2;
-    if(leftDown != lmbDown)
-    {
-      lmbDown = leftDown;
-      Event ev;
-      ev.type = BUTTON_EVENT;
-      ev.e.button.button = LEFT_BUTTON;
-      ev.e.button.pressed = lmbDown;
-      addEvent(ev);
-    }
-    if(rightDown != rmbDown)
-    {
-      rmbDown = rightDown;
-      Event ev;
-      ev.type = BUTTON_EVENT;
-      ev.e.button.button = RIGHT_BUTTON;
-      ev.e.button.pressed = rmbDown;
-      addEvent(ev);
-    }
+    processMousePacket();
   }
   writeport(0x20, 0x20);
   writeport(0xA0, 0x20);
+}
+
+static void processMousePacket()
+{
+  packetBytes = 0;
+  //check if mouse has a packet
+  //dx/dy are signed 9 bit values
+  unsigned short dxs = packet[1];
+  unsigned short dys = packet[2];
+  if(packet[0] & (1 << 4))
+  {
+    //dx is negative, set sign-bit and sign extend
+    dxs |= 0xFF << 8;
+  }
+  if(packet[0] & (1 << 5))
+  {
+    //dy is negative, set sign-bit and sign extend
+    dys |= 0xFF << 8;
+  }
+  //test for motion
+  int dx = (short) dxs;
+  int dy = (short) dys;
+  if(dx != 0 || dy != 0)
+  {
+    //create mouse motion event
+    Event ev;
+    ev.type = MOTION_EVENT;
+    ev.e.motion.dx = dx / 8;
+    ev.e.motion.dy = -dy / 8;
+    addEvent(ev);
+  }
+  //test for button state change
+  bool leftDown = packet[0] & 1;
+  bool rightDown = packet[0] & 2;
+  if(leftDown != lmbDown)
+  {
+    lmbDown = leftDown;
+    Event ev;
+    ev.type = BUTTON_EVENT;
+    ev.e.button.button = LEFT_BUTTON;
+    ev.e.button.pressed = lmbDown;
+    addEvent(ev);
+  }
+  if(rightDown != rmbDown)
+  {
+    rmbDown = rightDown;
+    Event ev;
+    ev.type = BUTTON_EVENT;
+    ev.e.button.button = RIGHT_BUTTON;
+    ev.e.button.pressed = rmbDown;
+    addEvent(ev);
+  }
 }
 
 char getASCII(byte scancode)

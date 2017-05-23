@@ -132,25 +132,26 @@ void kernel_main()
   initKeyboard();
   while(1)
   {
-    while(!haveEvent());
     Event ev = getNextEvent();
     //call event handler
     switch(ev.type)
     {
       case KEY_EVENT:
+        //putchar('K');
         if(ev.e.key.pressed)
         {
           terminalKeyListener(ev.e.key.scancode);
         }
         break;
       case MOTION_EVENT:
+        //putchar('M');
         {
           byte* fb = (byte*) 0xA0000;
           //clear previous cursor pixel
           fb[mouseX + mouseY * 320] = 0x0;
           //update mouse position
-          mouseX += ev.e.motion.dx / 8;
-          mouseY += ev.e.motion.dy / 8;
+          mouseX += ev.e.motion.dx;
+          mouseY += ev.e.motion.dy;
           //clamp mouse pos to screen
           if(mouseX < 0)
             mouseX = 0;
@@ -165,10 +166,12 @@ void kernel_main()
           break;
         }
       case BUTTON_EVENT:
+        //putchar('B');
         {
           //TODO
           break;
         }
+      default:;
     }
   }
 }
