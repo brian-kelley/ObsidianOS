@@ -132,10 +132,10 @@ void kernel_main()
   initKeyboard();
   resetTermCursor();
   srand(42);
-  for(int i = 0; i < 1000000; i++)
+  for(int i = 0; i < 20; i++)
   {
     setColor(rand() & 0xFF);
-    drawLine(rand() % 320, rand() % 200, rand() % 320, rand() % 200);
+    fillTriangle(rand() % 320, rand() % 200, rand() % 320, rand() % 200, rand() % 320, rand() % 200);
   }
   while(1)
   {
