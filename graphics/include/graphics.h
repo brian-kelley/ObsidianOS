@@ -3,6 +3,7 @@
 
 #include "globalDefines.h"
 #include "stdio.h"
+#include "geometry.h"
 
 #define drawPixel(x, y) framebuf[x + y * 320] = color;
 

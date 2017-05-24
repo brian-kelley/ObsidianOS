@@ -42,8 +42,12 @@ byte ctrlPressed = 0;
 byte altPressed = 0;
 byte capsLockOn = 0;
 
-static bool lmbDown;
-static bool rmbDown;
+static bool buttonDown[2];
+
+bool getButtonState(int button)
+{
+  return buttonDown[button];
+}
 
 #define KB_CAN_READ 1
 #define KB_CANT_WRITE 2
@@ -175,8 +179,10 @@ void initKeyboard()
       printf("Failed to disable packet streaming: code %hhx\n", ack);
       while(1);
     }
-    lmbDown = false;
-    rmbDown = false;
+    for(int i = 0; i < 2; i++)
+    {
+      buttonDown[i] = false;
+    }
   }
   //In PIC, remap master and slave IRQ handlers to 0 (0x20)
   //this makes the keyboard interrupt 0x20 (matching IDT entry above)
@@ -314,25 +320,20 @@ static void processMousePacket()
     addEvent(ev);
   }
   //test for button state change
-  bool leftDown = packet[0] & 1;
-  bool rightDown = packet[0] & 2;
-  if(leftDown != lmbDown)
+  byte mask = 1;
+  for(int i = 0; i < 2; i++)
   {
-    lmbDown = leftDown;
-    Event ev;
-    ev.type = BUTTON_EVENT;
-    ev.e.button.button = LEFT_BUTTON;
-    ev.e.button.pressed = lmbDown;
-    addEvent(ev);
-  }
-  if(rightDown != rmbDown)
-  {
-    rmbDown = rightDown;
-    Event ev;
-    ev.type = BUTTON_EVENT;
-    ev.e.button.button = RIGHT_BUTTON;
-    ev.e.button.pressed = rmbDown;
-    addEvent(ev);
+    bool down = packet[0] & mask;
+    mask <<= 1;
+    if(down != buttonDown[i])
+    {
+      buttonDown[i] = down;
+      Event ev;
+      ev.type = BUTTON_EVENT;
+      ev.e.button.button = LEFT_BUTTON;
+      ev.e.button.pressed = down;
+      addEvent(ev);
+    }
   }
 }
 

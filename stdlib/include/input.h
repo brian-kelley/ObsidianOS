@@ -12,6 +12,9 @@ void mouseHandler();
 void initKeyboard();
 char getASCII(byte scancode);
 void initASCIIValues();
+
+bool getButtonState(int button);
+
 extern byte shiftPressed;
 extern byte ctrlPressed;
 extern byte altPressed;

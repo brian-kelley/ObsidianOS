@@ -131,12 +131,7 @@ void kernel_main()
   initFatDriver();
   initKeyboard();
   resetTermCursor();
-  srand(42);
-  for(int i = 0; i < 20; i++)
-  {
-    setColor(rand() & 0xFF);
-    fillTriangle(rand() % 320, rand() % 200, rand() % 320, rand() % 200, rand() % 320, rand() % 200);
-  }
+  setColor(0xF);
   while(1)
   {
     Event ev = getNextEvent();
@@ -151,12 +146,16 @@ void kernel_main()
         }
         break;
       case MOTION_EVENT:
+        /*
         //putchar('M');
         {
           byte* fb = (byte*) 0xA0000;
-          //clear previous cursor pixel
-          fb[mouseX + mouseY * 320] = 0x0;
+          //clear previous cursor pixel (if mouse is not down)
+          if(!getButtonState(LEFT_BUTTON))
+            fb[mouseX + mouseY * 320] = 0x0;
           //update mouse position
+          int oldX = mouseX;
+          int oldY = mouseY;
           mouseX += ev.e.motion.dx;
           mouseY += ev.e.motion.dy;
           //clamp mouse pos to screen
@@ -168,10 +167,12 @@ void kernel_main()
             mouseX = 319;
           if(mouseY >= 200)
             mouseY = 199;
+          }
           //draw cursor in new position
           fb[mouseX + mouseY * 320] = 0xF;
-          break;
         }
+        */
+        break;
       case BUTTON_EVENT:
         {
           if(ev.e.button.button == LEFT_BUTTON && ev.e.button.pressed)
