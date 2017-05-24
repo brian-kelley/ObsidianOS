@@ -5,6 +5,8 @@
 #include "memory.h"
 #include "string.h"
 
+#define RAND_MAX 0x7FFFFFFF
+
 typedef struct
 {
     int quot;

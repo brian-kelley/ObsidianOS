@@ -3,6 +3,11 @@
 byte* const framebuf = (byte*) 0xA0000;
 byte color;
 
+void setColor(byte c)
+{
+  color = c;
+}
+
 void drawLine(int x1, int y1, int x2, int y2)
 {
 	int changed, x, y, dx, dy, signx, signy, i, e, temp;

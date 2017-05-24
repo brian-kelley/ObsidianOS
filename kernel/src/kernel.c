@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include "video.h"
 #include "globalDefines.h"
-#include "input.h"
 #include "terminal.h"
 #include "atadrv.h"
 #include "memory.h"
@@ -11,6 +10,7 @@
 #include "stdio.h"
 #include "math.h"
 #include "events.h"
+#include "graphics.h"
 
 extern void demo();
 
@@ -131,6 +131,12 @@ void kernel_main()
   initFatDriver();
   initKeyboard();
   resetTermCursor();
+  srand(42);
+  for(int i = 0; i < 1000000; i++)
+  {
+    setColor(rand() & 0xFF);
+    drawLine(rand() % 320, rand() % 200, rand() % 320, rand() % 200);
+  }
   while(1)
   {
     Event ev = getNextEvent();
