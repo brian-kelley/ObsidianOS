@@ -31,6 +31,12 @@ typedef struct
   float v[2];
 } vec2;
 
+typedef struct
+{
+  int x;
+  int y;
+} point;
+
 vec3 cross(vec3 lhs, vec3 rhs);
 float dot(vec3 lhs, vec3 rhs);
 mat4 identity();

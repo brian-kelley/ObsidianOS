@@ -473,3 +473,42 @@ void swapVertices(int* x1, int* y1, int* x2, int* y2)
 	*y2 = temp;
 }
 
+//////////////////
+// 3D functions //
+//////////////////
+
+static mat4 modelMat;
+static mat4 viewMat;
+static mat4 projMat;
+
+void setModel(mat4 m)
+{
+  modelMat = m;
+}
+
+void setView(mat4 v)
+{
+  viewMat = v;
+}
+
+void setProj(mat4 p)
+{
+  projMat = p;
+}
+
+vec3 vshade(vec3 vertex)
+{
+  vec4 result = matvec4(projMat, matvec4(viewMat, matvec3(modelMat, vertex)));
+  //divide by w
+  vec3 clip = {{result.v[0] / result.v[3], result.v[1] / result.v[3], result.v[2] / result.v[3]}};
+  return clip;
+}
+
+point viewport(vec3 clip)
+{
+  point p;
+  p.x = (clip.v[0] + 1) * VIEWPORT_X / 2;
+  p.y = (clip.v[1] + 1) * VIEWPORT_Y / 2;
+  return p;
+}
+
