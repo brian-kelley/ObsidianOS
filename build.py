@@ -8,7 +8,7 @@ import subprocess
 
 # Set up constants
 
-cflags = "-std=c99 -Os -ffreestanding -nostdlib -Istdlib/include -Igraphics/include -c"
+cflags = "-std=c99 -Os -ffast-math -ffreestanding -nostdlib -Istdlib/include -Igraphics/include -c"
 # format for assembling machine code (TODO: match output of C compiler on mac and linux)
 objformat = "elf32"
 # TODO: set these based on platform (currently just for mac)

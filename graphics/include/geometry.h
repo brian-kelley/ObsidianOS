@@ -32,13 +32,12 @@ typedef struct
 } vec2;
 
 vec3 cross(vec3 lhs, vec3 rhs);
-float dot3(vec3 lhs, vec3 rhs);
-float dot4(vec4 lhs, vec4 rhs);
+float dot(vec3 lhs, vec3 rhs);
 mat4 identity();
 //view matrix
 mat4 lookAt(vec3 camera, vec3 target, vec3 up);
 //projection matrix
-mat4 ortho(float left, float right, float bottom, float top);
+mat4 ortho(float left, float right, float bottom, float top, float near, float far);
 mat4 perspective(float fov, float near, float far);
 
 //matrix transformations
@@ -51,7 +50,8 @@ mat4 matmat(mat4 lhs, mat4 rhs);
 vec4 matvec3(mat4 mat, vec3 rhs);
 vec4 matvec4(mat4 mat, vec4 rhs);
 mat4 transpose(mat4 mat);
-mat4 inverse(mat4 mat);
+//TODO: is this really needed?
+//mat4 inverse(mat4 mat);
 
 float mag(vec3 v);
 vec3 normalize(vec3 v);
