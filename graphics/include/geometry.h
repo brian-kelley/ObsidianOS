@@ -45,6 +45,7 @@ mat4 lookAt(vec3 camera, vec3 target, vec3 up);
 //projection matrix
 mat4 ortho(float left, float right, float bottom, float top, float near, float far);
 mat4 perspective(float fov, float near, float far);
+mat4 perspective6(float near, float far, float left, float right, float top, float bottom);
 
 //matrix transformations
 mat4 rotate(vec3 axis, float angle);

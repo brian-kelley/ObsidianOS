@@ -125,6 +125,12 @@ static int mouseY = 100;
 #define PRINT_VEC3(vec) printf("%s: (%.2f %.2f %.2f)\n", #vec, vec.v[0], vec.v[1], vec.v[2]);
 #define PRINT_POINT(p) printf("%s: (%i %i)\n", #p, p.x, p.y);
 
+void clockSleep(int millis)
+{
+  clock_t start = clock();
+  while(clock() < start + millis);
+}
+
 void kernel_main()
 {
   initTime();
@@ -136,38 +142,54 @@ void kernel_main()
   resetTermCursor();
   //Graphics testing
   setModel(identity());
+  //fov, in degrees
+  float fov = 50;
+  setProj(perspective(fov / (180.0f / PI), 0.1, 100));
+  //camera at origin, upright, pointing towards -Z
+  setView(identity());
+  int i = 1;
+  while(1)
   {
-    vec3 camera = {0, 0, -4};
-    vec3 up = {0, 1, 0};
-    vec3 target = {0, 0, 0};
-    setView(lookAt(camera, target, up));
+    i++;
+    float t = i * (PI / 100.0f);
+    clearScreen(0);
+    //printf("%i ", i);
+    {
+      vec3 camera = {0, 0, 5};
+      vec3 up = {sin(t), cos(t), 0};
+      vec3 target = {0, 0, 0};
+      setView(lookAt(camera, target, up));
+    }
+    vec3 v1 = {-1, -1, 0};
+    vec3 v2 = {1, -1, 0};
+    vec3 v3 = {-1, 1, 0};
+    vec3 v4 = {1, 1, 0};
+    v1 = vshade(v1);
+    v2 = vshade(v2);
+    v3 = vshade(v3);
+    v4 = vshade(v4);
+    /*
+    PRINT_VEC3(v1);
+    PRINT_VEC3(v2);
+    PRINT_VEC3(v3);
+    PRINT_VEC3(v4);
+    */
+    point p1 = viewport(v1);
+    point p2 = viewport(v2);
+    point p3 = viewport(v3);
+    point p4 = viewport(v4);
+    /*
+    PRINT_POINT(p1);
+    PRINT_POINT(p2);
+    PRINT_POINT(p3);
+    PRINT_POINT(p4);
+    */
+    setColor(0x2A);
+    fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    setColor(0x2C);
+    fillTriangle(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
+    clockSleep(20);
   }
-  setProj(perspective(PI / 2, 0.1, 100));
-  vec3 v1 = {0, 0, 5};
-  vec3 v2 = {0, 1, 5};
-  vec3 v3 = {1, 0, 5};
-  vec3 v4 = {1, 1, 5};
-  putchar('\n');
-  v1 = vshade(v1);
-  v2 = vshade(v2);
-  v3 = vshade(v3);
-  v4 = vshade(v4);
-  PRINT_VEC3(v1);
-  PRINT_VEC3(v2);
-  PRINT_VEC3(v3);
-  PRINT_VEC3(v4);
-  point p1 = viewport(v1);
-  point p2 = viewport(v2);
-  point p3 = viewport(v3);
-  point p4 = viewport(v4);
-  PRINT_POINT(p1);
-  PRINT_POINT(p2);
-  PRINT_POINT(p3);
-  PRINT_POINT(p4);
-  setColor(0x2A);
-  fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-  setColor(0x2C);
-  fillTriangle(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
   while(1);
   while(1)
   {

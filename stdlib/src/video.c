@@ -9,8 +9,7 @@ void clearScreen(byte color)
   dword* iter = (dword*) 0xA0000;
   for(int i = 0; i < 64000 / 4; i++)
   {
-    *iter = color4;
-    iter++;
+    iter[i] = color4;
   }
 }
 

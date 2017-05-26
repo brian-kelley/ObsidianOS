@@ -24,18 +24,18 @@ mat4 lookAt(vec3 camera, vec3 target, vec3 up)
   mat4 m = identity();
   //view matrix first rotates world so that 
   up = normalize(up);
-  vec3 camDir = normalize(vecsub(camera, target));
-  vec3 s = cross(camDir, up);
-  vec3 u = cross(s, camDir);
-  m.v[0][0] = s.v[0];
-  m.v[0][1] = s.v[1];
-  m.v[0][2] = s.v[2];
-  m.v[1][0] = u.v[0];
-  m.v[1][1] = u.v[1];
-  m.v[1][2] = u.v[2];
-  m.v[2][0] = -camDir.v[0];
-  m.v[2][1] = -camDir.v[1];
-  m.v[2][2] = -camDir.v[2];
+  vec3 D = normalize(vecsub(camera, target));
+  vec3 R = normalize(cross(up, D));
+  vec3 U = cross(D, R);
+  m.v[0][0] = R.v[0];
+  m.v[0][1] = R.v[1];
+  m.v[0][2] = R.v[2];
+  m.v[1][0] = U.v[0];
+  m.v[1][1] = U.v[1];
+  m.v[1][2] = U.v[2];
+  m.v[2][0] = D.v[0];
+  m.v[2][1] = D.v[1];
+  m.v[2][2] = D.v[2];
   //now translate from eye point to origin
   vec3 trans = vecneg(camera);
   return matmat(m, translate(trans));
@@ -63,6 +63,19 @@ mat4 perspective(float fov, float near, float far)
   p.v[0][0] = near / right;
   p.v[1][1] = near / top;
   p.v[2][2] = -(far + near) / (far - near);
+  p.v[3][2] = -1;
+  p.v[2][3] = -2 * far * near / (far - near);
+  return p;
+}
+
+mat4 perspective6(float near, float far, float left, float right, float top, float bottom)
+{
+  mat4 p = identity();
+  p.v[0][0] = 2 * near / (right - left);
+  p.v[1][1] = 2 * near / (top - bottom);
+  p.v[2][2] = -(far + near) / (far - near);
+  p.v[0][2] = (right + left) / (right - left);
+  p.v[1][2] = (top + bottom) / (top - bottom);
   p.v[3][2] = -1;
   p.v[2][3] = -2 * far * near / (far - near);
   return p;
@@ -120,7 +133,7 @@ mat4 matmat(mat4 lhs, mat4 rhs)
     for(int j = 0; j < 4; j++)
     {
       vec4 v1 = {{lhs.v[i][0], lhs.v[i][1], lhs.v[i][2], lhs.v[i][3]}};
-      vec4 v2 = {{rhs.v[0][j], lhs.v[1][j], lhs.v[2][j], lhs.v[3][j]}};
+      vec4 v2 = {{rhs.v[0][j], rhs.v[1][j], rhs.v[2][j], rhs.v[3][j]}};
       prod.v[i][j] = v1.v[0] * v2.v[0] + v1.v[1] * v2.v[1] + v1.v[2] * v2.v[2] + v1.v[3] * v2.v[3];
     }
   }

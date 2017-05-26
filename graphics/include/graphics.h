@@ -5,7 +5,7 @@
 #include "stdio.h"
 #include "geometry.h"
 
-#define drawPixel(x, y) framebuf[x + y * 320] = color;
+#define drawPixel(x, y) if(x >= 0 && x < 320 && y >= 0 && y < 320) framebuf[x + y * 320] = color;
 
 void setColor(byte c);
 void drawLine(int x1, int y1, int x2, int y2);

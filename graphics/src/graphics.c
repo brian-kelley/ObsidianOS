@@ -480,25 +480,34 @@ void swapVertices(int* x1, int* y1, int* x2, int* y2)
 static mat4 modelMat;
 static mat4 viewMat;
 static mat4 projMat;
+static mat4 fullMat;
+
+static void updateMatrices()
+{
+  fullMat = matmat(projMat, matmat(viewMat, modelMat));
+}
 
 void setModel(mat4 m)
 {
   modelMat = m;
+  updateMatrices();
 }
 
 void setView(mat4 v)
 {
   viewMat = v;
+  updateMatrices();
 }
 
 void setProj(mat4 p)
 {
   projMat = p;
+  updateMatrices();
 }
 
 vec3 vshade(vec3 vertex)
 {
-  vec4 result = matvec4(projMat, matvec4(viewMat, matvec3(modelMat, vertex)));
+  vec4 result = matvec3(fullMat, vertex);
   //divide by w
   vec3 clip = {{result.v[0] / result.v[3], result.v[1] / result.v[3], result.v[2] / result.v[3]}};
   return clip;
@@ -507,8 +516,8 @@ vec3 vshade(vec3 vertex)
 point viewport(vec3 clip)
 {
   point p;
-  p.x = (clip.v[0] + 1) * VIEWPORT_X / 2;
-  p.y = (clip.v[1] + 1) * VIEWPORT_Y / 2;
+  p.x = (clip.v[0] + 1) * (VIEWPORT_X / 2);
+  p.y = (clip.v[1] + 1) * (VIEWPORT_Y / 2);
   return p;
 }
 
