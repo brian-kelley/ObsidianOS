@@ -24,5 +24,20 @@ vec3 vshade(vec3 vertex);
 //convert clip space to screen space (integer pixels)
 point viewport(vec3 clip);
 
+enum GeometryTypes
+{
+  NO_GEOM,
+  GL_LINES,
+  GL_TRIANGLES
+};
+
+//OpenGL immediate mode style rendering
+void glBegin(int type);
+void glEnd();
+void glVertex2i(int x, int y);
+void glVertex3f(float x, float y, float z);
+void glVertex3fv(vec3 v);
+void glColor1i(byte c);
+
 #endif
 

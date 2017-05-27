@@ -9,7 +9,7 @@
 //Aspect ratio is always VIEWPORT_X / VIEWPORT_Y
 
 #define VIEWPORT_X 320
-#define VIEWPORT_Y 320
+#define VIEWPORT_Y 200
 
 typedef struct 
 {

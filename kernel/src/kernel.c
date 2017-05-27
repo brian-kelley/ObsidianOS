@@ -131,6 +131,87 @@ void clockSleep(int millis)
   while(clock() < start + millis);
 }
 
+void drawCube(float x, float y, float z, float size)
+{
+  glBegin(GL_TRIANGLES);
+  //Bottom face (low y)
+  glColor1i(0x28);
+  glVertex3f(x, y, z);
+  glVertex3f(x + size, y, z);
+  glVertex3f(x + size, y, z + size);
+  glVertex3f(x + size, y, z + size);
+  glVertex3f(x, y, z + size);
+  glVertex3f(x, y, z);
+  //Top face (high y)
+  glColor1i(0x29);
+  glVertex3f(x, y + size, z);
+  glVertex3f(x + size, y + size, z);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x, y + size, z + size);
+  glVertex3f(x, y + size, z);
+  //Left face (low x)
+  glColor1i(0x2A);
+  glVertex3f(x, y, z);
+  glVertex3f(x, y + size, z);
+  glVertex3f(x, y + size, z + size);
+  glVertex3f(x, y + size, z + size);
+  glVertex3f(x, y, z + size);
+  glVertex3f(x, y, z);
+  //Right face (high x)
+  glColor1i(0x2B);
+  glVertex3f(x + size, y, z);
+  glVertex3f(x + size, y + size, z);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x + size, y, z + size);
+  glVertex3f(x + size, y, z);
+  //Back face (low z);
+  glColor1i(0x2C);
+  glVertex3f(x, y, z);
+  glVertex3f(x + size, y, z);
+  glVertex3f(x + size, y + size, z);
+  glVertex3f(x + size, y + size, z);
+  glVertex3f(x, y + size, z);
+  glVertex3f(x, y, z);
+  //Front face (high z);
+  glColor1i(0x2D);
+  glVertex3f(x, y, z + size);
+  glVertex3f(x + size, y, z + size);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x + size, y + size, z + size);
+  glVertex3f(x, y + size, z + size);
+  glVertex3f(x, y, z + size);
+  glEnd();
+}
+
+//Orbit camera around a stationary cube
+void cubeDemo()
+{
+  //Graphics testing
+  setModel(identity());
+  //fov, in degrees
+  float fov = 90;
+  setView(identity());
+  setProj(perspective(fov / (180.0f / PI), 0.1, 100));
+  //camera at origin, upright, pointing towards -Z
+  int i = 1;
+  while(1)
+  {
+    i++;
+    float t = i * (PI / 30.0f);
+    clearScreen(0);
+    {
+      vec3 camera = {5 * sin(3 * t) + 0.5, 0.5 + 4 * sin(3 * t / 2), 5 * cos(3 * t) + 0.5};
+      vec3 up = {0, 1, 0};
+      vec3 target = {0, 0, 0};
+      setView(lookAt(camera, target, up));
+    }
+    drawCube(0, 0, 0, 1);
+    clockSleep(40);
+  }
+}
+
 void kernel_main()
 {
   initTime();
@@ -140,56 +221,7 @@ void kernel_main()
   initFatDriver();
   initKeyboard();
   resetTermCursor();
-  //Graphics testing
-  setModel(identity());
-  //fov, in degrees
-  float fov = 50;
-  setProj(perspective(fov / (180.0f / PI), 0.1, 100));
-  //camera at origin, upright, pointing towards -Z
-  setView(identity());
-  int i = 1;
-  while(1)
-  {
-    i++;
-    float t = i * (PI / 100.0f);
-    clearScreen(0);
-    //printf("%i ", i);
-    {
-      vec3 camera = {0, 0, 5};
-      vec3 up = {sin(t), cos(t), 0};
-      vec3 target = {0, 0, 0};
-      setView(lookAt(camera, target, up));
-    }
-    vec3 v1 = {-1, -1, 0};
-    vec3 v2 = {1, -1, 0};
-    vec3 v3 = {-1, 1, 0};
-    vec3 v4 = {1, 1, 0};
-    v1 = vshade(v1);
-    v2 = vshade(v2);
-    v3 = vshade(v3);
-    v4 = vshade(v4);
-    /*
-    PRINT_VEC3(v1);
-    PRINT_VEC3(v2);
-    PRINT_VEC3(v3);
-    PRINT_VEC3(v4);
-    */
-    point p1 = viewport(v1);
-    point p2 = viewport(v2);
-    point p3 = viewport(v3);
-    point p4 = viewport(v4);
-    /*
-    PRINT_POINT(p1);
-    PRINT_POINT(p2);
-    PRINT_POINT(p3);
-    PRINT_POINT(p4);
-    */
-    setColor(0x2A);
-    fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-    setColor(0x2C);
-    fillTriangle(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
-    clockSleep(20);
-  }
+  cubeDemo();
   while(1);
   while(1)
   {

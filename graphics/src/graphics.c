@@ -521,3 +521,61 @@ point viewport(vec3 clip)
   return p;
 }
 
+//Simple OpenGL
+
+static int geomType = NO_GEOM;
+static vec3 vertState[3];
+static int numVerts = 0;
+
+static int vertsPerElement[] = {0, 2, 3};
+
+void glBegin(int type)
+{
+  geomType = type;
+  numVerts = 0;
+}
+
+void glEnd()
+{
+  geomType = NO_GEOM;
+}
+
+void glVertex2i(int x, int y)
+{
+  glVertex3f(x, y, 0);
+}
+
+void glVertex3f(float x, float y, float z)
+{
+  vec3 v = {x, y, z};
+  glVertex3fv(v);
+}
+
+void glVertex3fv(vec3 v)
+{
+  vertState[numVerts++] = v;
+  if(numVerts == vertsPerElement[geomType])
+  {
+    //run vshader and draw the geometry, then flush vert buffer
+    if(geomType == GL_LINES)
+    {
+      point p1 = viewport(vshade(vertState[0]));
+      point p2 = viewport(vshade(vertState[1]));
+      drawLine(p1.x, p1.y, p2.x, p2.y);
+    }
+    else if(geomType == GL_TRIANGLES)
+    {
+      point p1 = viewport(vshade(vertState[0]));
+      point p2 = viewport(vshade(vertState[1]));
+      point p3 = viewport(vshade(vertState[2]));
+      fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    }
+    numVerts = 0;
+  }
+}
+
+void glColor1i(byte c)
+{
+  color = c;
+}
+
