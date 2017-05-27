@@ -524,10 +524,10 @@ point viewport(vec3 clip)
 //Simple OpenGL
 
 static int geomType = NO_GEOM;
-static vec3 vertState[3];
+static vec3 vertState[4];
 static int numVerts = 0;
-
-static int vertsPerElement[] = {0, 2, 3};
+static bool enabled3D = true;
+static const int vertsPerElement[] = {0, 2, 3, 4};
 
 void glBegin(int type)
 {
@@ -557,18 +557,44 @@ void glVertex3fv(vec3 v)
   if(numVerts == vertsPerElement[geomType])
   {
     //run vshader and draw the geometry, then flush vert buffer
+    point p1, p2, p3, p4;
+    if(!enabled3D)
+    {
+      p1 = ((point) {vertState[0].v[0], vertState[0].v[1]});
+      p2 = ((point) {vertState[1].v[0], vertState[1].v[1]});
+      p3 = ((point) {vertState[2].v[0], vertState[2].v[1]});
+      p4 = ((point) {vertState[3].v[0], vertState[3].v[1]});
+    }
     if(geomType == GL_LINES)
     {
-      point p1 = viewport(vshade(vertState[0]));
-      point p2 = viewport(vshade(vertState[1]));
+      if(enabled3D)
+      {
+        p1 = viewport(vshade(vertState[0]));
+        p2 = viewport(vshade(vertState[1]));
+      }
       drawLine(p1.x, p1.y, p2.x, p2.y);
     }
     else if(geomType == GL_TRIANGLES)
     {
-      point p1 = viewport(vshade(vertState[0]));
-      point p2 = viewport(vshade(vertState[1]));
-      point p3 = viewport(vshade(vertState[2]));
+      if(enabled3D)
+      {
+        p1 = viewport(vshade(vertState[0]));
+        p2 = viewport(vshade(vertState[1]));
+        p3 = viewport(vshade(vertState[2]));
+      }
       fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    }
+    else if(geomType == GL_QUADS)
+    {
+      if(enabled3D)
+      {
+        p1 = viewport(vshade(vertState[0]));
+        p2 = viewport(vshade(vertState[1]));
+        p3 = viewport(vshade(vertState[2]));
+        p4 = viewport(vshade(vertState[3]));
+      }
+      fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+      fillTriangle(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
     }
     numVerts = 0;
   }
@@ -577,5 +603,15 @@ void glVertex3fv(vec3 v)
 void glColor1i(byte c)
 {
   color = c;
+}
+
+void enable2D()
+{
+  enabled3D = false;
+}
+
+void enable3D()
+{
+  enabled3D = true;
 }
 

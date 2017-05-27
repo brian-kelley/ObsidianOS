@@ -131,57 +131,77 @@ void clockSleep(int millis)
   while(clock() < start + millis);
 }
 
+static vec3 camPos;
+
 void drawCube(float x, float y, float z, float size)
 {
   glBegin(GL_TRIANGLES);
   //Bottom face (low y)
-  glColor1i(0x28);
-  glVertex3f(x, y, z);
-  glVertex3f(x + size, y, z);
-  glVertex3f(x + size, y, z + size);
-  glVertex3f(x + size, y, z + size);
-  glVertex3f(x, y, z + size);
-  glVertex3f(x, y, z);
+  if(camPos.v[1] < y)
+  {
+    glColor1i(0x28);
+    glVertex3f(x, y, z);
+    glVertex3f(x + size, y, z);
+    glVertex3f(x + size, y, z + size);
+    glVertex3f(x + size, y, z + size);
+    glVertex3f(x, y, z + size);
+    glVertex3f(x, y, z);
+  }
   //Top face (high y)
-  glColor1i(0x29);
-  glVertex3f(x, y + size, z);
-  glVertex3f(x + size, y + size, z);
-  glVertex3f(x + size, y + size, z + size);
-  glVertex3f(x + size, y + size, z + size);
-  glVertex3f(x, y + size, z + size);
-  glVertex3f(x, y + size, z);
+  if(camPos.v[1] > y + size)
+  {
+    glColor1i(0x29);
+    glVertex3f(x, y + size, z);
+    glVertex3f(x + size, y + size, z);
+    glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x, y + size, z + size);
+    glVertex3f(x, y + size, z);
+  }
   //Left face (low x)
-  glColor1i(0x2A);
-  glVertex3f(x, y, z);
-  glVertex3f(x, y + size, z);
-  glVertex3f(x, y + size, z + size);
-  glVertex3f(x, y + size, z + size);
-  glVertex3f(x, y, z + size);
-  glVertex3f(x, y, z);
+  if(camPos.v[0] < x)
+  {
+    glColor1i(0x2A);
+    glVertex3f(x, y, z);
+    glVertex3f(x, y + size, z);
+    glVertex3f(x, y + size, z + size);
+    glVertex3f(x, y + size, z + size);
+    glVertex3f(x, y, z + size);
+    glVertex3f(x, y, z);
+  }
   //Right face (high x)
-  glColor1i(0x2B);
-  glVertex3f(x + size, y, z);
-  glVertex3f(x + size, y + size, z);
-  glVertex3f(x + size, y + size, z + size);
-  glVertex3f(x + size, y + size, z + size);
-  glVertex3f(x + size, y, z + size);
-  glVertex3f(x + size, y, z);
+  if(camPos.v[0] > x + size)
+  {
+    glColor1i(0x2B);
+    glVertex3f(x + size, y, z);
+    glVertex3f(x + size, y + size, z);
+    glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x + size, y, z + size);
+    glVertex3f(x + size, y, z);
+  }
   //Back face (low z);
-  glColor1i(0x2C);
-  glVertex3f(x, y, z);
-  glVertex3f(x + size, y, z);
-  glVertex3f(x + size, y + size, z);
-  glVertex3f(x + size, y + size, z);
-  glVertex3f(x, y + size, z);
-  glVertex3f(x, y, z);
+  if(camPos.v[2] < z)
+  {
+    glColor1i(0x2C);
+    glVertex3f(x, y, z);
+    glVertex3f(x + size, y, z);
+    glVertex3f(x + size, y + size, z);
+    glVertex3f(x + size, y + size, z);
+    glVertex3f(x, y + size, z);
+    glVertex3f(x, y, z);
+  }
   //Front face (high z);
-  glColor1i(0x2D);
-  glVertex3f(x, y, z + size);
-  glVertex3f(x + size, y, z + size);
-  glVertex3f(x + size, y + size, z + size);
-  glVertex3f(x + size, y + size, z + size);
-  glVertex3f(x, y + size, z + size);
-  glVertex3f(x, y, z + size);
+  if(camPos.v[2] > z + size)
+  {
+    glColor1i(0x2D);
+    glVertex3f(x, y, z + size);
+    glVertex3f(x + size, y, z + size);
+    glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x, y + size, z + size);
+    glVertex3f(x, y, z + size);
+  }
   glEnd();
 }
 
@@ -192,25 +212,26 @@ void cubeDemo()
   setModel(identity());
   //fov, in degrees
   float fov = 90;
-  setView(identity());
   setProj(perspective(fov / (180.0f / PI), 0.1, 100));
   //camera at origin, upright, pointing towards -Z
   int i = 1;
   while(1)
   {
     i++;
-    float t = i * (PI / 30.0f);
+    float t = i * (PI / 90.0f);
     clearScreen(0);
     {
-      vec3 camera = {5 * sin(3 * t) + 0.5, 0.5 + 4 * sin(3 * t / 2), 5 * cos(3 * t) + 0.5};
+      camPos = ((vec3) {5 * sin(3 * t) + 0.5, 0.5 + 4 * sin(3 * t / 2), 5 * cos(3 * t) + 0.5});
       vec3 up = {0, 1, 0};
       vec3 target = {0, 0, 0};
-      setView(lookAt(camera, target, up));
+      setView(lookAt(camPos, target, up));
     }
     drawCube(0, 0, 0, 1);
     clockSleep(40);
   }
 }
+
+extern void ocMain();
 
 void kernel_main()
 {
@@ -221,7 +242,7 @@ void kernel_main()
   initFatDriver();
   initKeyboard();
   resetTermCursor();
-  cubeDemo();
+  ocMain();
   while(1);
   while(1)
   {

@@ -198,6 +198,14 @@ vec3 vecsub(vec3 lhs, vec3 rhs)
   return ((vec3) {{lhs.v[0] - rhs.v[0], lhs.v[1] - rhs.v[1], lhs.v[2] - rhs.v[2]}});
 }
 
+vec3 vecscale(vec3 v, float scale)
+{
+  v.v[0] *= scale;
+  v.v[1] *= scale;
+  v.v[2] *= scale;
+  return v;
+}
+
 vec3 toVec3(vec4 v)
 {
   return ((vec3) {{v.v[0], v.v[1], v.v[2]}});

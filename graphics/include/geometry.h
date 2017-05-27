@@ -65,6 +65,7 @@ vec3 normalize(vec3 v);
 vec3 vecneg(vec3 v);
 vec3 vecadd(vec3 lhs, vec3 rhs);
 vec3 vecsub(vec3 lhs, vec3 rhs);
+vec3 vecscale(vec3 v, float scale);
 vec3 toVec3(vec4 v);
 vec4 toVec4(vec3 v);
 

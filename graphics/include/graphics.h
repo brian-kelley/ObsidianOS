@@ -28,7 +28,8 @@ enum GeometryTypes
 {
   NO_GEOM,
   GL_LINES,
-  GL_TRIANGLES
+  GL_TRIANGLES,
+  GL_QUADS
 };
 
 //OpenGL immediate mode style rendering
@@ -38,6 +39,10 @@ void glVertex2i(int x, int y);
 void glVertex3f(float x, float y, float z);
 void glVertex3fv(vec3 v);
 void glColor1i(byte c);
+//Assume all vertices are already in 2D screen space
+void enable2D();
+//Do model-view-projection transformations on all vertices
+void enable3D();
 
 #endif
 

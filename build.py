@@ -90,6 +90,7 @@ makeDir(build)
 build_module("kernel")
 build_module("stdlib")
 build_module("graphics")
+build_module("ObsidianCraft")
 
 print("Producing binary system image...")
 ldCommand = ld;
