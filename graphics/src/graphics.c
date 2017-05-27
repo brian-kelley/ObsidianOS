@@ -554,48 +554,52 @@ void glVertex3f(float x, float y, float z)
 void glVertex3fv(vec3 v)
 {
   vertState[numVerts++] = v;
-  if(numVerts == vertsPerElement[geomType])
+  int verts = vertsPerElement[geomType];
+  if(numVerts == verts)
   {
     //run vshader and draw the geometry, then flush vert buffer
-    point p1, p2, p3, p4;
+    //vertices in screen space
+    point screen[4];
     if(!enabled3D)
     {
-      p1 = ((point) {vertState[0].v[0], vertState[0].v[1]});
-      p2 = ((point) {vertState[1].v[0], vertState[1].v[1]});
-      p3 = ((point) {vertState[2].v[0], vertState[2].v[1]});
-      p4 = ((point) {vertState[3].v[0], vertState[3].v[1]});
+      for(int i = 0; i < verts; i++)
+      {
+        screen[i] = ((point) {vertState[i].v[0], vertState[i].v[1]});
+      }
+    }
+    else
+    {
+      vec3 clip[4];
+      for(int i = 0; i < verts; i++)
+      {
+        //Do clip testing on z only
+        //Triangle rasterizer performs x/y clipping
+        clip[i] = vshade(vertState[i]);
+        if(clip[i].v[2] < -1 || clip[i].v[2] > 1)
+        {
+          //at least one vertex is outside clip space, so don't draw the primitive
+          goto done;
+        }
+      }
+      for(int i = 0; i < verts; i++)
+      {
+        screen[i] = viewport(clip[i]);
+      }
     }
     if(geomType == GL_LINES)
     {
-      if(enabled3D)
-      {
-        p1 = viewport(vshade(vertState[0]));
-        p2 = viewport(vshade(vertState[1]));
-      }
-      drawLine(p1.x, p1.y, p2.x, p2.y);
+      drawLine(screen[0].x, screen[0].y, screen[1].x, screen[1].y);
     }
     else if(geomType == GL_TRIANGLES)
     {
-      if(enabled3D)
-      {
-        p1 = viewport(vshade(vertState[0]));
-        p2 = viewport(vshade(vertState[1]));
-        p3 = viewport(vshade(vertState[2]));
-      }
-      fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+      fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
     }
     else if(geomType == GL_QUADS)
     {
-      if(enabled3D)
-      {
-        p1 = viewport(vshade(vertState[0]));
-        p2 = viewport(vshade(vertState[1]));
-        p3 = viewport(vshade(vertState[2]));
-        p4 = viewport(vshade(vertState[3]));
-      }
-      fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-      fillTriangle(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
+      fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+      fillTriangle(screen[1].x, screen[1].y, screen[2].x, screen[2].y, screen[3].x, screen[3].y);
     }
+done:
     numVerts = 0;
   }
 }

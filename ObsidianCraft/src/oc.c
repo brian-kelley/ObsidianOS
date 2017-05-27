@@ -141,13 +141,13 @@ void pumpEvents()
           const float pitchSens = 0.04;
           const float yawSens = 0.04;
           viewUpdated = true;
-          yaw -= yawSens * ev.e.motion.dx;
+          yaw += yawSens * ev.e.motion.dx;
           //clamp yaw to 0:2pi (but preserve rotation beyond the bounds)
           if(yaw < 0)
             yaw += 2 * PI;
           else if(yaw >= 2 * PI)
             yaw -= 2 * PI;
-          pitch -= pitchSens * ev.e.motion.dy;
+          pitch += pitchSens * ev.e.motion.dy;
           //clamp pitch to -pitchLimit:pitchLimit
           if(pitch < -pitchLimit)
             pitch = -pitchLimit;
