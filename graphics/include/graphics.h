@@ -5,7 +5,8 @@
 #include "stdio.h"
 #include "geometry.h"
 
-#define drawPixel(x, y) if(x >= 0 && x < 320 && y >= 0 && y < 320) {renderBuf[x + y * 320] = color; depthBuf[x + y * 320] = depthVal;}
+//#define drawPixel(x, y) if(x >= 0 && x < 320 && y >= 0 && y < 200) {renderBuf[x + y * 320] = color; depthBuf[x + y * 320] = depthVal;}
+#define drawPixel(x, y) if(x >= 0 && x < 320 && y >= 0 && y < 200) {renderBuf[x + y * 320] = color; /*depthBuf[x + y * 320] = depthVal;*/}
 //#define drawPixel(x, y) renderBuf[x + y * 320] = color;
 
 extern byte* renderBuf;

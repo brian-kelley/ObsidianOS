@@ -7,15 +7,18 @@ static Chunk* chunks;
 static vec3 player;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
-//Solid colors of blocks
-static byte blockColor[] = {0x00, 0x16, 0x06, 0x12, 0x1B, 0x2C, 0x0C, 0xF0, 0x77, 0x37, 0x44, 0x00};
+//Solid colors of blocks (at highest light level)
+static byte blockColor[] = {0x00, 0x16, 0x06, 0x12, 0x1B, 0x2C, 0x4D, 0xF0, 0x77, 0x37, 0x44, 0x00};
 //Sky color
 static byte sky = 0x35;
-static bool viewUpdated;
 static bool wkey;
 static bool akey;
 static bool skey;
 static bool dkey;
+static bool ikey;
+static bool jkey;
+static bool kkey;
+static bool lkey;
 
 static int chunksX = 1;
 static int chunksY = 1;
@@ -24,6 +27,12 @@ static int chunksZ = 1;
 static void pumpEvents();
 static void drawCube(float x, float y, float z, float size);
 static void terrainGen();
+static void processInput();
+
+//player movement configuration
+#define PLAYER_SPEED 0.15
+#define X_SENSITIVITY 0.04
+#define Y_SENSITIVITY 0.04
 
 static void clockSleep(int millis)
 {
@@ -46,53 +55,59 @@ void ocMain()
   skey = false;
   dkey = false;
   terrainGen();
-  viewUpdated = true;
   setModel(identity());
   int fov = 90;
-  setProj(perspective(fov / (180.0f / PI), 0.1, 100));
+  setProj(perspective(fov / (180.0f / PI), 1, 1000));
   while(1)
   {
     //TESTING CAMERA
+    clock_t cstart = clock();
     pumpEvents();
-    vec3 target = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
-    vec3 right = {-sinf(yaw), 0, cosf(yaw)};
-    int xvel = 0;
-    int yvel = 0;
-    if(wkey)
-      xvel++;
-    if(skey)
-      xvel--;
-    if(akey)
-      yvel--;
-    if(dkey)
-      yvel++;
-    if(xvel)
-    {
-      player = vecadd(player, vecscale(target, 0.2 * xvel));
-      viewUpdated = true;
-    }
-    if(yvel)
-    {
-      player = vecadd(player, vecscale(right, 0.2 * yvel));
-      viewUpdated = true;
-    }
-    if(viewUpdated)
-    {
-      vec3 up = cross(right, target);
-      target = vecadd(target, player);
-      setView(lookAt(player, target, up));
-    }
+    processInput();
     glClear(sky);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
-    renderChunk(0, 0, 0);
+    //renderChunk(0, 0, 0);
+    glBegin(GL_QUADS);
+    glColor1i(blockColor[STONE]);
+    for(int i = 0; i < 32; i++)
+    {
+      for(int j = 0; j < 32; j++)
+      {
+        glVertex3f(i, j, 0);
+        glVertex3f(i + 1, j, 0);
+        glVertex3f(i + 1, j + 1, 0);
+        glVertex3f(i, j + 1, 0);
+      }
+    }
+    glColor1i(blockColor[DIAMOND]);
+    for(int i = 0; i < 32; i++)
+    {
+      for(int j = 0; j < 32; j++)
+      {
+        glVertex3f(0, i, j);
+        glVertex3f(0, i + 1, j);
+        glVertex3f(0, i + 1, j + 1);
+        glVertex3f(0, i, j + 1);
+      }
+    }
+    glColor1i(blockColor[IRON]);
+    for(int i = 0; i < 32; i++)
+    {
+      for(int j = 0; j < 32; j++)
+      {
+        glVertex3f(i, 0, j);
+        glVertex3f(i + 1, 0, j);
+        glVertex3f(i + 1, 0, j + 1);
+        glVertex3f(i, 0, j + 1);
+      }
+    }
+    glEnd();
+    //drawCube(32, 32, 39, 1);
+    //drawCube(33, 33, 40, 1);
     glFlush();
     //vsync();
-    /*
-    drawCube(32, 32, 39, 1);
-    drawCube(33, 33, 40, 1);
-    */
-    //clockSleep(20);
+    while(clock() < cstart + 17);
   }
 }
 
@@ -197,42 +212,46 @@ void pumpEvents()
       case KEY_EVENT:
         {
           KeyEvent k = ev.e.key;
-          if(k.scancode == KEY_W)
+          switch(k.scancode)
           {
-            wkey = k.pressed;
-          }
-          if(k.scancode == KEY_A)
-          {
-            akey = k.pressed;
-          }
-          if(k.scancode == KEY_S)
-          {
-            skey = k.pressed;
-          }
-          if(k.scancode == KEY_D)
-          {
-            dkey = k.pressed;
+            case KEY_W:
+              wkey = k.pressed; break;
+            case KEY_A:
+              akey = k.pressed; break;
+            case KEY_S:
+              skey = k.pressed; break;
+            case KEY_D:
+              dkey = k.pressed; break;
+            case KEY_I:
+              ikey = k.pressed; break;
+            case KEY_J:
+              jkey = k.pressed; break;
+            case KEY_K:
+              kkey = k.pressed; break;
+            case KEY_L:
+              lkey = k.pressed; break;
+            default:;
           }
         }
         break;
       case MOTION_EVENT:
         {
-          const float pitchLimit = 88 / (180.0f / PI);
-          const float pitchSens = 0.04;
-          const float yawSens = 0.04;
-          viewUpdated = true;
-          yaw += yawSens * ev.e.motion.dx;
+          /*
+             const float pitchLimit = 88 / (180.0f / PI);
+             viewUpdated = true;
+             yaw += X_SENSITIVITY * ev.e.motion.dx;
           //clamp yaw to 0:2pi (but preserve rotation beyond the bounds)
           if(yaw < 0)
-            yaw += 2 * PI;
+          yaw += 2 * PI;
           else if(yaw >= 2 * PI)
-            yaw -= 2 * PI;
-          pitch -= pitchSens * ev.e.motion.dy;
+          yaw -= 2 * PI;
+          pitch -= Y_SENSITIVITY * ev.e.motion.dy;
           //clamp pitch to -pitchLimit:pitchLimit
           if(pitch < -pitchLimit)
-            pitch = -pitchLimit;
+          pitch = -pitchLimit;
           else if(pitch > pitchLimit)
-            pitch = pitchLimit;
+          pitch = pitchLimit;
+          */
           break;
         }
       case BUTTON_EVENT:
@@ -261,8 +280,8 @@ void drawCube(float x, float y, float z, float size)
     glColor1i(0x2);
     glVertex3f(x, y, z);
     glVertex3f(x + size, y, z);
-    glVertex3f(x, y, z + size);
     glVertex3f(x + size, y, z + size);
+    glVertex3f(x, y, z + size);
   }
   //Top face (high y)
   if(player.v[1] > y + size)
@@ -270,8 +289,8 @@ void drawCube(float x, float y, float z, float size)
     glColor1i(0x3);
     glVertex3f(x, y + size, z);
     glVertex3f(x + size, y + size, z);
-    glVertex3f(x, y + size, z + size);
     glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x, y + size, z + size);
   }
   //Left face (low x)
   if(player.v[0] < x)
@@ -279,8 +298,8 @@ void drawCube(float x, float y, float z, float size)
     glColor1i(0x4);
     glVertex3f(x, y, z);
     glVertex3f(x, y + size, z);
-    glVertex3f(x, y, z + size);
     glVertex3f(x, y + size, z + size);
+    glVertex3f(x, y, z + size);
   }
   //Right face (high x)
   if(player.v[0] > x + size)
@@ -288,8 +307,8 @@ void drawCube(float x, float y, float z, float size)
     glColor1i(0x5);
     glVertex3f(x + size, y, z);
     glVertex3f(x + size, y + size, z);
-    glVertex3f(x + size, y, z + size);
     glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x + size, y, z + size);
   }
   //Back face (low z);
   if(player.v[2] < z)
@@ -297,8 +316,8 @@ void drawCube(float x, float y, float z, float size)
     glColor1i(0x6);
     glVertex3f(x, y, z);
     glVertex3f(x + size, y, z);
-    glVertex3f(x, y + size, z);
     glVertex3f(x + size, y + size, z);
+    glVertex3f(x, y + size, z);
   }
   //Front face (high z);
   if(player.v[2] > z + size)
@@ -306,13 +325,13 @@ void drawCube(float x, float y, float z, float size)
     glColor1i(0x7);
     glVertex3f(x, y, z + size);
     glVertex3f(x + size, y, z + size);
-    glVertex3f(x, y + size, z + size);
     glVertex3f(x + size, y + size, z + size);
+    glVertex3f(x, y + size, z + size);
   }
   glEnd();
 }
 
-static void terrainGen()
+void terrainGen()
 {
   for(int x = 0; x < 16; x++)
   {
@@ -323,6 +342,53 @@ static void terrainGen()
         setBlock(STONE, x, y, z);
       }
     }
+  }
+}
+
+void processInput()
+{
+  //handle orientation changes via ijkl
+  const float pitchLimit = 88 / (180.0f / PI);
+  int dx = (jkey ? -1 : 0) + (lkey ? 1 : 0);
+  int dy = (ikey ? -1 : 0) + (kkey ? 1 : 0);
+  yaw += X_SENSITIVITY * dx;
+  //clamp yaw to 0:2pi (but preserve rotation beyond the bounds)
+  if(yaw < 0)
+    yaw += 2 * PI;
+  else if(yaw >= 2 * PI)
+    yaw -= 2 * PI;
+  pitch -= Y_SENSITIVITY * dy;
+  //clamp pitch to -pitchLimit:pitchLimit
+  if(pitch < -pitchLimit)
+    pitch = -pitchLimit;
+  else if(pitch > pitchLimit)
+    pitch = pitchLimit;
+  vec3 target = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
+  vec3 right = {-sinf(yaw), 0, cosf(yaw)};
+  int xvel = 0;
+  int yvel = 0;
+  if(wkey)
+    xvel++;
+  if(skey)
+    xvel--;
+  if(akey)
+    yvel--;
+  if(dkey)
+    yvel++;
+  if(xvel)
+  {
+    player = vecadd(player, vecscale(target, PLAYER_SPEED * xvel));
+  }
+  if(yvel)
+  {
+    player = vecadd(player, vecscale(right, PLAYER_SPEED * yvel));
+  }
+  if(dx || dy || xvel || yvel)
+  {
+    //must update view matrix
+    vec3 up = cross(right, target);
+    target = vecadd(target, player);
+    setView(lookAt(player, target, up));
   }
 }
 
