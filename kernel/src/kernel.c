@@ -217,8 +217,9 @@ void cubeDemo()
   int i = 1;
   while(1)
   {
+    clock_t start = clock();
     i++;
-    float t = i * (PI / 90.0f);
+    float t = i * (PI / 360.0f);
     clearScreen(0);
     {
       camPos = ((vec3) {5 * sin(3 * t) + 0.5, 0.5 + 4 * sin(3 * t / 2), 5 * cos(3 * t) + 0.5});
@@ -226,8 +227,10 @@ void cubeDemo()
       vec3 target = {0, 0, 0};
       setView(lookAt(camPos, target, up));
     }
-    drawCube(0, 0, 0, 1);
-    clockSleep(40);
+    glClear(0x0);
+    drawCube(-1, -1, -1, 2);
+    glFlush();
+    while(clock() < start + 17);
   }
 }
 
@@ -242,10 +245,11 @@ void kernel_main()
   //initFatDriver();
   initKeyboard();
   resetTermCursor();
-  //printMemStats();
+  printMemStats();
   renderBuf = malloc(64000);
   depthBuf = malloc(64000);
-  ocMain();
+  cubeDemo();
+  //ocMain();
   while(1);
   while(1)
   {
@@ -261,32 +265,6 @@ void kernel_main()
         }
         break;
       case MOTION_EVENT:
-        /*
-        //putchar('M');
-        {
-          byte* fb = (byte*) 0xA0000;
-          //clear previous cursor pixel (if mouse is not down)
-          if(!getButtonState(LEFT_BUTTON))
-            fb[mouseX + mouseY * 320] = 0x0;
-          //update mouse position
-          int oldX = mouseX;
-          int oldY = mouseY;
-          mouseX += ev.e.motion.dx;
-          mouseY += ev.e.motion.dy;
-          //clamp mouse pos to screen
-          if(mouseX < 0)
-            mouseX = 0;
-          if(mouseY < 0)
-            mouseY = 0;
-          if(mouseX >= 320)
-            mouseX = 319;
-          if(mouseY >= 200)
-            mouseY = 199;
-          }
-          //draw cursor in new position
-          fb[mouseX + mouseY * 320] = 0xF;
-        }
-        */
         break;
       case BUTTON_EVENT:
         {
