@@ -239,9 +239,12 @@ void kernel_main()
   initTerminal();
   initFPU();
   ataInit();
-  initFatDriver();
+  //initFatDriver();
   initKeyboard();
   resetTermCursor();
+  //printMemStats();
+  renderBuf = malloc(64000);
+  depthBuf = malloc(64000);
   ocMain();
   while(1);
   while(1)

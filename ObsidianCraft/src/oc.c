@@ -1,9 +1,9 @@
 #include "oc.h"
 
 //Have 10x6 inventory
-static Stack inv[60];
+static Stack* inv;
 //Have 4x4x4 chunks (64^3 world)
-static Chunk chunks[64];
+static Chunk* chunks;
 static vec3 player;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
@@ -17,8 +17,13 @@ static bool akey;
 static bool skey;
 static bool dkey;
 
+static int chunksX = 1;
+static int chunksY = 1;
+static int chunksZ = 1;
+
 static void pumpEvents();
 static void drawCube(float x, float y, float z, float size);
+static void terrainGen();
 
 static void clockSleep(int millis)
 {
@@ -28,16 +33,19 @@ static void clockSleep(int millis)
 
 void ocMain()
 {
+  inv = malloc(60 * sizeof(Stack));
+  chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
   yaw = 0;
   pitch = 0;
   //start in center of world
   player.v[0] = 32;
-  player.v[1] = 32;
+  player.v[1] = 34;
   player.v[2] = 32;
   wkey = false;
   akey = false;
   skey = false;
   dkey = false;
+  terrainGen();
   viewUpdated = true;
   setModel(identity());
   int fov = 90;
@@ -46,7 +54,6 @@ void ocMain()
   {
     //TESTING CAMERA
     pumpEvents();
-    clearScreen(sky);
     vec3 target = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
     vec3 right = {-sinf(yaw), 0, cosf(yaw)};
     int xvel = 0;
@@ -75,20 +82,93 @@ void ocMain()
       target = vecadd(target, player);
       setView(lookAt(player, target, up));
     }
-    setColor(blockColor[STONE]);
+    glClear(sky);
+    //fill depth buf with maximum depth (255)
+    memset(depthBuf, 0xFF, 64000);
+    renderChunk(0, 0, 0);
+    glFlush();
+    //vsync();
+    /*
     drawCube(32, 32, 39, 1);
-    clockSleep(30);
+    drawCube(33, 33, 40, 1);
+    */
+    //clockSleep(20);
   }
 }
 
-byte getBlock(Chunk* c, int cx, int cy, int cz)
+void renderChunk(int x, int y, int z)
+{
+  Chunk* c = &chunks[x + y * chunksX + z * chunksX * chunksY];
+  glBegin(GL_QUADS);
+  for(int i = 0; i < 16; i++)
+  {
+    for(int j = 0; j < 16; j++)
+    {
+      for(int k = 0; k < 16; k++)
+      {
+        byte block = getBlock(i, j, k);
+        if(block == AIR)
+          continue;
+        glColor1i(blockColor[block]);
+        //test whether faces right(+x), above (+y), and front (+z) need to be drawn
+        //right face:
+        byte rightNeighbor = getBlock(i + 1, j, k);
+        if(i == 15 || rightNeighbor == AIR || rightNeighbor == GLASS)
+        {
+          //face would need to be drawn, if it is visible
+          //check depth buffer at that position
+          int bx = x * 16 + i;
+          int by = y * 16 + j;
+          int bz = z * 16 + k;
+          vec3 face = {bx, by, bz};
+          vec4 viewSpace = matvec3(viewMat, face);
+          float depth = -viewSpace.v[2];
+          point screenSpace = viewport(vshade(face));
+          //clamp screenspace
+          if(screenSpace.x < 0)
+            screenSpace.x = 0;
+          if(screenSpace.x >= 320)
+            screenSpace.x = 319;
+          if(screenSpace.y < 0)
+            screenSpace.y = 0;
+          if(screenSpace.y >= 200)
+            screenSpace.y = 199;
+          //query depth buffer
+          byte existingDepth = depthBuf[screenSpace.x + screenSpace.y * 320];
+          if(existingDepth > depth)
+          {
+            //draw the face
+            glDepth(depth);
+            glVertex3f(bx + 1, by, bz);
+            glVertex3f(bx + 1, by + 1, bz);
+            glVertex3f(bx + 1, by + 1, bz + 1);
+            glVertex3f(bx + 1, by, bz + 1);
+          }
+        }
+      }
+    }
+  }
+  glEnd();
+}
+
+byte getBlock(int x, int y, int z)
+{
+  return getBlockC(&chunks[(x / 16) + 4 * (y / 16) + 16 * (z / 16)], x % 16, y % 16, z % 16);
+}
+
+void setBlock(byte b, int cx, int cy, int cz)
+{
+  setBlockC(b, &chunks[(cx / 16) + chunksX * (cy / 16) + chunksX * chunksY * (cz / 16)], cx % 16, cy % 16, cz % 16);
+}
+
+byte getBlockC(Chunk* c, int cx, int cy, int cz)
 {
   int ind = (cx + (cy << 4) + (cz << 8)) >> 1;
   byte b = c->vals[ind];
   return ind & 1 ? (b >> 4) : (b & 0xF);
 }
 
-void setBlock(byte newBlock, Chunk* c, int cx, int cy, int cz)
+void setBlockC(byte newBlock, Chunk* c, int cx, int cy, int cz)
 {
   int ind = (cx + (cy << 4) + (cz << 8)) >> 1;
   byte b = c->vals[ind];
@@ -147,7 +227,7 @@ void pumpEvents()
             yaw += 2 * PI;
           else if(yaw >= 2 * PI)
             yaw -= 2 * PI;
-          pitch += pitchSens * ev.e.motion.dy;
+          pitch -= pitchSens * ev.e.motion.dy;
           //clamp pitch to -pitchLimit:pitchLimit
           if(pitch < -pitchLimit)
             pitch = -pitchLimit;
@@ -230,5 +310,19 @@ void drawCube(float x, float y, float z, float size)
     glVertex3f(x + size, y + size, z + size);
   }
   glEnd();
+}
+
+static void terrainGen()
+{
+  for(int x = 0; x < 16; x++)
+  {
+    for(int y = 0; y < 16; y++)
+    {
+      for(int z = 0; z < 16; z++)
+      {
+        setBlock(STONE, x, y, z);
+      }
+    }
+  }
 }
 

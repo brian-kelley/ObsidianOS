@@ -1,7 +1,13 @@
 #include "graphics.h"
 
 static byte* const framebuf = (byte*) 0xA0000;
+byte* renderBuf;
+byte* depthBuf;
+static byte depthVal;
 static byte color;
+mat4 modelMat;
+mat4 viewMat;
+mat4 projMat;
 
 // (x1, y1) is the top of triangle, and y2 == y3
 static int fillFlatBottomTriangle(int x1, int y1, int x2, int y2, int x3, int y3);
@@ -477,9 +483,6 @@ void swapVertices(int* x1, int* y1, int* x2, int* y2)
 // 3D functions //
 //////////////////
 
-static mat4 modelMat;
-static mat4 viewMat;
-static mat4 projMat;
 static mat4 fullMat;
 
 static void updateMatrices()
@@ -517,11 +520,11 @@ point viewport(vec3 clip)
 {
   point p;
   p.x = (clip.v[0] + 1) * (VIEWPORT_X / 2);
-  p.y = (clip.v[1] + 1) * (VIEWPORT_Y / 2);
+  p.y = (-clip.v[1] + 1) * (VIEWPORT_Y / 2);
   return p;
 }
 
-//Simple OpenGL
+//Simple OpenGL implementation
 
 static int geomType = NO_GEOM;
 static vec3 vertState[4];
@@ -575,6 +578,7 @@ void glVertex3fv(vec3 v)
         //Do clip testing on z only
         //Triangle rasterizer performs x/y clipping
         clip[i] = vshade(vertState[i]);
+        //if(clip[i].v[0] < -1 || clip[i].v[0] > 1 || clip[i].v[1] < -1 || clip[i].v[1] > 1 || clip[i].v[2] < -1 || clip[i].v[2] > 1)
         if(clip[i].v[2] < -1 || clip[i].v[2] > 1)
         {
           //at least one vertex is outside clip space, so don't draw the primitive
@@ -617,5 +621,20 @@ void enable2D()
 void enable3D()
 {
   enabled3D = true;
+}
+
+void glClear(byte c)
+{
+  memset(renderBuf, c, 64000);
+}
+
+void glDepth(byte d)
+{
+  depthVal = d;
+}
+
+void glFlush()
+{
+  memcpy(framebuf, renderBuf, 64000);
 }
 

@@ -34,8 +34,11 @@ typedef struct
 } Chunk;
 
 void ocMain();
-byte getBlock(Chunk* c, int cx, int cy, int cz);
-void setBlock(byte b, Chunk* c, int cx, int cy, int cz);
+void renderChunk(int x, int y, int z);
+byte getBlock(int cx, int cy, int cz);
+void setBlock(byte b, int cx, int cy, int cz);
+byte getBlockC(Chunk* c, int cx, int cy, int cz);
+void setBlockC(byte b, Chunk* c, int cx, int cy, int cz);
 
 #endif
 

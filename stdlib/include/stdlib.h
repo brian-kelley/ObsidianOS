@@ -29,6 +29,8 @@ unsigned long int strtoul(const char* str, char** endptr);
 int rand();
 void srand(unsigned int seed);
 
+void printMemStats();
+
 void* malloc(size_t size);
 void* calloc(size_t num, size_t size);
 void* realloc(void* ptr, size_t newSize);

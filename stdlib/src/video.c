@@ -55,9 +55,7 @@ void drawChar(char c, int x, int y, byte fg, byte bg)
 
 void vsync()
 {
-  /*
 	while((readport(0x3DA) & 8) == 0);	    //Wait to enter vertical refresh interval
 	while((readport(0x3DA) & 8) == 1);			//Wait for vertical refresh interval to end
-  */
 }
 

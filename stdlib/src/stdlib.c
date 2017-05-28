@@ -2,14 +2,32 @@
 
 static unsigned randState;
 
+//update this as necessary when system image size grows
+static size_t membreak = 0x10000;
+static size_t minbreak = 0x10000;
+static size_t maxbreak = 0x9DD00;
+
+void printMemStats()
+{
+  printf("%u KB used, %u KB free.\n", (membreak - minbreak) >> 10, (maxbreak - membreak) >> 10);
+}
+
 void* malloc(size_t size)
 {
-  return mmAlloc(size);
+  if(membreak + size > maxbreak)
+  {
+    puts("Out of memory - allocation failed!");
+    while(1);
+  }
+  void* ptr = (void*) membreak;
+  membreak += size;
+  return ptr;
+  //return mmAlloc(size);
 }
 
 void* calloc(size_t num, size_t size)
 {
-  byte* ptr = (byte*) mmAlloc(num * size);
+  byte* ptr = (byte*) malloc(num * size);
   if(ptr != NULL)
     memset(ptr, 0, size);
   return ptr;
@@ -26,7 +44,7 @@ void* realloc(void* ptr, size_t newSize)
 
 void free(void* ptr)
 {
-  mmFree(ptr);
+  //mmFree(ptr);
 }
 
 double atof(const char* str)
