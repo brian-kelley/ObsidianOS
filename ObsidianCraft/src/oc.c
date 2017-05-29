@@ -99,6 +99,7 @@ void ocMain()
   inv = malloc(60 * sizeof(Stack));
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
   //print mem usage, wait ~1 second, continue
+  puts("Generating world");
   terrainGen();
   initChunks();
   yaw = 0;
@@ -399,19 +400,67 @@ void pumpEvents()
 void terrainGen()
 {
   srand(time(NULL));
-  for(int x = 0; x < chunksX * 16; x++)
+  //This must assume that the world is a cube, simplifies things
+  //sea level is half the world height
+  int seaLevel = chunksY * 16 / 2;
+  /*  build some fractal noise in-place (with already allocated 4 bits per block)
+      always clamp values to [0, 16)
+      first, fill with some random vals (with a small maximum, like 2)
+      then, repeatedly sample some small 3D region (-50%), scale its values up (+50%), and add it back to original
+  */
+  for(int x = 0; x < chunksX; x++)
   {
-    for(int y = 0; y < chunksY * 16; y++)
+    for(int y = 0; y < chunksY; y++)
     {
-      for(int z = 0; z < chunksZ * 16; z++)
+      for(int z = 0; z < chunksZ; z++)
       {
-        if(x - y + z < 32)
-          setBlock(AIR, x, y, z);
-        else
-          setBlock(DIRT, x, y, z);
+        setBlock(rand() % 0x2, x, y, z);
       }
     }
   }
+  //first sample, scale, combine
+  //sample the high end of each dimension so that those values are sampled before they are changed
+  for(int iter = 0; iter < 3; iter++)
+  {
+    for(int x = 0; x < chunksX; x++)
+    {
+      for(int y = 0; y < chunksY; y++)
+      {
+        for(int z = 0; z < chunksZ; z++)
+        {
+          byte sample = getBlock(seaLevel + x / 2, seaLevel + y / 2, seaLevel + z / 2);
+          byte orig = getBlock(x, y, z);
+          int new = orig + sample;
+          if(new >= 16)
+            new = 15;
+          setBlock(new, x, y, z);
+        }
+      }
+    }
+  }
+  int stone = 0;
+  //now, set each block above a threshold to stone, and each below to air
+  for(int x = 0; x < chunksX; x++)
+  {
+    for(int y = 0; y < chunksY; y++)
+    {
+      for(int z = 0; z < chunksZ; z++)
+      {
+        int val = getBlock(x, y, z);
+        if(val >= 1)
+        {
+          stone++;
+          setBlock(STONE, x, y, z);
+        }
+        else
+          setBlock(AIR, x, y, z);
+      }
+    }
+  }
+  float solidPercent = ((float) stone) / (4096 * chunksX * chunksY * chunksZ) * 100;
+  printf("World is %.2f%% solid.\n", solidPercent);
+  time_t t = time(NULL);
+  while(time(NULL) < t + 3);
 }
 
 static void initChunks()
