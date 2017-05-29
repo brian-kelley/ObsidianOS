@@ -69,9 +69,9 @@ static void initChunks();
 static void processInput();
 
 //player movement configuration
-#define PLAYER_SPEED 0.15
-#define X_SENSITIVITY 0.04
-#define Y_SENSITIVITY 0.04
+#define PLAYER_SPEED 0.30
+#define X_SENSITIVITY 0.08
+#define Y_SENSITIVITY 0.08
 
 //3D configuration
 #define NEAR 1.0f
@@ -94,10 +94,10 @@ void ocMain()
   terrainGen();
   initChunks();
   yaw = 0;
-  pitch = 0;
-  player.v[0] = -1;
-  player.v[1] = -1;
-  player.v[2] = -1;
+  pitch = -PI / 2 + 0.1;
+  player.v[0] = 0;
+  player.v[1] = 32;
+  player.v[2] = 0;
   wkey = false;
   akey = false;
   skey = false;
@@ -112,13 +112,19 @@ void ocMain()
     glClear(sky);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
-    renderChunk(0, 0, 0);
-    renderChunk(1, 0, 0);
-    //renderChunk(0, 0, 1);
-    //renderChunk(1, 0, 1);
+    for(int i = 0; i < 2; i++)
+    {
+      for(int j = 0; j < 2; j++)
+      {
+        for(int k = 0; k < 2; k++)
+        {
+          renderChunk(i, j, k);
+        }
+      }
+    }
     glFlush();
-    //hit 60 fps (if there is spare time this frame)
-    while(clock() < cstart + 17);
+    //hit 30 fps (if there is spare time this frame)
+    while(clock() < cstart + 34);
   }
 }
 
@@ -166,13 +172,19 @@ void renderChunk(int x, int y, int z)
           face.v[1] += 1;
         if(player.v[2] > bz + 1)
           face.v[2] += 1;
-        vec4 viewSpace = matvec3(viewMat, face);
-        if(viewSpace.v[2] > 1)
+        //take the nearest corner and run it through the full projection
+        vec4 clip = matvec4(projMat, matvec3(viewMat, face));
+        clip.v[0] /= clip.v[3];
+        clip.v[1] /= clip.v[3];
+        clip.v[2] /= clip.v[3];
+        if(clip.v[0] < -1 || clip.v[0] > 1 ||
+            clip.v[1] < -1 || clip.v[1] > 1 || 
+            clip.v[2] < -1 || clip.v[2] > 1)
         {
-          //skip block, as block is behind player or outside of render distance
+          //skip block, as nearest corner to player is outside frustum
           continue;
         }
-        glDepth(-viewSpace.v[2] * 4);
+        glDepth((-clip.v[2] + 1) * 127.0f);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -372,14 +384,17 @@ void terrainGen()
   //for(int x = 0; x < chunksX * 16; x++)
   for(int x = 0; x < 32; x++)
   {
-    for(int y = 0; y < 16; y++)
+    for(int y = 0; y < 32; y++)
     {
       //for(int z = 0; z < chunksZ * 16; z++)
-      for(int z = 0; z < 16; z++)
+      for(int z = 0; z < 32; z++)
       {
         //setBlock(rand() & 1 ? DIRT : AIR, x, y, z);
         //setBlock((x + y + z) % 4 + 1, x, y, z);
-        setBlock(IRON, x, y, z);
+        if(y < 16)
+          setBlock(STONE, x, y, z);
+        else
+          setBlock(AIR, x, y, z);
       }
     }
   }
@@ -438,7 +453,7 @@ static void initChunks()
 void processInput()
 {
   //handle orientation changes via ijkl
-  const float pitchLimit = 88 / (180.0f / PI);
+  const float pitchLimit = 89 / (180.0f / PI);
   int dx = (jkey ? -1 : 0) + (lkey ? 1 : 0);
   int dy = (ikey ? -1 : 0) + (kkey ? 1 : 0);
   yaw += X_SENSITIVITY * dx;
