@@ -64,8 +64,8 @@ static int chunksY = 2;
 static int chunksZ = 2;
 
 static void pumpEvents();
-static void drawCube(float x, float y, float z, float size);
 static void terrainGen();
+static void initChunks();
 static void processInput();
 
 //player movement configuration
@@ -90,7 +90,9 @@ void ocMain()
   inv = malloc(60 * sizeof(Stack));
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
   //print mem usage, wait ~1 second, continue
+  memset(chunks, 0, chunksX * chunksY * chunksZ * sizeof(Chunk));
   terrainGen();
+  initChunks();
   yaw = 0;
   pitch = 0;
   player.v[0] = -1;
@@ -123,25 +125,37 @@ void ocMain()
 void renderChunk(int x, int y, int z)
 {
   Chunk* c = &chunks[x + y * chunksX + z * chunksX * chunksY];
+  if(c->filled == 0)
+  {
+    //chunk is completely empty
+    return;
+  }
   //chunk offset position
   glBegin(GL_QUADS);
   int cx = x * 16;
   int cy = y * 16;
   int cz = z * 16;
   glEnableDepthTest(true);
+  //how many blocks have already been drawn
   for(int i = 0; i < 16; i++)
   {
     for(int j = 0; j < 16; j++)
     {
       for(int k = 0; k < 16; k++)
       {
+        {
+          int ind = i + j * 16 + k * 256;
+          if(c->visible[ind >> 3] & (1 << (ind & 0x7)) == 0)
+          {
+            //block is either transparent or fully hidden by opaque blocks
+            continue;
+          }
+        }
         float bx = cx + i;
         float by = cy + j;
         float bz = cz + k;
         byte block = getBlockC(c, i, j, k);
         //byte block = getBlock(bx, by, bz);
-        if(block == AIR)
-          continue;
         //if a block is certainly not in the player's view, ignore it
         //compute depth value for whole block (using view space, not perspective)
         //use the nearest corner to player for correct depth value
@@ -366,6 +380,56 @@ void terrainGen()
         //setBlock(rand() & 1 ? DIRT : AIR, x, y, z);
         //setBlock((x + y + z) % 4 + 1, x, y, z);
         setBlock(IRON, x, y, z);
+      }
+    }
+  }
+}
+
+inline bool isTransparent(byte b)
+{
+  return b == AIR || b == GLASS;
+}
+
+static void initChunks()
+{
+  //initialize visible and filled fields of all chunks
+  //byte visible[512];
+  //short filled;
+  for(int cx = 0; cx < chunksX; cx++)
+  {
+    for(int cy = 0; cy < chunksY; cy++)
+    {
+      for(int cz = 0; cz < chunksZ; cz++)
+      {
+        Chunk* c = &chunks[cx + cy * chunksX + cz * chunksX * chunksY];
+        for(int i = 0; i < 16; i++)
+        {
+          for(int j = 0; j < 16; j++)
+          {
+            for(int k = 0; k < 16; k++)
+            {
+              int bx = cx * 16 + i;
+              int by = cy * 16 + j;
+              int bz = cz * 16 + k;
+              if(getBlockC(c, i, j, k))
+              {
+                c->filled++;
+                //check the 6 neighbors for transparent blocks
+                if(isTransparent(getBlock(bx - 1, by, bz)) ||
+                    isTransparent(getBlock(bx + 1, by, bz)) ||
+                    isTransparent(getBlock(bx, by - 1, bz)) ||
+                    isTransparent(getBlock(bx, by + 1, bz)) ||
+                    isTransparent(getBlock(bx, by, bz - 1)) ||
+                    isTransparent(getBlock(bx, by, bz + 1)))
+                {
+                  //set bit in c->visible
+                  int ind = i + j * 16 + k * 256;
+                  c->visible[ind >> 3] |= (1 << (ind & 0x7));
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

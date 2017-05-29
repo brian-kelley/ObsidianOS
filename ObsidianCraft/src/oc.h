@@ -35,6 +35,10 @@ typedef struct
 {
   //4096 blocks (16^3), each 4 bits
   byte vals[2048];
+  //visible: each bit is whether block has >=1 transparent neighbor AND is not air
+  byte visible[512];
+  //number of blocks that are not air
+  short filled;
 } Chunk;
 
 void ocMain();
