@@ -2,7 +2,7 @@
 
 //Have 10x6 inventory
 static Stack* inv;
-//Have 4x4x4 chunks (64^3 world)
+//Eventually, have at least a 4x4x4 chunks (64^3 blocks) world
 static Chunk* chunks;
 static vec3 player;
 static float yaw;     //yaw (left-right), radians, left is increasing
@@ -47,6 +47,11 @@ static byte blockColor[15][5] = {
 {0x1F, 0x1F, 0x1E, 0x1E, 0x1D}      //Quartz
 };
 
+inline bool isTransparent(byte b)
+{
+  return b == AIR || b == GLASS;
+}
+
 //Sky color
 static byte sky = 0x35;
 
@@ -75,14 +80,18 @@ static void processInput();
 
 //3D configuration
 #define NEAR 1.0f
-#define FAR 1000.0f
-#define FOV 90.0f       //fovy in degrees
-#define RENDER_DIST 64  //in blocks (worldspace/viewspace units)
+#define FAR 64.0f
+#define FOV 85.0f       //fovy in degrees
 
 static void clockSleep(int millis)
 {
   clock_t start = clock();
   while(clock() < start + millis);
+}
+
+static Chunk* getChunk(int x, int y, int z)
+{
+  return &chunks[x + y * chunksX + z * chunksX * chunksY];
 }
 
 void ocMain()
@@ -112,11 +121,11 @@ void ocMain()
     glClear(sky);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
-    for(int i = 0; i < 2; i++)
+    for(int i = 0; i < chunksX; i++)
     {
-      for(int j = 0; j < 2; j++)
+      for(int j = 0; j < chunksY; j++)
       {
-        for(int k = 0; k < 2; k++)
+        for(int k = 0; k < chunksZ; k++)
         {
           renderChunk(i, j, k);
         }
@@ -130,7 +139,7 @@ void ocMain()
 
 void renderChunk(int x, int y, int z)
 {
-  Chunk* c = &chunks[x + y * chunksX + z * chunksX * chunksY];
+  Chunk* c = getChunk(x, y, z);
   if(c->filled == 0)
   {
     //chunk is completely empty
@@ -153,7 +162,7 @@ void renderChunk(int x, int y, int z)
           int ind = i + j * 16 + k * 256;
           if(c->visible[ind >> 3] & (1 << (ind & 0x7)) == 0)
           {
-            //block is either transparent or fully hidden by opaque blocks
+            //block is either air or is fully hidden by opaque blocks
             continue;
           }
         }
@@ -161,10 +170,12 @@ void renderChunk(int x, int y, int z)
         float by = cy + j;
         float bz = cz + k;
         byte block = getBlockC(c, i, j, k);
+        if(block == AIR)
+          continue;
         //byte block = getBlock(bx, by, bz);
         //if a block is certainly not in the player's view, ignore it
-        //compute depth value for whole block (using view space, not perspective)
-        //use the nearest corner to player for correct depth value
+        //compute single depth value for whole block (using view space, not perspective)
+        //determine the nearest corner to player (for most aggressive depth value)
         vec3 face = {bx, by, bz};
         if(player.v[0] > bx + 1)
           face.v[0] += 1;
@@ -174,9 +185,11 @@ void renderChunk(int x, int y, int z)
           face.v[2] += 1;
         //take the nearest corner and run it through the full projection
         vec4 clip = matvec4(projMat, matvec3(viewMat, face));
-        clip.v[0] /= clip.v[3];
-        clip.v[1] /= clip.v[3];
-        clip.v[2] /= clip.v[3];
+        //must divide by w
+        float invw = 1.0f / clip.v[3];
+        clip.v[0] *= invw;
+        clip.v[1] *= invw;
+        clip.v[2] *= invw;
         if(clip.v[0] < -1 || clip.v[0] > 1 ||
             clip.v[1] < -1 || clip.v[1] > 1 || 
             clip.v[2] < -1 || clip.v[2] > 1)
@@ -184,7 +197,7 @@ void renderChunk(int x, int y, int z)
           //skip block, as nearest corner to player is outside frustum
           continue;
         }
-        glDepth((-clip.v[2] + 1) * 127.0f);
+        glDepth((-clip.v[2] + 1) * 127);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -194,7 +207,7 @@ void renderChunk(int x, int y, int z)
         {
           //might need to draw low X face
           byte neighbor = getBlock(bx - 1, by, bz);
-          if(neighbor == AIR || neighbor == GLASS)
+          if(isTransparent(neighbor))
           {
             //need to draw the face
             //do depth testing and update depth values along the way
@@ -207,7 +220,7 @@ void renderChunk(int x, int y, int z)
         if(player.v[0] > bx)
         {
           byte neighbor = getBlock(bx + 1, by, bz);
-          if(neighbor == AIR || neighbor == GLASS)
+          if(isTransparent(neighbor))
           {
             glVertex3f(bx + 1, by, bz);
             glVertex3f(bx + 1, by + 1, bz);
@@ -218,7 +231,7 @@ void renderChunk(int x, int y, int z)
         if(player.v[1] < by + 1)
         {
           byte neighbor = getBlock(bx, by - 1, bz);
-          if(neighbor == AIR || neighbor == GLASS)
+          if(isTransparent(neighbor))
           {
             glColor1i(blockColor[block][3]);
             glVertex3f(bx, by, bz);
@@ -230,7 +243,7 @@ void renderChunk(int x, int y, int z)
         if(player.v[1] > by)
         {
           byte neighbor = getBlock(bx, by + 1, bz);
-          if(neighbor == AIR || neighbor == GLASS)
+          if(isTransparent(neighbor))
           {
             glColor1i(blockColor[block][0]);
             glVertex3f(bx, by + 1, bz);
@@ -243,7 +256,7 @@ void renderChunk(int x, int y, int z)
         if(player.v[2] < bz + 1)
         {
           byte neighbor = getBlock(bx, by, bz - 1);
-          if(neighbor == AIR || neighbor == GLASS)
+          if(isTransparent(neighbor))
           {
             glVertex3f(bx, by, bz);
             glVertex3f(bx + 1, by, bz);
@@ -254,7 +267,7 @@ void renderChunk(int x, int y, int z)
         if(player.v[2] > bz)
         {
           byte neighbor = getBlock(bx, by, bz + 1);
-          if(neighbor == AIR || neighbor == GLASS)
+          if(isTransparent(neighbor))
           {
             glVertex3f(bx, by, bz + 1);
             glVertex3f(bx + 1, by, bz + 1);
@@ -268,18 +281,19 @@ void renderChunk(int x, int y, int z)
   glEnd();
 }
 
+//any block outside of the world is treated as air
 byte getBlock(int x, int y, int z)
 {
-  if(x < 0 || y < 0 || z < 0 || x > chunksX * 16 || y > chunksY * 16 || z > chunksZ * 16)
+  if(x < 0 || y < 0 || z < 0 || x >= chunksX * 16 || y >= chunksY * 16 || z >= chunksZ * 16)
     return AIR;
-  return getBlockC(&chunks[(x / 16) + 4 * (y / 16) + 16 * (z / 16)], x % 16, y % 16, z % 16);
+  return getBlockC(getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
 }
 
 void setBlock(byte b, int x, int y, int z)
 {
-  if(x < 0 || y < 0 || z < 0 || x > chunksX * 16 || y > chunksY * 16 || z > chunksZ * 16)
+  if(x < 0 || y < 0 || z < 0 || x >= chunksX * 16 || y >= chunksY * 16 || z >= chunksZ * 16)
     return;
-  setBlockC(b, &chunks[(x / 16) + chunksX * (y / 16) + chunksX * chunksY * (z / 16)], x % 16, y % 16, z % 16);
+  setBlockC(b, getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
 }
 
 byte getBlockC(Chunk* c, int cx, int cy, int cz)
@@ -381,28 +395,16 @@ void pumpEvents()
 void terrainGen()
 {
   srand(time(NULL));
-  //for(int x = 0; x < chunksX * 16; x++)
-  for(int x = 0; x < 32; x++)
+  for(int x = 0; x < chunksX * 16; x++)
   {
-    for(int y = 0; y < 32; y++)
+    for(int y = 0; y < chunksY * 16; y++)
     {
-      //for(int z = 0; z < chunksZ * 16; z++)
-      for(int z = 0; z < 32; z++)
+      for(int z = 0; z < chunksZ * 16; z++)
       {
-        //setBlock(rand() & 1 ? DIRT : AIR, x, y, z);
-        //setBlock((x + y + z) % 4 + 1, x, y, z);
-        if(y < 16)
-          setBlock(STONE, x, y, z);
-        else
-          setBlock(AIR, x, y, z);
+        setBlock(STONE, x, y, z);
       }
     }
   }
-}
-
-inline bool isTransparent(byte b)
-{
-  return b == AIR || b == GLASS;
 }
 
 static void initChunks()
@@ -416,7 +418,7 @@ static void initChunks()
     {
       for(int cz = 0; cz < chunksZ; cz++)
       {
-        Chunk* c = &chunks[cx + cy * chunksX + cz * chunksX * chunksY];
+        Chunk* c = getChunk(cx, cy, cz);
         for(int i = 0; i < 16; i++)
         {
           for(int j = 0; j < 16; j++)
