@@ -81,7 +81,7 @@ static void processInput();
 //3D configuration
 #define NEAR 0.05f
 #define FAR 64.0f
-#define FOV 85.0f       //fovy in degrees
+#define FOV 85.0f       //fovy (degrees)
 
 static void clockSleep(int millis)
 {
@@ -174,11 +174,11 @@ void renderChunk(int x, int y, int z)
         //compute single depth value for whole block (using view space, not perspective)
         //determine the nearest corner to player (for most aggressive depth value)
         vec3 face = {bx, by, bz};
-        if(player.v[0] > bx + 1)
+        if(player.v[0] <= bx + 1)
           face.v[0] += 1;
-        if(player.v[1] > by + 1)
+        if(player.v[1] <= by + 1)
           face.v[1] += 1;
-        if(player.v[2] > bz + 1)
+        if(player.v[2] <= bz + 1)
           face.v[2] += 1;
         //take the nearest corner and run it through the full projection
         vec4 viewSpace = matvec3(viewMat, face);
@@ -188,15 +188,20 @@ void renderChunk(int x, int y, int z)
         clip.v[0] *= invw;
         clip.v[1] *= invw;
         clip.v[2] *= invw;
-        if(clip.v[0] < -1 || clip.v[0] > 1 ||
-            clip.v[1] < -1 || clip.v[1] > 1 || 
+        //clip blocks that are > 1 block outside the edge of the viewport
+        //conveniently, invw is the clipspace size of a block at the distance of the block
+        //z still clips to exactly -1,1
+        float clipVal = 1.3 + invw;
+        if(clip.v[0] < -clipVal  || clip.v[0] > clipVal ||
+            clip.v[1] < -clipVal || clip.v[1] > clipVal || 
             clip.v[2] < -1 || clip.v[2] > 1)
         {
           //skip block, as nearest corner to player is outside frustum
           continue;
         }
-        //glDepth((-clip.v[2] + 1) * 127);
-        glDepth(-viewSpace.v[2] * 3);
+        //in depth value, far plane is 64, so anything that
+        //would overflow the byte has already been clipped
+        glDepth(-viewSpace.v[2] * 3.9);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
