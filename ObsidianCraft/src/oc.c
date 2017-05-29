@@ -7,10 +7,49 @@ static Chunk* chunks;
 static vec3 player;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
-//Solid colors of blocks (at highest light level)
-static byte blockColor[] = {0x00, 0x16, 0x06, 0x12, 0x1B, 0x2C, 0x4D, 0xF0, 0x77, 0x37, 0x44, 0x00};
+/* Block list:
+  AIR (0),
+  STONE (1),    //Light grey
+  DIRT (2)      //Dark brown, and green on top
+  COAL (3)      //Black
+  IRON (4)      //Dark grey
+  GOLD (5)      //Yellow
+  DIAMOND (6)   //Aqua
+  LOG (7)       //Light brown
+  LEAF (8)      //Medium green
+  WATER (9)     //Blue
+  SAND (10)     //Tan
+  GLASS (11)
+  CHEST (12)    //Lighter brown than log
+  GRANITE (13)  //Pink
+  QUARTZ (14)   //Pure white
+*/
+//Colors of blocks
+//dim 1 is block ID [0,15)
+//dim 2 is light level [0,5); 0 is brightest, 4 is darkest
+
+//For now, light level 0 is top, 1 is north/south, 2 is west/east, 3 is bottom, 4 is unused
+static byte blockColor[15][5] = {
+{0, 0, 0, 0, 0},                    //Air (colorless)
+{0x1A, 0x19, 0x18, 0x17, 0x16},     //Stone
+{0x02, 0x06, 0x72, 0x71, 0x70},     //Dirt
+{0x12, 0x11, 0x10, 0x10, 0x10},     //Coal
+{0x17, 0x16, 0x15, 0x14, 0x13},     //Iron
+{0x0E, 0x2C, 0x44, 0x74, 0x8C},     //Gold
+{0x4C, 0x0B, 0x4D, 0x03, 0x7C},     //Diamond
+{0x42, 0x06, 0x73, 0x72, 0x71},     //Log
+{0x02, 0x79, 0x77, 0xC0, 0xBF},     //Leaf
+{0x37, 0x21, 0x22, 0x01, 0x68},     //Water
+{0x44, 0x45, 0x8C, 0x8B, 0xD3},     //Sand
+{0x0F, 0x0F, 0x0F, 0x0F, 0x0F},                    //Glass (colorless)
+{0x43, 0x42, 0x06, 0x73, 0x72},     //Chest
+{0x42, 0x41, 0x8B, 0x8A, 0x89},     //Granite
+{0x1F, 0x1F, 0x1E, 0x1E, 0x1D}      //Quartz
+};
+
 //Sky color
 static byte sky = 0x35;
+
 static bool wkey;
 static bool akey;
 static bool skey;
@@ -60,104 +99,123 @@ void ocMain()
   setProj(perspective(fov / (180.0f / PI), 1, 1000));
   while(1)
   {
-    //TESTING CAMERA
     clock_t cstart = clock();
     pumpEvents();
     processInput();
     glClear(sky);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
-    //renderChunk(0, 0, 0);
-    glBegin(GL_QUADS);
-    glColor1i(blockColor[STONE]);
-    for(int i = 0; i < 32; i++)
-    {
-      for(int j = 0; j < 32; j++)
-      {
-        glVertex3f(i, j, 0);
-        glVertex3f(i + 1, j, 0);
-        glVertex3f(i + 1, j + 1, 0);
-        glVertex3f(i, j + 1, 0);
-      }
-    }
-    glColor1i(blockColor[DIAMOND]);
-    for(int i = 0; i < 32; i++)
-    {
-      for(int j = 0; j < 32; j++)
-      {
-        glVertex3f(0, i, j);
-        glVertex3f(0, i + 1, j);
-        glVertex3f(0, i + 1, j + 1);
-        glVertex3f(0, i, j + 1);
-      }
-    }
-    glColor1i(blockColor[IRON]);
-    for(int i = 0; i < 32; i++)
-    {
-      for(int j = 0; j < 32; j++)
-      {
-        glVertex3f(i, 0, j);
-        glVertex3f(i + 1, 0, j);
-        glVertex3f(i + 1, 0, j + 1);
-        glVertex3f(i, 0, j + 1);
-      }
-    }
-    glEnd();
-    //drawCube(32, 32, 39, 1);
-    //drawCube(33, 33, 40, 1);
+    renderChunk(0, 0, 0);
     glFlush();
     //vsync();
     while(clock() < cstart + 17);
   }
 }
 
+//for a face to be rendered, it must:
+//  -be facing the player (i.e. if top face, player y must be > face y)
+//  -have a transparent block (air/glass) as a neighbor
+
 void renderChunk(int x, int y, int z)
 {
   Chunk* c = &chunks[x + y * chunksX + z * chunksX * chunksY];
+  //chunk offset position
   glBegin(GL_QUADS);
+  int cx = x * 16;
+  int cy = y * 16;
+  int cz = z * 16;
+  glEnableDepthTest(true);
   for(int i = 0; i < 16; i++)
   {
     for(int j = 0; j < 16; j++)
     {
       for(int k = 0; k < 16; k++)
       {
-        byte block = getBlock(i, j, k);
+        byte block = getBlockC(c, i, j, k);
         if(block == AIR)
           continue;
-        glColor1i(blockColor[block]);
-        //test whether faces right(+x), above (+y), and front (+z) need to be drawn
-        //right face:
-        byte rightNeighbor = getBlock(i + 1, j, k);
-        if(i == 15 || rightNeighbor == AIR || rightNeighbor == GLASS)
+        float bx = cx + i;
+        float by = cy + j;
+        float bz = cz + k;
+        //compute depth value for whole block
+        vec3 face = {bx, by, bz};
+        vec4 viewSpace = matvec3(viewMat, face);
+        glDepth(-viewSpace.v[2] * 4);
+        if(block == GLASS)
+          glDrawMode(DRAW_WIREFRAME);
+        else
+          glDrawMode(DRAW_FILL);
+        glColor1i(blockColor[block][1]);
+        if(player.v[0] < bx)
         {
-          //face would need to be drawn, if it is visible
-          //check depth buffer at that position
-          int bx = x * 16 + i;
-          int by = y * 16 + j;
-          int bz = z * 16 + k;
-          vec3 face = {bx, by, bz};
-          vec4 viewSpace = matvec3(viewMat, face);
-          float depth = -viewSpace.v[2];
-          point screenSpace = viewport(vshade(face));
-          //clamp screenspace
-          if(screenSpace.x < 0)
-            screenSpace.x = 0;
-          if(screenSpace.x >= 320)
-            screenSpace.x = 319;
-          if(screenSpace.y < 0)
-            screenSpace.y = 0;
-          if(screenSpace.y >= 200)
-            screenSpace.y = 199;
-          //query depth buffer
-          byte existingDepth = depthBuf[screenSpace.x + screenSpace.y * 320];
-          if(existingDepth > depth)
+          //might need to draw low X face
+          byte neighbor = getBlock(bx - 1, by, bz);
+          if(neighbor == AIR || neighbor == GLASS)
           {
-            //draw the face
-            glDepth(depth);
+            //need to draw the face
+            //do depth testing and update depth values along the way
+            glVertex3f(bx, by, bz);
+            glVertex3f(bx, by + 1, bz);
+            glVertex3f(bx, by + 1, bz + 1);
+            glVertex3f(bx, by, bz + 1);
+          }
+        }
+        else if(player.v[0] > bx + 1)
+        {
+          byte neighbor = getBlock(bx + 1, by, bz);
+          if(neighbor == AIR || neighbor == GLASS)
+          {
             glVertex3f(bx + 1, by, bz);
             glVertex3f(bx + 1, by + 1, bz);
             glVertex3f(bx + 1, by + 1, bz + 1);
             glVertex3f(bx + 1, by, bz + 1);
+          }
+        }
+        if(player.v[1] < by)
+        {
+          byte neighbor = getBlock(bx, by - 1, bz);
+          if(neighbor == AIR || neighbor == GLASS)
+          {
+            glColor1i(blockColor[block][3]);
+            glVertex3f(bx, by, bz);
+            glVertex3f(bx + 1, by, bz);
+            glVertex3f(bx + 1, by, bz + 1);
+            glVertex3f(bx, by, bz + 1);
+          }
+        }
+        else if(player.v[1] > by + 1)
+        {
+          byte neighbor = getBlock(bx, by + 1, bz);
+          if(neighbor == AIR || neighbor == GLASS)
+          {
+            glColor1i(blockColor[block][0]);
+            glVertex3f(bx, by + 1, bz);
+            glVertex3f(bx + 1, by + 1, bz);
+            glVertex3f(bx + 1, by + 1, bz + 1);
+            glVertex3f(bx, by + 1, bz + 1);
+          }
+        }
+        glColor1i(blockColor[block][2]);
+        if(player.v[2] < bz)
+        {
+          byte neighbor = getBlock(bx, by, bz - 1);
+          if(neighbor == AIR || neighbor == GLASS)
+          {
+            glVertex3f(bx, by, bz);
+            glVertex3f(bx + 1, by, bz);
+            glVertex3f(bx + 1, by + 1, bz);
+            glVertex3f(bx, by + 1, bz);
+          }
+        }
+        else if(player.v[2] > bz + 1)
+        {
+          byte neighbor = getBlock(bx, by, bz + 1);
+          if(neighbor == AIR || neighbor == GLASS)
+          {
+            glVertex3f(bx, by, bz + 1);
+            glVertex3f(bx + 1, by, bz + 1);
+            glVertex3f(bx + 1, by + 1, bz + 1);
+            glVertex3f(bx, by + 1, bz + 1);
           }
         }
       }
@@ -168,12 +226,16 @@ void renderChunk(int x, int y, int z)
 
 byte getBlock(int x, int y, int z)
 {
+  if(x < 0 || y < 0 || z < 0 || x > chunksX * 16 || y > chunksY * 16 || z > chunksZ * 16)
+    return AIR;
   return getBlockC(&chunks[(x / 16) + 4 * (y / 16) + 16 * (z / 16)], x % 16, y % 16, z % 16);
 }
 
-void setBlock(byte b, int cx, int cy, int cz)
+void setBlock(byte b, int x, int y, int z)
 {
-  setBlockC(b, &chunks[(cx / 16) + chunksX * (cy / 16) + chunksX * chunksY * (cz / 16)], cx % 16, cy % 16, cz % 16);
+  if(x < 0 || y < 0 || z < 0 || x > chunksX * 16 || y > chunksY * 16 || z > chunksZ * 16)
+    return;
+  setBlockC(b, &chunks[(x / 16) + chunksX * (y / 16) + chunksX * chunksY * (z / 16)], x % 16, y % 16, z % 16);
 }
 
 byte getBlockC(Chunk* c, int cx, int cy, int cz)
@@ -339,7 +401,14 @@ void terrainGen()
     {
       for(int z = 0; z < 16; z++)
       {
-        setBlock(STONE, x, y, z);
+        if(y % 2)
+        {
+          setBlock(STONE, x, y, z);
+        }
+        else
+        {
+          setBlock(AIR, x, y, z);
+        }
       }
     }
   }

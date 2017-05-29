@@ -5,6 +5,8 @@ byte* renderBuf;
 byte* depthBuf;
 static byte depthVal;
 static byte color;
+static bool depthTest;
+static int drawMode;
 mat4 modelMat;
 mat4 viewMat;
 mat4 projMat;
@@ -598,12 +600,29 @@ void glVertex3fv(vec3 v)
     }
     else if(geomType == GL_TRIANGLES)
     {
-      fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+      if(drawMode == DRAW_FILL)
+      {
+        fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+      }
+      else
+      {
+        drawTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+      }
     }
     else if(geomType == GL_QUADS)
     {
-      fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
-      fillTriangle(screen[0].x, screen[0].y, screen[2].x, screen[2].y, screen[3].x, screen[3].y);
+      if(drawMode == DRAW_FILL)
+      {
+        fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+        fillTriangle(screen[0].x, screen[0].y, screen[2].x, screen[2].y, screen[3].x, screen[3].y);
+      }
+      else
+      {
+        drawLine(screen[0].x, screen[0].y, screen[1].x, screen[1].y);
+        drawLine(screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+        drawLine(screen[2].x, screen[2].y, screen[3].x, screen[3].y);
+        drawLine(screen[0].x, screen[0].y, screen[3].x, screen[3].y);
+      }
     }
 done:
     numVerts = 0;
@@ -633,6 +652,16 @@ void glClear(byte c)
 void glDepth(byte d)
 {
   depthVal = d;
+}
+
+void glEnableDepthTest(bool enable)
+{
+  depthTest = enable;
+}
+
+void glDrawMode(int mode)
+{
+  drawMode = mode;
 }
 
 void glFlush()

@@ -8,17 +8,20 @@
 enum Block 
 {
   AIR,
-  STONE,
-  DIRT,
-  COAL,
-  IRON,
-  GOLD,
-  DIAMOND,
-  LOG,
-  LEAF,
-  WATER,
-  SAND,
-  GLASS
+  STONE,      //Light grey
+  DIRT,       //Dark brown, and green on top
+  COAL,       //Black
+  IRON,       //Dark grey
+  GOLD,       //Yellow
+  DIAMOND,    //Aqua
+  LOG,        //Light brown
+  LEAF,       //Medium green
+  WATER,      //Blue
+  SAND,       //Tan
+  GLASS,
+  CHEST,      //Lighter brown than log
+  GRANITE,    //Pink
+  QUARTZ      //Pure white
 };
 
 typedef struct

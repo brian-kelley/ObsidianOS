@@ -5,9 +5,11 @@
 #include "stdio.h"
 #include "geometry.h"
 
-//#define drawPixel(x, y) if(x >= 0 && x < 320 && y >= 0 && y < 200) {renderBuf[x + y * 320] = color; depthBuf[x + y * 320] = depthVal;}
-#define drawPixel(x, y) if(x >= 0 && x < 320 && y >= 0 && y < 200) {renderBuf[x + y * 320] = color; /*depthBuf[x + y * 320] = depthVal;*/}
-//#define drawPixel(x, y) renderBuf[x + y * 320] = color;
+#define drawPixel(x, y) if((depthBuf[x + y * 320] > depthVal || !depthTest) && x >= 0 && x < 320 && y >= 0 && y < 200) \
+{ \
+  renderBuf[x + y * 320] = color; \
+  depthBuf[x + y * 320] = depthVal; \
+}
 
 extern byte* renderBuf;
 extern byte* depthBuf;
@@ -40,6 +42,12 @@ enum GeometryTypes
   GL_QUADS
 };
 
+enum DrawMode
+{
+  DRAW_FILL,
+  DRAW_WIREFRAME
+};
+
 //OpenGL immediate mode style rendering
 void glBegin(int type);
 void glEnd();
@@ -51,9 +59,11 @@ void glColor1i(byte c);
 void glClear(byte c);
 //set the depth fill value for next primitive
 void glDepth(byte d);
+void glEnableDepthTest(bool enable);
+void glDrawMode(int mode);
 //flip buffers
 void glFlush();
-//Assume all vertices are already in 2D screen space
+//Assume all vertices are already in 2D screen space, and disable depth testing
 void enable2D();
 //Do model-view-projection transformations on all vertices
 void enable3D();

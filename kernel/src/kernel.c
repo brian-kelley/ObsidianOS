@@ -248,9 +248,7 @@ void kernel_main()
   printMemStats();
   renderBuf = malloc(64000);
   depthBuf = malloc(64000);
-  cubeDemo();
-  //ocMain();
-  while(1);
+  ocMain();
   while(1)
   {
     Event ev = getNextEvent();
@@ -261,7 +259,7 @@ void kernel_main()
         //putchar('K');
         if(ev.e.key.pressed)
         {
-          terminalKeyListener(ev.e.key.scancode);
+          //terminalKeyListener(ev.e.key.scancode);
         }
         break;
       case MOTION_EVENT:
