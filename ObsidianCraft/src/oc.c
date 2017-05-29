@@ -79,7 +79,7 @@ static void processInput();
 #define Y_SENSITIVITY 0.08
 
 //3D configuration
-#define NEAR 1.0f
+#define NEAR 0.05f
 #define FAR 64.0f
 #define FOV 85.0f       //fovy in degrees
 
@@ -99,7 +99,6 @@ void ocMain()
   inv = malloc(60 * sizeof(Stack));
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
   //print mem usage, wait ~1 second, continue
-  memset(chunks, 0, chunksX * chunksY * chunksZ * sizeof(Chunk));
   terrainGen();
   initChunks();
   yaw = 0;
@@ -160,7 +159,7 @@ void renderChunk(int x, int y, int z)
       {
         {
           int ind = i + j * 16 + k * 256;
-          if(c->visible[ind >> 3] & (1 << (ind & 0x7)) == 0)
+          if((c->visible[ind >> 3] & (1 << (ind & 0x7))) == 0)
           {
             //block is either air or is fully hidden by opaque blocks
             continue;
@@ -170,8 +169,6 @@ void renderChunk(int x, int y, int z)
         float by = cy + j;
         float bz = cz + k;
         byte block = getBlockC(c, i, j, k);
-        if(block == AIR)
-          continue;
         //byte block = getBlock(bx, by, bz);
         //if a block is certainly not in the player's view, ignore it
         //compute single depth value for whole block (using view space, not perspective)
@@ -184,7 +181,8 @@ void renderChunk(int x, int y, int z)
         if(player.v[2] > bz + 1)
           face.v[2] += 1;
         //take the nearest corner and run it through the full projection
-        vec4 clip = matvec4(projMat, matvec3(viewMat, face));
+        vec4 viewSpace = matvec3(viewMat, face);
+        vec4 clip = matvec4(projMat, viewSpace);
         //must divide by w
         float invw = 1.0f / clip.v[3];
         clip.v[0] *= invw;
@@ -197,7 +195,8 @@ void renderChunk(int x, int y, int z)
           //skip block, as nearest corner to player is outside frustum
           continue;
         }
-        glDepth((-clip.v[2] + 1) * 127);
+        //glDepth((-clip.v[2] + 1) * 127);
+        glDepth(-viewSpace.v[2] * 3);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -401,7 +400,10 @@ void terrainGen()
     {
       for(int z = 0; z < chunksZ * 16; z++)
       {
-        setBlock(STONE, x, y, z);
+        if(x - y + z < 32)
+          setBlock(AIR, x, y, z);
+        else
+          setBlock(DIRT, x, y, z);
       }
     }
   }
@@ -419,6 +421,8 @@ static void initChunks()
       for(int cz = 0; cz < chunksZ; cz++)
       {
         Chunk* c = getChunk(cx, cy, cz);
+        c->filled = 0;
+        memset(c->visible, 0, 512);
         for(int i = 0; i < 16; i++)
         {
           for(int j = 0; j < 16; j++)
@@ -428,7 +432,7 @@ static void initChunks()
               int bx = cx * 16 + i;
               int by = cy * 16 + j;
               int bz = cz * 16 + k;
-              if(getBlockC(c, i, j, k))
+              if(getBlockC(c, i, j, k) != AIR)
               {
                 c->filled++;
                 //check the 6 neighbors for transparent blocks
