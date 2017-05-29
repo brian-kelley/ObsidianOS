@@ -16,12 +16,12 @@ void initEvents()
 
 void addEvent(Event e)
 {
-  if(eventSize == EVENT_QUEUE_MAX)
+  if(eventSize != EVENT_QUEUE_MAX)
   {
-    puts("ERROR: Event queue full");
+    //just ignore events if queue is full
+    eq[(eventHead + eventSize) % EVENT_QUEUE_MAX] = e;
+    eventSize++;
   }
-  eq[(eventHead + eventSize) % EVENT_QUEUE_MAX] = e;
-  eventSize++;
 }
 
 Event getNextEvent()

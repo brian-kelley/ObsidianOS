@@ -39,7 +39,7 @@ static byte blockColor[15][5] = {
 {0x4C, 0x0B, 0x4D, 0x03, 0x7C},     //Diamond
 {0x42, 0x06, 0x73, 0x72, 0x71},     //Log
 {0x02, 0x79, 0x77, 0xC0, 0xBF},     //Leaf
-{0x37, 0x21, 0x22, 0x01, 0x68},     //Water
+{0x37, 0x21, 0x21, 0x01, 0x68},     //Water
 {0x44, 0x45, 0x8C, 0x8B, 0xD3},     //Sand
 {0x0F, 0x0F, 0x0F, 0x0F, 0x0F},                    //Glass (colorless)
 {0x43, 0x42, 0x06, 0x73, 0x72},     //Chest
@@ -59,9 +59,9 @@ static bool jkey;
 static bool kkey;
 static bool lkey;
 
-static int chunksX = 1;
-static int chunksY = 1;
-static int chunksZ = 1;
+static int chunksX = 2;
+static int chunksY = 2;
+static int chunksZ = 2;
 
 static void pumpEvents();
 static void drawCube(float x, float y, float z, float size);
@@ -73,6 +73,12 @@ static void processInput();
 #define X_SENSITIVITY 0.04
 #define Y_SENSITIVITY 0.04
 
+//3D configuration
+#define NEAR 1.0f
+#define FAR 1000.0f
+#define FOV 90.0f       //fovy in degrees
+#define RENDER_DIST 64  //in blocks (worldspace/viewspace units)
+
 static void clockSleep(int millis)
 {
   clock_t start = clock();
@@ -83,20 +89,19 @@ void ocMain()
 {
   inv = malloc(60 * sizeof(Stack));
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
+  //print mem usage, wait ~1 second, continue
+  terrainGen();
   yaw = 0;
   pitch = 0;
-  //start in center of world
-  player.v[0] = 32;
-  player.v[1] = 34;
-  player.v[2] = 32;
+  player.v[0] = -1;
+  player.v[1] = -1;
+  player.v[2] = -1;
   wkey = false;
   akey = false;
   skey = false;
   dkey = false;
-  terrainGen();
   setModel(identity());
-  int fov = 90;
-  setProj(perspective(fov / (180.0f / PI), 1, 1000));
+  setProj(perspective(FOV / (180.0f / PI), NEAR, FAR));
   while(1)
   {
     clock_t cstart = clock();
@@ -106,15 +111,14 @@ void ocMain()
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
     renderChunk(0, 0, 0);
+    renderChunk(1, 0, 0);
+    //renderChunk(0, 0, 1);
+    //renderChunk(1, 0, 1);
     glFlush();
-    //vsync();
+    //hit 60 fps (if there is spare time this frame)
     while(clock() < cstart + 17);
   }
 }
-
-//for a face to be rendered, it must:
-//  -be facing the player (i.e. if top face, player y must be > face y)
-//  -have a transparent block (air/glass) as a neighbor
 
 void renderChunk(int x, int y, int z)
 {
@@ -131,22 +135,36 @@ void renderChunk(int x, int y, int z)
     {
       for(int k = 0; k < 16; k++)
       {
-        byte block = getBlockC(c, i, j, k);
-        if(block == AIR)
-          continue;
         float bx = cx + i;
         float by = cy + j;
         float bz = cz + k;
-        //compute depth value for whole block
+        byte block = getBlockC(c, i, j, k);
+        //byte block = getBlock(bx, by, bz);
+        if(block == AIR)
+          continue;
+        //if a block is certainly not in the player's view, ignore it
+        //compute depth value for whole block (using view space, not perspective)
+        //use the nearest corner to player for correct depth value
         vec3 face = {bx, by, bz};
+        if(player.v[0] > bx + 1)
+          face.v[0] += 1;
+        if(player.v[1] > by + 1)
+          face.v[1] += 1;
+        if(player.v[2] > bz + 1)
+          face.v[2] += 1;
         vec4 viewSpace = matvec3(viewMat, face);
+        if(viewSpace.v[2] > 1)
+        {
+          //skip block, as block is behind player or outside of render distance
+          continue;
+        }
         glDepth(-viewSpace.v[2] * 4);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
           glDrawMode(DRAW_FILL);
         glColor1i(blockColor[block][1]);
-        if(player.v[0] < bx)
+        if(player.v[0] < bx + 1)
         {
           //might need to draw low X face
           byte neighbor = getBlock(bx - 1, by, bz);
@@ -160,7 +178,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx, by, bz + 1);
           }
         }
-        else if(player.v[0] > bx + 1)
+        if(player.v[0] > bx)
         {
           byte neighbor = getBlock(bx + 1, by, bz);
           if(neighbor == AIR || neighbor == GLASS)
@@ -171,7 +189,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx + 1, by, bz + 1);
           }
         }
-        if(player.v[1] < by)
+        if(player.v[1] < by + 1)
         {
           byte neighbor = getBlock(bx, by - 1, bz);
           if(neighbor == AIR || neighbor == GLASS)
@@ -183,7 +201,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx, by, bz + 1);
           }
         }
-        else if(player.v[1] > by + 1)
+        if(player.v[1] > by)
         {
           byte neighbor = getBlock(bx, by + 1, bz);
           if(neighbor == AIR || neighbor == GLASS)
@@ -196,7 +214,7 @@ void renderChunk(int x, int y, int z)
           }
         }
         glColor1i(blockColor[block][2]);
-        if(player.v[2] < bz)
+        if(player.v[2] < bz + 1)
         {
           byte neighbor = getBlock(bx, by, bz - 1);
           if(neighbor == AIR || neighbor == GLASS)
@@ -207,7 +225,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx, by + 1, bz);
           }
         }
-        else if(player.v[2] > bz + 1)
+        if(player.v[2] > bz)
         {
           byte neighbor = getBlock(bx, by, bz + 1);
           if(neighbor == AIR || neighbor == GLASS)
@@ -240,15 +258,15 @@ void setBlock(byte b, int x, int y, int z)
 
 byte getBlockC(Chunk* c, int cx, int cy, int cz)
 {
-  int ind = (cx + (cy << 4) + (cz << 8)) >> 1;
-  byte b = c->vals[ind];
+  int ind = cx + (cy << 4) + (cz << 8);
+  byte b = c->vals[ind >> 1];
   return ind & 1 ? (b >> 4) : (b & 0xF);
 }
 
 void setBlockC(byte newBlock, Chunk* c, int cx, int cy, int cz)
 {
-  int ind = (cx + (cy << 4) + (cz << 8)) >> 1;
-  byte b = c->vals[ind];
+  int ind = cx + (cy << 4) + (cz << 8);
+  byte b = c->vals[ind >> 1];
   if(ind & 1)
   {
     b &= 0x0F;
@@ -260,7 +278,7 @@ void setBlockC(byte newBlock, Chunk* c, int cx, int cy, int cz)
     b |= newBlock;
   }
   //write back new value
-  c->vals[ind] = b;
+  c->vals[ind >> 1] = b;
 }
 
 void pumpEvents()
@@ -298,6 +316,7 @@ void pumpEvents()
         break;
       case MOTION_EVENT:
         {
+          //TODO: support configuring for either mouse or ijkl for camera movement?
           /*
              const float pitchLimit = 88 / (180.0f / PI);
              viewUpdated = true;
@@ -333,82 +352,20 @@ void pumpEvents()
   }
 }
 
-void drawCube(float x, float y, float z, float size)
-{
-  glBegin(GL_QUADS);
-  //Bottom face (low y)
-  if(player.v[1] < y)
-  {
-    glColor1i(0x2);
-    glVertex3f(x, y, z);
-    glVertex3f(x + size, y, z);
-    glVertex3f(x + size, y, z + size);
-    glVertex3f(x, y, z + size);
-  }
-  //Top face (high y)
-  if(player.v[1] > y + size)
-  {
-    glColor1i(0x3);
-    glVertex3f(x, y + size, z);
-    glVertex3f(x + size, y + size, z);
-    glVertex3f(x + size, y + size, z + size);
-    glVertex3f(x, y + size, z + size);
-  }
-  //Left face (low x)
-  if(player.v[0] < x)
-  {
-    glColor1i(0x4);
-    glVertex3f(x, y, z);
-    glVertex3f(x, y + size, z);
-    glVertex3f(x, y + size, z + size);
-    glVertex3f(x, y, z + size);
-  }
-  //Right face (high x)
-  if(player.v[0] > x + size)
-  {
-    glColor1i(0x5);
-    glVertex3f(x + size, y, z);
-    glVertex3f(x + size, y + size, z);
-    glVertex3f(x + size, y + size, z + size);
-    glVertex3f(x + size, y, z + size);
-  }
-  //Back face (low z);
-  if(player.v[2] < z)
-  {
-    glColor1i(0x6);
-    glVertex3f(x, y, z);
-    glVertex3f(x + size, y, z);
-    glVertex3f(x + size, y + size, z);
-    glVertex3f(x, y + size, z);
-  }
-  //Front face (high z);
-  if(player.v[2] > z + size)
-  {
-    glColor1i(0x7);
-    glVertex3f(x, y, z + size);
-    glVertex3f(x + size, y, z + size);
-    glVertex3f(x + size, y + size, z + size);
-    glVertex3f(x, y + size, z + size);
-  }
-  glEnd();
-}
-
 void terrainGen()
 {
-  for(int x = 0; x < 16; x++)
+  srand(time(NULL));
+  //for(int x = 0; x < chunksX * 16; x++)
+  for(int x = 0; x < 32; x++)
   {
     for(int y = 0; y < 16; y++)
     {
+      //for(int z = 0; z < chunksZ * 16; z++)
       for(int z = 0; z < 16; z++)
       {
-        if(y % 2)
-        {
-          setBlock(STONE, x, y, z);
-        }
-        else
-        {
-          setBlock(AIR, x, y, z);
-        }
+        //setBlock(rand() & 1 ? DIRT : AIR, x, y, z);
+        //setBlock((x + y + z) % 4 + 1, x, y, z);
+        setBlock(IRON, x, y, z);
       }
     }
   }

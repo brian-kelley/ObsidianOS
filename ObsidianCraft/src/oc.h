@@ -2,6 +2,7 @@
 #define OC_H
 
 #include "stdio.h"
+#include "time.h"
 #include "graphics.h"
 
 //4-bit block IDs
@@ -38,8 +39,8 @@ typedef struct
 
 void ocMain();
 void renderChunk(int x, int y, int z);
-byte getBlock(int cx, int cy, int cz);
-void setBlock(byte b, int cx, int cy, int cz);
+byte getBlock(int x, int y, int z);
+void setBlock(byte b, int x, int y, int z);
 byte getBlockC(Chunk* c, int cx, int cy, int cz);
 void setBlockC(byte b, Chunk* c, int cx, int cy, int cz);
 

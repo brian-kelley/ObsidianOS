@@ -68,19 +68,6 @@ mat4 perspective(float fov, float near, float far)
   return p;
 }
 
-mat4 perspective6(float near, float far, float left, float right, float top, float bottom)
-{
-  mat4 p = identity();
-  p.v[0][0] = 2 * near / (right - left);
-  p.v[1][1] = 2 * near / (top - bottom);
-  p.v[2][2] = -(far + near) / (far - near);
-  p.v[0][2] = (right + left) / (right - left);
-  p.v[1][2] = (top + bottom) / (top - bottom);
-  p.v[3][2] = -1;
-  p.v[2][3] = -2 * far * near / (far - near);
-  return p;
-}
-
 //matrix transformations
 mat4 rotate(vec3 axis, float angle)
 {
