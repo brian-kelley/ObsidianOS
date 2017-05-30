@@ -23,13 +23,14 @@ static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
   CHEST (12)    //Lighter brown than log
   GRANITE (13)  //Pink
   QUARTZ (14)   //Pure white
+  BEDROCK (15)  //Solid black
 */
 //Colors of blocks
 //dim 1 is block ID [0,15)
 //dim 2 is light level [0,5); 0 is brightest, 4 is darkest
 
 //For now, light level 0 is top, 1 is north/south, 2 is west/east, 3 is bottom, 4 is unused
-static byte blockColor[15][5] = {
+static byte blockColor[16][5] = {
 {0, 0, 0, 0, 0},                    //Air (colorless)
 {0x1A, 0x19, 0x18, 0x17, 0x16},     //Stone
 {0x02, 0x06, 0x72, 0x71, 0x70},     //Dirt
@@ -44,7 +45,8 @@ static byte blockColor[15][5] = {
 {0x0F, 0x0F, 0x0F, 0x0F, 0x0F},                    //Glass (colorless)
 {0x43, 0x42, 0x06, 0x73, 0x72},     //Chest
 {0x42, 0x41, 0x8B, 0x8A, 0x89},     //Granite
-{0x1F, 0x1F, 0x1E, 0x1E, 0x1D}      //Quartz
+{0x1F, 0x1F, 0x1E, 0x1E, 0x1D},     //Quartz
+{0, 0, 0, 0, 0}                     //Bedrock
 };
 
 inline bool isTransparent(byte b)
@@ -400,19 +402,19 @@ void pumpEvents()
 void terrainGen()
 {
   srand(time(NULL));
-  //This must assume that the world is a cube, simplifies things
-  //sea level is half the world height
-  int seaLevel = chunksY * 16 / 2;
+  int wx = chunksX * 16;
+  int wy = chunksY * 16;
+  int wz = chunksZ * 16;
   /*  build some fractal noise in-place (with already allocated 4 bits per block)
       always clamp values to [0, 16)
       first, fill with some random vals (with a small maximum, like 2)
       then, repeatedly sample some small 3D region (-50%), scale its values up (+50%), and add it back to original
   */
-  for(int x = 0; x < chunksX; x++)
+  for(int x = 0; x < wx; x++)
   {
-    for(int y = 0; y < chunksY; y++)
+    for(int y = 0; y < wy; y++)
     {
-      for(int z = 0; z < chunksZ; z++)
+      for(int z = 0; z < wz; z++)
       {
         setBlock(rand() % 0x2, x, y, z);
       }
@@ -420,36 +422,92 @@ void terrainGen()
   }
   //first sample, scale, combine
   //sample the high end of each dimension so that those values are sampled before they are changed
-  for(int iter = 0; iter < 3; iter++)
+  int mult = 2;
+  for(int iter = 0; iter < 2; iter++)
   {
-    for(int x = 0; x < chunksX; x++)
+    for(int x = 0; x < wx; x++)
     {
-      for(int y = 0; y < chunksY; y++)
+      for(int y = 0; y < wy; y++)
       {
-        for(int z = 0; z < chunksZ; z++)
+        for(int z = 0; z < wz; z++)
         {
-          byte sample = getBlock(seaLevel + x / 2, seaLevel + y / 2, seaLevel + z / 2);
+          byte sample = getBlock(wx / 2 + x / 2, wy / 2 + y / 2, wz / 2 + z / 2);
           byte orig = getBlock(x, y, z);
-          int new = orig + sample;
+          int new = orig + mult * sample;
           if(new >= 16)
             new = 15;
           setBlock(new, x, y, z);
         }
       }
     }
+    mult *= 2;
   }
-  int stone = 0;
-  //now, set each block above a threshold to stone, and each below to air
-  for(int x = 0; x < chunksX; x++)
+  //provide a downward bias for values high above sea level
+  for(int x = 0; x < wx; x++)
   {
-    for(int y = 0; y < chunksY; y++)
+    for(int y = 0; y < wy; y++)
     {
-      for(int z = 0; z < chunksZ; z++)
+      for(int z = 0; z < wz; z++)
+      {
+        float shift = wy / 2 - y;
+        if(y > wy / 2)
+          shift *= 0.75;
+        else
+          shift *= 0.25;
+        int val = getBlock(x, y, z);
+        val += shift;
+        if(val < 0)
+          val = 0;
+        if(val > 15)
+          val = 15;
+        setBlock(val, x, y, z);
+      }
+    }
+  }
+  //run a few sweeps of a smoothing function
+  //basically gaussian blur, or like a game of life automaton
+  for(int sweep = 0; sweep < 3; sweep++)
+  {
+    for(int x = 0; x < wx; x++)
+    {
+      for(int y = 0; y < wy; y++)
+      {
+        for(int z = 0; z < wz; z++)
+        {
+          byte val = getBlock(x, y, z);
+          //test neighbors around
+          //note: values outside world have value 0
+          //since threshold is 8, dividing sum of neighbor values by 26 and then comparing against same threshold provides smoothing function
+          int neighborVals = 0;
+          for(int tx = -1; tx <= 1; tx++)
+          {
+            for(int ty = -1; ty <= 1; ty++)
+            {
+              for(int tz = -1; tz <= 1; tz++)
+              {
+                neighborVals += getBlock(x + tx, y + ty, z + tz);
+              }
+            }
+          }
+          neighborVals /= 27;
+          if(neighborVals >= 8)
+            setBlock(14, x, y, z);
+          else
+            setBlock(4, x, y, z);
+        }
+      }
+    }
+  }
+  //now, set each block above a threshold to stone, and each below to air
+  for(int x = 0; x < wx; x++)
+  {
+    for(int y = 0; y < wy; y++)
+    {
+      for(int z = 0; z < wz; z++)
       {
         int val = getBlock(x, y, z);
-        if(val >= 1)
+        if(val >= 5)
         {
-          stone++;
           setBlock(STONE, x, y, z);
         }
         else
@@ -457,10 +515,45 @@ void terrainGen()
       }
     }
   }
-  float solidPercent = ((float) stone) / (4096 * chunksX * chunksY * chunksZ) * 100;
-  printf("World is %.2f%% solid.\n", solidPercent);
-  time_t t = time(NULL);
-  while(time(NULL) < t + 3);
+  //set the bottom layer of world to bedrock
+  for(int i = 0; i < wx; i++)
+  {
+    for(int j = 0; j < wz; j++)
+    {
+      setBlock(BEDROCK, i, 0, j);
+    }
+  }
+  //set all surface blocks to dirt
+  for(int x = 0; x < wx; x++)
+  {
+    for(int z = 0; z < wz; z++)
+    {
+      //trace down from sky to find highest block
+      for(int y = wy - 1; y >= 0; y--)
+      {
+        byte b = getBlock(x, y, z);
+        if(b == STONE)
+        {
+          setBlock(DIRT, x, y, z);
+          break;
+        }
+      }
+    }
+  }
+  //set all air blocks below sea level to water
+  for(int x = 0; x < wx; x++)
+  {
+    for(int y = 0; y < wy / 2; y++)
+    {
+      for(int z = 0; z < wz; z++)
+      {
+        if(getBlock(x, y, z) == AIR)
+        {
+          setBlock(WATER, x, y, z);
+        }
+      }
+    }
+  }
 }
 
 static void initChunks()

@@ -22,7 +22,8 @@ enum Block
   GLASS,
   CHEST,      //Lighter brown than log
   GRANITE,    //Pink
-  QUARTZ      //Pure white
+  QUARTZ,     //Pure white
+  BEDROCK     //Solid black (darker than coal)
 };
 
 typedef struct
