@@ -11,45 +11,45 @@ static vec3 player;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
 /* Block list:
-  AIR (0),
-  STONE (1),    //Light grey
-  DIRT (2)      //Dark brown, and green on top
-  COAL (3)      //Black
-  IRON (4)      //Dark grey
-  GOLD (5)      //Yellow
-  DIAMOND (6)   //Aqua
-  LOG (7)       //Light brown
-  LEAF (8)      //Medium green
-  WATER (9)     //Blue
-  SAND (10)     //Tan
-  GLASS (11)
-  CHEST (12)    //Lighter brown than log
-  GRANITE (13)  //Pink
-  QUARTZ (14)   //Pure white
-  BEDROCK (15)  //Solid black
-*/
+   AIR (0),
+   STONE (1),    //Light grey
+   DIRT (2)      //Dark brown, and green on top
+   COAL (3)      //Black
+   IRON (4)      //Dark grey
+   GOLD (5)      //Yellow
+   DIAMOND (6)   //Aqua
+   LOG (7)       //Light brown
+   LEAF (8)      //Medium green
+   WATER (9)     //Blue
+   SAND (10)     //Tan
+   GLASS (11)
+   CHEST (12)    //Lighter brown than log
+   GRANITE (13)  //Pink
+   QUARTZ (14)   //Pure white
+   BEDROCK (15)  //Solid black
+   */
 //Colors of blocks
 //dim 1 is block ID [0,15)
 //dim 2 is light level [0,5); 0 is brightest, 4 is darkest
 
 //For now, light level 0 is top, 1 is north/south, 2 is west/east, 3 is bottom, 4 is unused
 static byte blockColor[16][5] = {
-{0, 0, 0, 0, 0},                    //Air (colorless)
-{0x1A, 0x19, 0x18, 0x17, 0x16},     //Stone
-{0x02, 0x06, 0x72, 0x71, 0x70},     //Dirt
-{0x12, 0x11, 0x10, 0x10, 0x10},     //Coal
-{0x17, 0x16, 0x15, 0x14, 0x13},     //Iron
-{0x0E, 0x2C, 0x44, 0x74, 0x8C},     //Gold
-{0x4C, 0x0B, 0x4D, 0x03, 0x7C},     //Diamond
-{0x42, 0x06, 0x73, 0x72, 0x71},     //Log
-{0x02, 0x79, 0x77, 0xC0, 0xBF},     //Leaf
-{0x37, 0x21, 0x21, 0x01, 0x68},     //Water
-{0x44, 0x45, 0x8C, 0x8B, 0xD3},     //Sand
-{0x0F, 0x0F, 0x0F, 0x0F, 0x0F},                    //Glass (colorless)
-{0x43, 0x42, 0x06, 0x73, 0x72},     //Chest
-{0x42, 0x41, 0x8B, 0x8A, 0x89},     //Granite
-{0x1F, 0x1F, 0x1E, 0x1E, 0x1D},     //Quartz
-{0, 0, 0, 0, 0}                     //Bedrock
+  {0, 0, 0, 0, 0},                    //Air (colorless)
+  {0x1A, 0x19, 0x18, 0x17, 0x16},     //Stone
+  {0x02, 0x06, 0x72, 0x71, 0x70},     //Dirt
+  {0x12, 0x11, 0x10, 0x10, 0x10},     //Coal
+  {0x17, 0x16, 0x15, 0x14, 0x13},     //Iron
+  {0x0E, 0x2C, 0x44, 0x74, 0x8C},     //Gold
+  {0x4C, 0x0B, 0x4D, 0x03, 0x7C},     //Diamond
+  {0x42, 0x06, 0x73, 0x72, 0x71},     //Log
+  {0x02, 0x79, 0x77, 0xC0, 0xBF},     //Leaf
+  {0x37, 0x21, 0x21, 0x01, 0x68},     //Water
+  {0x44, 0x45, 0x8C, 0x8B, 0xD3},     //Sand
+  {0x0F, 0x0F, 0x0F, 0x0F, 0x0F},                    //Glass (colorless)
+  {0x43, 0x42, 0x06, 0x73, 0x72},     //Chest
+  {0x42, 0x41, 0x8B, 0x8A, 0x89},     //Granite
+  {0x1F, 0x1F, 0x1E, 0x1E, 0x1D},     //Quartz
+  {0, 0, 0, 0, 0}                     //Bedrock
 };
 
 //Sky color
@@ -74,8 +74,8 @@ static void initChunks();
 static void processInput();
 
 //player movement configuration
-#define PLAYER_SPEED 0.15
-#define X_SENSITIVITY 0.04
+#define PLAYER_SPEED 0.3
+#define X_SENSITIVITY 0.08
 #define Y_SENSITIVITY 0.04
 
 //3D configuration
@@ -139,8 +139,8 @@ void ocMain()
       }
     }
     glFlush();
-    //hit 60 fps (if there is spare time this frame)
-    sleepMS(16 - (clock() - cstart));
+    //hit 30 fps (if there is spare time this frame)
+    sleepMS(34 - (clock() - cstart));
   }
 }
 
@@ -416,7 +416,7 @@ void pumpEvents()
 //Seed rng with unique hash of block coordinates, combined with octave value
 void srandBlockHash(int x, int y, int z, int octave)
 {
-  srand(4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave);
+  srand(SEED ^ (4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave));
 }
 
 void terrainGen()
@@ -428,7 +428,7 @@ void terrainGen()
       always clamp values to [0, 16)
       first, fill with some random vals (with a small maximum, like 2)
       then, repeatedly sample some small 3D region (-50%), scale its values up (+50%), and add it back to original
-  */
+      */
   //Base fractal noise
   //Each chunk computed independently (TODO: whole terrain gen should independent of neighbors in final product)
   //sample at 4 octaves: 0, 1, 2, 3
@@ -441,9 +441,8 @@ void terrainGen()
     int cy = (c / chunksX) % chunksY;
     int cz = c / (chunksX * chunksY);
     Chunk* chunk = getChunk(cx, cy, cz);
-    memset(chunk, 0, sizeof(Chunk));
-    //each chunk is unique
-    for(int octave = 0; octave < 4; octave++)
+    memset(chunk, 0x44, sizeof(Chunk));
+    for(int octave = 2; octave < 4; octave++)
     {
       int amplitude = 1 << octave;
       //period = distance between samples (must evenly divide 16)
@@ -498,7 +497,7 @@ void terrainGen()
               v += samples[7] * (period - x) * (period - y) * (period - z);
               int val = getBlock(bx + x, by + y, bz + z);
               //add the weighted average of sample cube corner values
-              val += v / (period * period * period);
+              val += 0.5 + v / (period * period * period);
               if(val > 15)
                 val = 15;
               setBlock(val, bx + x, by + y, bz + z);
@@ -518,9 +517,9 @@ void terrainGen()
       {
         float shift = wy / 2 - y;
         if(y > wy / 2)
-          shift *= 0.50;
+          shift = 1 + shift * 0.1;
         else
-          shift *= 0.30;
+          shift = shift * 0.7;
         int val = getBlock(x, y, z);
         val += shift;
         if(val < 0)
@@ -532,8 +531,8 @@ void terrainGen()
     }
   }
   //run a few sweeps of a smoothing function
-  //basically gaussian blur, or like a game of life automaton
-  for(int sweep = 0; sweep < 4; sweep++)
+  //basically gaussian blur, but in-place
+  for(int sweep = 0; sweep < 8; sweep++)
   {
     for(int x = 0; x < wx; x++)
     {
@@ -545,19 +544,28 @@ void terrainGen()
           //note: values outside world have value 0
           //since threshold is 8, dividing sum of neighbor values by 26 and then comparing against same threshold provides smoothing function
           int neighborVals = 0;
+          int samples = 0;
           for(int tx = -1; tx <= 1; tx++)
           {
             for(int ty = -1; ty <= 1; ty++)
             {
               for(int tz = -1; tz <= 1; tz++)
               {
-                neighborVals += getBlock(x + tx, y + ty, z + tz);
+                if(blockInBounds(tx, ty, tz))
+                {
+                  neighborVals += getBlock(x + tx, y + ty, z + tz);
+                  samples++;
+                }
               }
             }
           }
-          neighborVals /= 27;
+          //get sample value as rounded-to-nearest average of samples
+          //kill tiny floating islands
+          if(samples < 5)
+            neighborVals = 0;
+          neighborVals = (neighborVals + samples / 2) / samples;
           if(neighborVals >= 8 + rand() % 2)
-            setBlock(14, x, y, z);
+            setBlock(13, x, y, z);
           else
             setBlock(4, x, y, z);
         }
@@ -589,6 +597,20 @@ void terrainGen()
       setBlock(BEDROCK, i, 0, j);
     }
   }
+  //set all air blocks below sea level to water
+  for(int x = 0; x < wx; x++)
+  {
+    for(int y = 0; y < wy / 2; y++)
+    {
+      for(int z = 0; z < wz; z++)
+      {
+        if(getBlock(x, y, z) == AIR)
+        {
+          setBlock(WATER, x, y, z);
+        }
+      }
+    }
+  }
   //set all surface blocks to dirt
   for(int x = 0; x < wx; x++)
   {
@@ -602,20 +624,6 @@ void terrainGen()
         {
           setBlock(DIRT, x, y, z);
           break;
-        }
-      }
-    }
-  }
-  //set all air blocks below sea level to water
-  for(int x = 0; x < wx; x++)
-  {
-    for(int y = 0; y < wy / 2; y++)
-    {
-      for(int z = 0; z < wz; z++)
-      {
-        if(getBlock(x, y, z) == AIR)
-        {
-          //setBlock(WATER, x, y, z);
         }
       }
     }
