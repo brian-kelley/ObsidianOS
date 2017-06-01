@@ -651,8 +651,12 @@ void glClear(byte c)
   memset(renderBuf, c, 64000);
 }
 
-void glDepth(byte d)
+void glDepth(int d)
 {
+  if(d > 255)
+    d = 255;
+  if(d < 0)
+    d = 0;
   depthVal = d;
 }
 

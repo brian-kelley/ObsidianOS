@@ -52,11 +52,6 @@ static byte blockColor[16][5] = {
 {0, 0, 0, 0, 0}                     //Bedrock
 };
 
-inline bool isTransparent(byte b)
-{
-  return b == AIR || b == GLASS;
-}
-
 //Sky color
 static byte sky = 0x35;
 
@@ -79,19 +74,23 @@ static void initChunks();
 static void processInput();
 
 //player movement configuration
-#define PLAYER_SPEED 0.30
-#define X_SENSITIVITY 0.08
-#define Y_SENSITIVITY 0.08
+#define PLAYER_SPEED 0.15
+#define X_SENSITIVITY 0.04
+#define Y_SENSITIVITY 0.04
 
 //3D configuration
 #define NEAR 0.01f
 #define FAR 64.0f
 #define FOV 75.0f       //fovy (degrees)
 
-void clockSleep(int millis)
+inline bool isTransparent(byte b)
 {
-  clock_t start = clock();
-  while(clock() < start + millis);
+  return b == AIR || b == GLASS;
+}
+
+inline bool blockInBounds(int x, int y, int z)
+{
+  return x >= 0 && x < chunksX * 16 && y >= 0 && y < chunksY * 16 && z >= 0 && z < chunksZ * 16;
 }
 
 Chunk* getChunk(int x, int y, int z)
@@ -140,8 +139,8 @@ void ocMain()
       }
     }
     glFlush();
-    //hit 30 fps (if there is spare time this frame)
-    while(clock() < cstart + 34);
+    //hit 60 fps (if there is spare time this frame)
+    sleepMS(16 - (clock() - cstart));
   }
 }
 
@@ -220,7 +219,7 @@ void renderChunk(int x, int y, int z)
         }
         //in depth value, far plane is 64, so anything that
         //would overflow the byte has already been clipped
-        glDepth(-viewSpace.v[2] * 3);
+        glDepth(-viewSpace.v[2] * 3.9);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -307,16 +306,15 @@ void renderChunk(int x, int y, int z)
 //any block outside of the world is treated as air
 byte getBlock(int x, int y, int z)
 {
-  if(x < 0 || y < 0 || z < 0 || x >= chunksX * 16 || y >= chunksY * 16 || z >= chunksZ * 16)
-    return AIR;
-  return getBlockC(getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
+  if(blockInBounds(x, y, z))
+    return getBlockC(getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
+  return AIR;
 }
 
 void setBlock(byte b, int x, int y, int z)
 {
-  if(x < 0 || y < 0 || z < 0 || x >= chunksX * 16 || y >= chunksY * 16 || z >= chunksZ * 16)
-    return;
-  setBlockC(b, getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
+  if(blockInBounds(x, y, z))
+    setBlockC(b, getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
 }
 
 byte getBlockC(Chunk* c, int cx, int cy, int cz)
@@ -418,10 +416,7 @@ void pumpEvents()
 //Seed rng with unique hash of block coordinates, combined with octave value
 void srandBlockHash(int x, int y, int z, int octave)
 {
-  //srand(4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave);
-  int hash = 4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave;
-  //printf("Hash of %i, %i, %i, octave %i: %i\n", x, y, z, octave, hash);
-  srand(hash);
+  srand(4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave);
 }
 
 void terrainGen()
@@ -513,7 +508,8 @@ void terrainGen()
       }
     }
   }
-  //add an adjustment value that decreases with altitude
+  //add a small adjustment value that decreases with altitude
+  //underground should be mostly solid, above sea level should be mostly empty
   for(int x = 0; x < wx; x++)
   {
     for(int y = 0; y < wy; y++)
@@ -632,7 +628,7 @@ void terrainGen()
     int z = rand() % wz;
     bool hitDirt = false;
     int y;
-    for(y = wy - 1; y >= wy / 2; y--)
+    for(y = wy - 1; y >= 1; y--)
     {
       byte b = getBlock(x, y, z);
       if(b == DIRT)
@@ -641,48 +637,44 @@ void terrainGen()
         break;
     }
     if(!hitDirt)
+    {
       continue;
-    printf("Planting tree @ %i, %i\n", x, z);
+    }
     //try to plant the tree on dirt block @ (x, y, z)
     int treeHeight = 4 + rand() % 4;
     for(int i = 0; i < treeHeight; i++)
     {
       setBlock(LOG, x, y + 1 + i, z);
     }
-    //do a depth-first strategy to attach leaves to the upper half of the logs
-    //send out some "rays" on random walks from a log at least halfway up the trunk,
-    //with a limited range and replacing all air with leaf
-    //rays can move in any direction except down
-    for(int ray = 0; ray < treeHeight * 2; ray++)
+    //fill in vertical ellipsoid of leaves around the trunk
+    //cover the top 2/3 of trunk, and extend another 1/3 above it
+    //have x/z radius be half the y radius
+    //loop over bounding box of the leaves
+    float ellHeight = y + 1 + (5.0 / 6.0) * treeHeight;
+    float ellY = 2 * treeHeight / 3;
+    float ellXZ = 2 * ellY / 3;
+    for(int lx = x - ellXZ; lx <= x + ellXZ + 1; lx++)
     {
-      int rayH = (treeHeight / 2) + (rand() % (treeHeight / 2));
-      int rx = x;
-      int ry = y + 1 + rayH;
-      int rz = z;
-      int rayLen = 3 + rand() % treeHeight;
-      for(int ri = 0; ri < rayLen; ri++)
+      for(int ly = ellHeight - ellY; ly <= ellHeight + ellY; ly++)
       {
-        switch(rand() % 5)
+        for(int lz = z - ellXZ; lz <= z + ellXZ + 1; lz++)
         {
-          case 0: rx--; break;
-          case 1: rx++; break;
-          case 2: rz--; break;
-          case 3: rz++; break;
-          case 4: ry++; break;
-          default:;
-        }
-        //test for out of bounds
-        if(rx < 0 || rx >= wx || ry >= wy || rz < 0 || rz >= wz)
-          break;
-        //place leaf if existing is air
-        if(getBlock(rx, ry, rz) == AIR)
-        {
-          setBlock(LEAF, rx, ry, rz);
+          if(!blockInBounds(lx, ly, lz))
+            continue;
+          if(!getBlock(lx, ly, lz) == AIR)
+            continue;
+          //compute weighted distance squared from ellipsoid center to block center
+          float dx = lx - x;
+          float dy = ly - ellHeight;
+          float dz = lz - z;
+          float distSq = (dx * dx / (ellXZ * ellXZ)) + (dy * dy / (ellY * ellY)) + (dz * dz / (ellXZ * ellXZ));
+          if(distSq > 1)
+            continue;
+          setBlock(LEAF, lx, ly, lz);
         }
       }
     }
   }
-  sleepS(1);
 }
 
 void initChunks()

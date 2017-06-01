@@ -64,7 +64,7 @@ void glColor1i(byte c);
 //clear the rendering buffer with given color
 void glClear(byte c);
 //set the depth fill value for next primitive
-void glDepth(byte d);
+void glDepth(int d);
 void glEnableDepthTest(bool enable);
 void glDrawMode(int mode);
 //flip buffers
