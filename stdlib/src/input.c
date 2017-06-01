@@ -1,6 +1,6 @@
 #include "input.h"
 
-u64 clockCounter = 0;
+volatile u64 clockCounter = 0;
 
 void drawChar(char c, int x, int y, byte fg, byte bg);
 
@@ -119,8 +119,8 @@ void initKeyboard()
     idt[i].type_attr = 0x8E;
     idt[i].offsetHigher = (generalAddr & 0xFFFF0000) >> 16;
   }
-  dword passAddr = (dword) pass;
   //set up PIT (system timer) interrupt handler (IRQ 0)
+  dword passAddr = (dword) pass;
   idt[0x20].offsetLower = passAddr & 0xFFFF;
   idt[0x20].selector = 0x08;
   idt[0x20].zero = 0;
@@ -147,7 +147,6 @@ void initKeyboard()
   idt[0x2C].zero = 0;
   idt[0x2C].type_attr = 0x8E;
   idt[0x2C].offsetHigher = (mouseAddress & 0xFFFF0000) >> 16;
-
   //enable PS/2 mouse packets and IRQ
   {
     byte ack;

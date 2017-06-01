@@ -513,8 +513,7 @@ void terrainGen()
       }
     }
   }
-  /*
-  //provide a downward bias for values high above sea level
+  //add an adjustment value that decreases with altitude
   for(int x = 0; x < wx; x++)
   {
     for(int y = 0; y < wy; y++)
@@ -525,7 +524,7 @@ void terrainGen()
         if(y > wy / 2)
           shift *= 0.50;
         else
-          shift *= 0.10;
+          shift *= 0.30;
         int val = getBlock(x, y, z);
         val += shift;
         if(val < 0)
@@ -536,8 +535,6 @@ void terrainGen()
       }
     }
   }
-  */
-  /*
   //run a few sweeps of a smoothing function
   //basically gaussian blur, or like a game of life automaton
   for(int sweep = 0; sweep < 4; sweep++)
@@ -564,14 +561,13 @@ void terrainGen()
           }
           neighborVals /= 27;
           if(neighborVals >= 8 + rand() % 2)
-            setBlock(13, x, y, z);
+            setBlock(14, x, y, z);
           else
             setBlock(4, x, y, z);
         }
       }
     }
   }
-  */
   //now, set each block above a threshold to stone, and each below to air
   for(int x = 0; x < wx; x++)
   {
@@ -628,7 +624,6 @@ void terrainGen()
       }
     }
   }
-  /*
   //find random places on the surface to plant trees
   for(int tree = 0; tree < 2 * chunksX * chunksZ; tree++)
   {
@@ -647,13 +642,13 @@ void terrainGen()
     }
     if(!hitDirt)
       continue;
+    printf("Planting tree @ %i, %i\n", x, z);
     //try to plant the tree on dirt block @ (x, y, z)
     int treeHeight = 4 + rand() % 4;
     for(int i = 0; i < treeHeight; i++)
     {
       setBlock(LOG, x, y + 1 + i, z);
     }
-    setBlock(LEAF, x, y + treeHeight, z);
     //do a depth-first strategy to attach leaves to the upper half of the logs
     //send out some "rays" on random walks from a log at least halfway up the trunk,
     //with a limited range and replacing all air with leaf
@@ -682,12 +677,12 @@ void terrainGen()
         //place leaf if existing is air
         if(getBlock(rx, ry, rz) == AIR)
         {
-          //setBlock(LEAF, rx, ry, rz);
+          setBlock(LEAF, rx, ry, rz);
         }
       }
     }
   }
-  */
+  sleepS(1);
 }
 
 void initChunks()

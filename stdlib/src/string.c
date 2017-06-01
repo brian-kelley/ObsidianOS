@@ -245,8 +245,17 @@ char* strtok(char* str, const char* delimiters)
 
 void* memset(void* ptr, int value, size_t num)
 {
+  dword val = (byte) value;
+  val |= val << 8;
+  val |= val << 16;
+  dword* dptr = (dword*) ptr;
+  size_t i = 0;
+  for(; i < num >> 2; i++)
+  {
+    dptr[i] = val;
+  }
   byte* bptr = (byte*) ptr;
-  for(size_t i = 0; i < num; i++)
+  for(; i < num & 3; i++)
   {
     bptr[i] = (byte) value;
   }

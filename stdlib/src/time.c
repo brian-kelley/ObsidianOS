@@ -36,7 +36,7 @@ static char ctimeBuf[32];
 static struct tm tmState;
 //RTC interrupt handler increments clockCounter
 //clockCounter / CLOCKS_PER_SEC gives uptime
-extern clock_t clockCounter;
+extern volatile clock_t clockCounter;
 
 enum {
   JANUARY,
@@ -171,7 +171,7 @@ char* asctime(const struct tm* t)
 }
 
 //get current clock ticks (takes ~1000 hours to overflow)
-clock_t clock()
+volatile clock_t clock()
 {
   return clockCounter;
 }
@@ -444,5 +444,21 @@ void dateCommand()
   char buf[64];
   strftime(buf, 64, "%a, %b %d %Y, %r %Z", t);
   puts(buf);
+}
+
+void sleepS(int s)
+{
+  int ticks = s * CLOCKS_PER_SEC;
+  clock_t start = clock();
+  clock_t end = start + ticks;
+  while(clock() < end);
+}
+
+void sleepMS(int ms)
+{
+  int ticks = ms * CLOCKS_PER_SEC / 1000;
+  clock_t start = clock();
+  clock_t end = start + ticks;
+  while(clock() < end);
 }
 

@@ -25,7 +25,7 @@ struct tm
 
 //Standard functions
 char* asctime(const struct tm* t);          //get human readable time from struct tm
-clock_t clock();                            //get current clock ticks
+volatile clock_t clock();                            //get current clock ticks
 char* ctime(const time_t* t);               //get human readable time from time_t
 double difftime(time_t end, time_t start);  //difference in seconds
 struct tm* gmtime(const time_t* t);         //convert time_t to tm, in GMT timezone
@@ -38,6 +38,9 @@ time_t time(time_t* t);                     //return time, and if t set *t to ti
 void setTimezone(int offset);
 int getTimezone();
 void dateCommand();
+//busy wait for given seconds/milliseconds
+void sleepS(int s);
+void sleepMS(int ms);
 
 #endif
 
