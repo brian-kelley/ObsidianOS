@@ -4,7 +4,9 @@ global keyboardISR
 global mouseISR
 global rtcISR
 global pass
+global generalISR
 global ioWait
+global inttest
 
 extern keyPressed
 extern keyboardHandler
@@ -12,6 +14,7 @@ extern mouseHandler
 extern rtcHandler
 extern idtDesc
 extern puts
+extern printf
 
 section .text
 loadIDT:
@@ -44,6 +47,13 @@ rtcISR:
   sti
   iret
 
+generalISR:
+  push generalHandlerMsg
+  call printf
+  .hang:
+  hlt
+  jmp .hang
+
 ioWait:
   jmp .l1
   .l1:
@@ -52,9 +62,6 @@ ioWait:
   ret
 
 pass:
-  ;push .str
-  ;call puts
-  ;add esp, 4
   pusha
   cld
   ; signal EOI on master PIC
@@ -65,5 +72,10 @@ pass:
   sti
   iret
 
-.str: db 'pass', 0
+inttest:
+  push dword 0xCAFEBABE
+  push dword 0xDEADBEEF
+  int 17 
+
+generalHandlerMsg: db 'Exception, 16 bytes at esp:', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0
 

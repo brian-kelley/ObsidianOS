@@ -28,6 +28,7 @@ long double: 96 bits in memory for 8-byte alignment but is actually 80 bit preci
 extern byte getFontVal();
 extern void initTime();     //time.c
 extern void initFPU();	    //mathAsm.asm
+extern void inttest();
 
 bool userProc = 0;	//0 if in terminal and 1 if running user program
 
@@ -247,7 +248,9 @@ void kernel_main()
   resetTermCursor();
   printMemStats();
   renderBuf = malloc(64000);
+#ifdef DOUBLE_BUFFERED
   depthBuf = malloc(64000);
+#endif
   ocMain();
   while(1)
   {

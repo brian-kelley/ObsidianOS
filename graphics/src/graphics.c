@@ -2,7 +2,9 @@
 
 static byte* const framebuf = (byte*) 0xA0000;
 byte* renderBuf;
+#ifdef DOUBLE_BUFFERED
 byte* depthBuf;
+#endif
 static byte depthVal;
 static byte color;
 static bool depthTest;
@@ -666,6 +668,8 @@ void glDrawMode(int mode)
 
 void glFlush()
 {
+#ifdef DOUBLE_BUFFERED
   memcpy(framebuf, renderBuf, 64000);
+#endif
 }
 

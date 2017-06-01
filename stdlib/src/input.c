@@ -4,7 +4,10 @@ u64 clockCounter = 0;
 
 void drawChar(char c, int x, int y, byte fg, byte bg);
 
+//ISR that does nothing except signal end-of-interrupt to the PIC
 extern void pass();
+//ISR that prints the error code and faulting eip, and then hangs
+extern void generalISR();
 //delay, sometimes needed after readport/writeport
 extern void ioWait();
 
@@ -106,9 +109,18 @@ byte keyboardCommand(byte command)
 void initKeyboard()
 {
   dword idtAddress;
-  dword idtPtr[2];
-  //set up PIT (system timer) interrupt handler (IRQ 0)
+  //Set up a general handler for all exceptions first
+  dword generalAddr = (dword) generalISR;
+  for(int i = 0; i < 0x100; i++)
+  {
+    idt[i].offsetLower = generalAddr & 0xFFFF;
+    idt[i].selector = 0x08;
+    idt[i].zero = 0;
+    idt[i].type_attr = 0x8E;
+    idt[i].offsetHigher = (generalAddr & 0xFFFF0000) >> 16;
+  }
   dword passAddr = (dword) pass;
+  //set up PIT (system timer) interrupt handler (IRQ 0)
   idt[0x20].offsetLower = passAddr & 0xFFFF;
   idt[0x20].selector = 0x08;
   idt[0x20].zero = 0;
@@ -207,9 +219,6 @@ void initKeyboard()
   writeport(0xA1, 0);
   ioWait();
   idtAddress = (dword) idt;
-  //First 2 bytes are size, next 4 bytes = idtAddress pointer
-  idtPtr[0] = (sizeof(idtEntry) * 256 - 1) + ((idtAddress & 0xFFFF) << 16);
-  idtPtr[1] = idtAddress >> 16;
   //clear keyboard's data buffer
   while(keyboardHasOutput())
   {

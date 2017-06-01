@@ -1,5 +1,8 @@
 #include "oc.h"
 
+//Seed (TODO: configure or randomize w/ time())
+#define SEED 11
+
 //Have 10x6 inventory
 static Stack* inv;
 //Eventually, have at least a 4x4x4 chunks (64^3 blocks) world
@@ -66,9 +69,9 @@ static bool jkey;
 static bool kkey;
 static bool lkey;
 
-static int chunksX = 2;
-static int chunksY = 2;
-static int chunksZ = 2;
+#define chunksX 4
+#define chunksY 4
+#define chunksZ 4
 
 static void pumpEvents();
 static void terrainGen();
@@ -81,9 +84,9 @@ static void processInput();
 #define Y_SENSITIVITY 0.08
 
 //3D configuration
-#define NEAR 0.05f
+#define NEAR 0.01f
 #define FAR 64.0f
-#define FOV 85.0f       //fovy (degrees)
+#define FOV 75.0f       //fovy (degrees)
 
 static void clockSleep(int millis)
 {
@@ -93,6 +96,11 @@ static void clockSleep(int millis)
 
 static Chunk* getChunk(int x, int y, int z)
 {
+  if(x < 0 || y < 0 || z < 0 || x >= chunksX || y >= chunksY || z >= chunksZ)
+  {
+    printf("Request chunk that is out-of-bounds: %i %i %i\n", x, y, z);
+    while(1);
+  }
   return &chunks[x + y * chunksX + z * chunksX * chunksY];
 }
 
@@ -100,8 +108,6 @@ void ocMain()
 {
   inv = malloc(60 * sizeof(Stack));
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
-  //print mem usage, wait ~1 second, continue
-  puts("Generating world");
   terrainGen();
   initChunks();
   yaw = 0;
@@ -141,6 +147,16 @@ void ocMain()
 
 void renderChunk(int x, int y, int z)
 {
+  //immediately skip chunk if it is too far from player
+  {
+    //get distance to center of chunk
+    float dx = player.v[0] - (x * 16 + 8);
+    float dy = player.v[1] - (y * 16 + 8);
+    float dz = player.v[2] - (z * 16 + 8);
+    float distSquared = dx * dx + dy * dy + dz * dz;
+    if(distSquared > ((FAR + 14) * (FAR + 14)))
+      return;
+  }
   Chunk* c = getChunk(x, y, z);
   if(c->filled == 0)
   {
@@ -197,14 +213,14 @@ void renderChunk(int x, int y, int z)
         float clipVal = 1.3 + invw;
         if(clip.v[0] < -clipVal  || clip.v[0] > clipVal ||
             clip.v[1] < -clipVal || clip.v[1] > clipVal || 
-            clip.v[2] < -1 || clip.v[2] > 1)
+            clip.v[2] <= -1 || clip.v[2] >= 1)
         {
           //skip block, as nearest corner to player is outside frustum
           continue;
         }
         //in depth value, far plane is 64, so anything that
         //would overflow the byte has already been clipped
-        glDepth(-viewSpace.v[2] * 3.9);
+        glDepth(-viewSpace.v[2] * 3);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -399,9 +415,17 @@ void pumpEvents()
   }
 }
 
+//Seed rng with unique hash of block coordinates, combined with octave value
+static void srandBlockHash(int x, int y, int z, int octave)
+{
+  //srand(4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave);
+  int hash = 4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave;
+  //printf("Hash of %i, %i, %i, octave %i: %i\n", x, y, z, octave, hash);
+  srand(hash);
+}
+
 void terrainGen()
 {
-  srand(time(NULL));
   int wx = chunksX * 16;
   int wy = chunksY * 16;
   int wz = chunksZ * 16;
@@ -410,38 +434,86 @@ void terrainGen()
       first, fill with some random vals (with a small maximum, like 2)
       then, repeatedly sample some small 3D region (-50%), scale its values up (+50%), and add it back to original
   */
-  for(int x = 0; x < wx; x++)
+  //Base fractal noise
+  //Each chunk computed independently (TODO: whole terrain gen should independent of neighbors in final product)
+  //sample at 4 octaves: 0, 1, 2, 3
+  //octave i has amplitude 2^i and frequency 2^(-i)
+  //that way, absolute max value possible is 15 (perfect for 4-bit range)
+  //assume octave 0 has sample points every 2 blocks
+  for(int c = 0; c < chunksX * chunksY * chunksZ; c++)
   {
-    for(int y = 0; y < wy; y++)
+    int cx = c % chunksX;
+    int cy = (c / chunksX) % chunksY;
+    int cz = c / (chunksX * chunksY);
+    Chunk* chunk = getChunk(cx, cy, cz);
+    memset(chunk, 0, sizeof(Chunk));
+    //each chunk is unique
+    for(int octave = 0; octave < 4; octave++)
     {
-      for(int z = 0; z < wz; z++)
+      int amplitude = 1 << octave;
+      //period = distance between samples (must evenly divide 16)
+      int period = 2 * (1 << octave);
+      //freq = samples per chunk length
+      int freq = 16 / period;
+      //loop over sample cubes, then loop over blocks within sample cubes and lerp its value from this octave
+      //printf("Octave %i: %i sample cubes of side length %i\n", octave, freq, period);
+      for(int sample = 0; sample < freq * freq * freq; sample++)
       {
-        setBlock(rand() % 0x2, x, y, z);
-      }
-    }
-  }
-  //first sample, scale, combine
-  //sample the high end of each dimension so that those values are sampled before they are changed
-  int mult = 2;
-  for(int iter = 0; iter < 2; iter++)
-  {
-    for(int x = 0; x < wx; x++)
-    {
-      for(int y = 0; y < wy; y++)
-      {
-        for(int z = 0; z < wz; z++)
+        int sx = sample % freq;
+        int sy = (sample / freq) % freq;
+        int sz = sample / (freq * freq);
+        //printf("Sample: %i %i %i\n", sx, sy, sz);
+        //clockSleep(500);
+        int bx = 16 * cx + sx * period;
+        int by = 16 * cy + sy * period;
+        int bz = 16 * cz + sz * period;
+        //samples at the 8 sampling cube corners
+        int samples[8];
+        srandBlockHash(bx + period, by + period, bz + period, octave);
+        samples[0] = rand() % (amplitude + 1);
+        srandBlockHash(bx, by + period, bz + period, octave);
+        samples[1] = rand() % (amplitude + 1);
+        srandBlockHash(bx + period, by, bz + period, octave);
+        samples[2] = rand() % (amplitude + 1);
+        srandBlockHash(bx, by, bz + period, octave);
+        samples[3] = rand() % (amplitude + 1);
+        srandBlockHash(bx + period, by + period, bz, octave);
+        samples[4] = rand() % (amplitude + 1);
+        srandBlockHash(bx, by + period, bz, octave);
+        samples[5] = rand() % (amplitude + 1);
+        srandBlockHash(bx + period, by, bz, octave);
+        samples[6] = rand() % (amplitude + 1);
+        srandBlockHash(bx, by, bz, octave);
+        samples[7] = rand() % (amplitude + 1);
+        for(int x = 0; x < period; x++)
         {
-          byte sample = getBlock(wx / 2 + x / 2, wy / 2 + y / 2, wz / 2 + z / 2);
-          byte orig = getBlock(x, y, z);
-          int new = orig + mult * sample;
-          if(new >= 16)
-            new = 15;
-          setBlock(new, x, y, z);
+          for(int y = 0; y < period; y++)
+          {
+            for(int z = 0; z < period; z++)
+            {
+              //values proportional volume in cuboid between opposite corner and interpolation point
+              int v = 0;
+              v += samples[0] * x * y * z;
+              v += samples[1] * (period - x) * y * z;
+              v += samples[2] * x * (period - y) * z;
+              v += samples[3] * (period - x) * (period - y) * z;
+              v += samples[4] * x * y * (period - z);
+              v += samples[5] * (period - x) * y * (period - z);
+              v += samples[6] * x * (period - y) * (period - z);
+              v += samples[7] * (period - x) * (period - y) * (period - z);
+              int val = getBlock(bx + x, by + y, bz + z);
+              //add the weighted average of sample cube corner values
+              val += v / (period * period * period);
+              if(val > 15)
+                val = 15;
+              setBlock(val, bx + x, by + y, bz + z);
+            }
+          }
         }
       }
     }
-    mult *= 2;
   }
+  /*
   //provide a downward bias for values high above sea level
   for(int x = 0; x < wx; x++)
   {
@@ -451,9 +523,9 @@ void terrainGen()
       {
         float shift = wy / 2 - y;
         if(y > wy / 2)
-          shift *= 0.75;
+          shift *= 0.50;
         else
-          shift *= 0.25;
+          shift *= 0.10;
         int val = getBlock(x, y, z);
         val += shift;
         if(val < 0)
@@ -464,9 +536,11 @@ void terrainGen()
       }
     }
   }
+  */
+  /*
   //run a few sweeps of a smoothing function
   //basically gaussian blur, or like a game of life automaton
-  for(int sweep = 0; sweep < 3; sweep++)
+  for(int sweep = 0; sweep < 4; sweep++)
   {
     for(int x = 0; x < wx; x++)
     {
@@ -474,7 +548,6 @@ void terrainGen()
       {
         for(int z = 0; z < wz; z++)
         {
-          byte val = getBlock(x, y, z);
           //test neighbors around
           //note: values outside world have value 0
           //since threshold is 8, dividing sum of neighbor values by 26 and then comparing against same threshold provides smoothing function
@@ -490,14 +563,15 @@ void terrainGen()
             }
           }
           neighborVals /= 27;
-          if(neighborVals >= 8)
-            setBlock(14, x, y, z);
+          if(neighborVals >= 8 + rand() % 2)
+            setBlock(13, x, y, z);
           else
             setBlock(4, x, y, z);
         }
       }
     }
   }
+  */
   //now, set each block above a threshold to stone, and each below to air
   for(int x = 0; x < wx; x++)
   {
@@ -506,7 +580,7 @@ void terrainGen()
       for(int z = 0; z < wz; z++)
       {
         int val = getBlock(x, y, z);
-        if(val >= 5)
+        if(val >= 6)
         {
           setBlock(STONE, x, y, z);
         }
@@ -549,11 +623,71 @@ void terrainGen()
       {
         if(getBlock(x, y, z) == AIR)
         {
-          setBlock(WATER, x, y, z);
+          //setBlock(WATER, x, y, z);
         }
       }
     }
   }
+  /*
+  //find random places on the surface to plant trees
+  for(int tree = 0; tree < 2 * chunksX * chunksZ; tree++)
+  {
+    //determine if the highest block here is dirt
+    int x = rand() % wx;
+    int z = rand() % wz;
+    bool hitDirt = false;
+    int y;
+    for(y = wy - 1; y >= wy / 2; y--)
+    {
+      byte b = getBlock(x, y, z);
+      if(b == DIRT)
+        hitDirt = true;
+      if(b != AIR)
+        break;
+    }
+    if(!hitDirt)
+      continue;
+    //try to plant the tree on dirt block @ (x, y, z)
+    int treeHeight = 4 + rand() % 4;
+    for(int i = 0; i < treeHeight; i++)
+    {
+      setBlock(LOG, x, y + 1 + i, z);
+    }
+    setBlock(LEAF, x, y + treeHeight, z);
+    //do a depth-first strategy to attach leaves to the upper half of the logs
+    //send out some "rays" on random walks from a log at least halfway up the trunk,
+    //with a limited range and replacing all air with leaf
+    //rays can move in any direction except down
+    for(int ray = 0; ray < treeHeight * 2; ray++)
+    {
+      int rayH = (treeHeight / 2) + (rand() % (treeHeight / 2));
+      int rx = x;
+      int ry = y + 1 + rayH;
+      int rz = z;
+      int rayLen = 3 + rand() % treeHeight;
+      for(int ri = 0; ri < rayLen; ri++)
+      {
+        switch(rand() % 5)
+        {
+          case 0: rx--; break;
+          case 1: rx++; break;
+          case 2: rz--; break;
+          case 3: rz++; break;
+          case 4: ry++; break;
+          default:;
+        }
+        //test for out of bounds
+        if(rx < 0 || rx >= wx || ry >= wy || rz < 0 || rz >= wz)
+          break;
+        //place leaf if existing is air
+        if(getBlock(rx, ry, rz) == AIR)
+        {
+          //setBlock(LEAF, rx, ry, rz);
+        }
+      }
+    }
+  }
+  */
 }
 
 static void initChunks()

@@ -8,7 +8,7 @@ import subprocess
 
 # Set up constants
 
-cflags = "-std=c99 -Os -ffast-math -ffreestanding -nostdlib -Istdlib/include -Igraphics/include -c"
+cflags = "-Wshadow -std=c99 -Os -ffast-math -ffreestanding -nostdlib -Istdlib/include -Igraphics/include -c"
 # format for assembling machine code (TODO: match output of C compiler on mac and linux)
 objformat = "elf32"
 # TODO: set these based on platform (currently just for mac)
@@ -170,5 +170,5 @@ os.chdir("..")
 run("./makeVBoxImage.sh")
 print("Starting emulator...")
 #run(emulator + " -machine type=pc,accel=tcg,kernel_irqchip=on -no-reboot -drive format=raw,media=disk,file=obsidian.img")
-run("VBoxManage startvm \"obsidian\"")
+run("VirtualBox --startvm \"obsidian\"")
 

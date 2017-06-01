@@ -84,7 +84,8 @@ int rand()
   randState ^= randState >> 17;
   randState ^= randState << 5;
   //mask out sign bit: rand() must return positive value
-  return randState & 0x7FFFFFFF;
+  int intval = randState;
+  return intval < 0 ? -intval : intval;
 }
 
 void srand(unsigned int seed)

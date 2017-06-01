@@ -12,7 +12,13 @@
 }
 
 extern byte* renderBuf;
+
+#define DOUBLE_BUFFERED
+#ifdef DOUBLE_BUFFERED
 extern byte* depthBuf;
+#else
+#define depthBuf ((byte*) 0xA0000)
+#endif
 
 void setColor(byte c);
 void drawLine(int x1, int y1, int x2, int y2);
