@@ -628,8 +628,37 @@ void terrainGen()
       }
     }
   }
+  //set all solid blocks within a block of water to sand
+  for(int x = 0; x < wx; x++)
+  {
+    for(int y = 0; y < wy; y++)
+    {
+      for(int z = 0; z < wz; z++)
+      {
+        if(getBlock(x, y, z) != AIR && getBlock(x, y, z) != WATER)
+        {
+          //look around a 3x3 region for water blocks
+          bool nearWater = false;
+          for(int i = -2; i <= 2; i++)
+          {
+            for(int j = -2; j <= 2; j++)
+            {
+              for(int k = -2; k <= 2; k++)
+              {
+                nearWater |= (getBlock(x + i, y + j, z + k) == WATER);
+              }
+            }
+          }
+          if(nearWater)
+          {
+            setBlock(SAND, x, y, z);
+          }
+        }
+      }
+    }
+  }
   //find random places on the surface to plant trees
-  for(int tree = 0; tree < 2 * chunksX * chunksZ; tree++)
+  for(int tree = 0; tree < chunksX * chunksZ; tree++)
   {
     //determine if the highest block here is dirt
     int x = rand() % wx;
