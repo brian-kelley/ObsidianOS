@@ -3,9 +3,9 @@
 static unsigned randState;
 
 //update this as necessary when system image size grows
-static size_t membreak = 0x10000;
-static size_t minbreak = 0x10000;
-static size_t maxbreak = 0x9DD00;
+static size_t membreak = 0x20000;
+static size_t minbreak = 0x20000;
+static size_t maxbreak = 0x90000;
 
 void printMemStats()
 {

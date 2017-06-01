@@ -110,7 +110,7 @@ run(ldCommand)
 
 # get locations of symbols in the full system blob
 print("Getting symbol list...")
-run(nm + " -v " + build + "system.o &> " + build + "symbols.txt")
+run(nm + " -v -a " + build + "system.o &> " + build + "symbols.txt")
 
 # get entry point as pointer (to add to bootloader)
 # symbol is "start" (in kernel/src/start.asm)

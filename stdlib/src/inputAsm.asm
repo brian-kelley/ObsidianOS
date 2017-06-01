@@ -77,5 +77,5 @@ inttest:
   push dword 0xDEADBEEF
   int 17 
 
-generalHandlerMsg: db 'Exception, 16 bytes at esp:', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0
+generalHandlerMsg: db 'Exception, dwords at esp:', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0x0A, '%#08x', 0
 

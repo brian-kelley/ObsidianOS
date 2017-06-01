@@ -88,13 +88,13 @@ static void processInput();
 #define FAR 64.0f
 #define FOV 75.0f       //fovy (degrees)
 
-static void clockSleep(int millis)
+void clockSleep(int millis)
 {
   clock_t start = clock();
   while(clock() < start + millis);
 }
 
-static Chunk* getChunk(int x, int y, int z)
+Chunk* getChunk(int x, int y, int z)
 {
   if(x < 0 || y < 0 || z < 0 || x >= chunksX || y >= chunksY || z >= chunksZ)
   {
@@ -416,7 +416,7 @@ void pumpEvents()
 }
 
 //Seed rng with unique hash of block coordinates, combined with octave value
-static void srandBlockHash(int x, int y, int z, int octave)
+void srandBlockHash(int x, int y, int z, int octave)
 {
   //srand(4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave);
   int hash = 4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave;
@@ -690,7 +690,7 @@ void terrainGen()
   */
 }
 
-static void initChunks()
+void initChunks()
 {
   //initialize visible and filled fields of all chunks
   //byte visible[512];

@@ -1,7 +1,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
-#include "globalDefines.h"
+#include "string.h"
 
 //in/out a byte through port
 extern void writeport(dword portNum, dword value);

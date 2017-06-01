@@ -126,12 +126,6 @@ static int mouseY = 100;
 #define PRINT_VEC3(vec) printf("%s: (%.2f %.2f %.2f)\n", #vec, vec.v[0], vec.v[1], vec.v[2]);
 #define PRINT_POINT(p) printf("%s: (%i %i)\n", #p, p.x, p.y);
 
-void clockSleep(int millis)
-{
-  clock_t start = clock();
-  while(clock() < start + millis);
-}
-
 static vec3 camPos;
 
 void drawCube(float x, float y, float z, float size)
