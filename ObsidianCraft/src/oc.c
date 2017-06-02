@@ -7,7 +7,14 @@
 static Stack* inv;
 //Eventually, have at least a 4x4x4 chunks (64^3 blocks) world
 static Chunk* chunks;
+//Player position
 static vec3 player;
+//Player velocity
+static vec3 vel;
+//Whether view mat must be updated this frame
+static bool viewStale = true;
+//Whether player is standing on the ground
+static bool onGround = false;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
 /* Block list:
@@ -72,11 +79,19 @@ static void pumpEvents();
 static void terrainGen();
 static void initChunks();
 static void processInput();
+static void updatePhysics();
+static void updateViewMat();
 
 //player movement configuration
-#define PLAYER_SPEED 0.3
-#define X_SENSITIVITY 0.08
-#define Y_SENSITIVITY 0.04
+#define PLAYER_SPEED 0.3        //horizontal movement speed
+#define JUMP_SPEED 0.5          //vertical takeoff speed of jump
+#define GRAVITY 0.06             //gravitational acceleration (blocks per frame per frame)
+#define TERMINAL_VELOCITY 100
+#define PLAYER_HEIGHT 1.8
+#define PLAYER_EYE 1.5
+#define PLAYER_WIDTH 0.4
+#define X_SENSITIVITY 0.14
+#define Y_SENSITIVITY 0.14
 
 //3D configuration
 #define NEAR 0.01f
@@ -111,9 +126,14 @@ void ocMain()
   initChunks();
   yaw = 0;
   pitch = -PI / 2 + 0.1;
-  player.v[0] = 0;
-  player.v[1] = 32;
-  player.v[2] = 0;
+  //spawn player in horizontal center of world, at top
+  player.v[0] = chunksX * 16 / 2;
+  player.v[1] = chunksY * 16;
+  player.v[2] = chunksZ * 16 / 2;
+  onGround = false;
+  vel.v[0] = 0;
+  vel.v[1] = 0;
+  vel.v[2] = 0;
   wkey = false;
   akey = false;
   skey = false;
@@ -125,6 +145,12 @@ void ocMain()
     clock_t cstart = clock();
     pumpEvents();
     processInput();
+    updatePhysics();
+    if(viewStale)
+    {
+      updateViewMat();
+      viewStale = false;
+    }
     glClear(sky);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
@@ -209,7 +235,7 @@ void renderChunk(int x, int y, int z)
         //clip blocks that are > 1 block outside the edge of the viewport
         //conveniently, invw is the clipspace size of a block at the distance of the block
         //z still clips to exactly -1,1
-        float clipVal = 1.3 + invw;
+        float clipVal = 1.4 + invw;
         if(clip.v[0] < -clipVal  || clip.v[0] > clipVal ||
             clip.v[1] < -clipVal || clip.v[1] > clipVal || 
             clip.v[2] <= -1 || clip.v[2] >= 1)
@@ -371,6 +397,13 @@ void pumpEvents()
               kkey = k.pressed; break;
             case KEY_L:
               lkey = k.pressed; break;
+            case KEY_SPACE:
+              if(k.pressed && onGround)
+              {
+                onGround = false;
+                vel.v[1] += JUMP_SPEED;
+              }
+              break;
             default:;
           }
         }
@@ -417,6 +450,52 @@ void pumpEvents()
 void srandBlockHash(int x, int y, int z, int octave)
 {
   srand(SEED ^ (4 * (x + y * (chunksX * 16 + 1) + z * (chunksX * 16 * chunksY * 16 + 1)) + octave));
+}
+
+void printBlockAbundance()
+{
+  int counts[16];
+  memset(counts, 0, 16 * sizeof(int));
+  for(int i = 0; i < chunksX * chunksY * chunksZ; i++)
+  {
+    Chunk* chunk = &chunks[i];
+    for(int j = 0; j < 2048; j++)
+    {
+      counts[chunk->vals[j] & 0xF]++;
+      counts[chunk->vals[j] >> 4]++;
+    }
+  }
+  float total = chunksX * chunksY * chunksZ * 4096;
+  for(int i = 0; i < 16; i++)
+  {
+    printf("World is %.2f%% block %i\n", 100.0f * counts[i] / total, i);
+  }
+}
+
+//replace all "replace" blocks with "with", in ellipsoidal region
+void replaceEllipsoid(byte replace, byte with, int x, int y, int z, float rx, float ry, float rz)
+{
+  for(int lx = x - rx; lx <= x + rx + 1; lx++)
+  {
+    for(int ly = y - ry; ly <= y + ry + 1; ly++)
+    {
+      for(int lz = z - rz; lz <= z + rz + 1; lz++)
+      {
+        if(!blockInBounds(lx, ly, lz))
+          continue;
+        if(getBlock(lx, ly, lz) != replace)
+          continue;
+        //compute weighted distance squared from ellipsoid center to block center
+        float dx = lx - x;
+        float dy = ly - y;
+        float dz = lz - z;
+        float distSq = (dx * dx / (rx * rx)) + (dy * dy / (ry * ry)) + (dz * dz / (rz * rz));
+        if(distSq > 1)
+          continue;
+        setBlock(with, lx, ly, lz);
+      }
+    }
+  }
 }
 
 void terrainGen()
@@ -628,7 +707,7 @@ void terrainGen()
       }
     }
   }
-  //set all solid blocks within a block of water to sand
+  //set all solid blocks near water to sand
   for(int x = 0; x < wx; x++)
   {
     for(int y = 0; y < wy; y++)
@@ -637,16 +716,13 @@ void terrainGen()
       {
         if(getBlock(x, y, z) != AIR && getBlock(x, y, z) != WATER)
         {
-          //look around a 3x3 region for water blocks
+          //look around a 3x1x3 region for water blocks
           bool nearWater = false;
           for(int i = -2; i <= 2; i++)
           {
-            for(int j = -2; j <= 2; j++)
+            for(int k = -2; k <= 2; k++)
             {
-              for(int k = -2; k <= 2; k++)
-              {
-                nearWater |= (getBlock(x + i, y + j, z + k) == WATER);
-              }
+              nearWater |= (getBlock(x + i, y, z + k) == WATER);
             }
           }
           if(nearWater)
@@ -657,6 +733,53 @@ void terrainGen()
       }
     }
   }
+  //replace some stone with ores
+  //note: veins attribute is average veins per chunk in the depth range
+  //configuration:
+#define GRANITE_MIN_SIZE 6
+#define GRANITE_MAX_SIZE 12
+#define GRANITE_MIN_DEPTH wy
+#define GRANITE_VEINS 0.1
+#define QUARTZ_MIN_SIZE 5
+#define QUARTZ_MAX_SIZE 10
+#define QUARTZ_MIN_DEPTH wy / 2
+#define QUARTZ_VEINS 0.1
+#define COAL_MIN_SIZE 3
+#define COAL_MAX_SIZE 6
+#define COAL_MIN_DEPTH wy
+#define COAL_VEINS 0.1
+#define IRON_MIN_SIZE 2
+#define IRON_MAX_SIZE 4
+#define IRON_MIN_DEPTH wy / 2
+#define IRON_VEINS 0.3
+#define GOLD_MIN_SIZE 2
+#define GOLD_MAX_SIZE 3
+#define GOLD_MIN_DEPTH wy / 3
+#define GOLD_VEINS 0.2
+#define DIAMOND_MIN_SIZE 1
+#define DIAMOND_MAX_SIZE 3
+#define DIAMOND_MIN_DEPTH wy / 5
+#define DIAMOND_VEINS 0.1
+#define GEN_VEINS(block, minsize, maxsize, mindepth, veins) \
+  { \
+    float freq = veins * ((float) mindepth / wy); \
+    for(int v = 0; v < chunksX * chunksY * chunksZ * freq; v++) \
+    { \
+      int x = rand() % wx; \
+      int y = rand() % mindepth; \
+      int z = rand() % wz; \
+      int rx = minsize + rand() % (maxsize - minsize + 1); \
+      int ry = minsize + rand() % (maxsize - minsize + 1); \
+      int rz = minsize + rand() % (maxsize - minsize + 1); \
+      replaceEllipsoid(STONE, block, x, y, z, rx, ry, rz); \
+    } \
+  }
+  GEN_VEINS(GRANITE, GRANITE_MIN_SIZE, GRANITE_MAX_SIZE, GRANITE_MIN_DEPTH, GRANITE_VEINS);
+  GEN_VEINS(QUARTZ, QUARTZ_MIN_SIZE, QUARTZ_MAX_SIZE, QUARTZ_MIN_DEPTH, QUARTZ_VEINS);
+  GEN_VEINS(COAL, COAL_MIN_SIZE, COAL_MAX_SIZE, COAL_MIN_DEPTH, COAL_VEINS);
+  GEN_VEINS(IRON, IRON_MIN_SIZE, IRON_MAX_SIZE, IRON_MIN_DEPTH, IRON_VEINS);
+  GEN_VEINS(GOLD, GOLD_MIN_SIZE, GOLD_MAX_SIZE, GOLD_MIN_DEPTH, GOLD_VEINS);
+  GEN_VEINS(DIAMOND, DIAMOND_MIN_SIZE, DIAMOND_MAX_SIZE, DIAMOND_MIN_DEPTH, DIAMOND_VEINS);
   //find random places on the surface to plant trees
   for(int tree = 0; tree < chunksX * chunksZ; tree++)
   {
@@ -687,30 +810,10 @@ void terrainGen()
     //cover the top 2/3 of trunk, and extend another 1/3 above it
     //have x/z radius be half the y radius
     //loop over bounding box of the leaves
-    float ellHeight = y + 1 + (5.0 / 6.0) * treeHeight;
-    float ellY = 2 * treeHeight / 3;
-    float ellXZ = 2 * ellY / 3;
-    for(int lx = x - ellXZ; lx <= x + ellXZ + 1; lx++)
-    {
-      for(int ly = ellHeight - ellY; ly <= ellHeight + ellY; ly++)
-      {
-        for(int lz = z - ellXZ; lz <= z + ellXZ + 1; lz++)
-        {
-          if(!blockInBounds(lx, ly, lz))
-            continue;
-          if(!getBlock(lx, ly, lz) == AIR)
-            continue;
-          //compute weighted distance squared from ellipsoid center to block center
-          float dx = lx - x;
-          float dy = ly - ellHeight;
-          float dz = lz - z;
-          float distSq = (dx * dx / (ellXZ * ellXZ)) + (dy * dy / (ellY * ellY)) + (dz * dz / (ellXZ * ellXZ));
-          if(distSq > 1)
-            continue;
-          setBlock(LEAF, lx, ly, lz);
-        }
-      }
-    }
+    float ellY = y + 1 + (5.0 / 6.0) * treeHeight;
+    int ry = 2 * treeHeight / 3;
+    float rxz = 2 * ry / 3;
+    replaceEllipsoid(AIR, LEAF, x, y + 1 + 0.833 * treeHeight, z, treeHeight * 0.4, treeHeight * 0.5, treeHeight * 0.4);
   }
 }
 
@@ -764,7 +867,7 @@ void initChunks()
 void processInput()
 {
   //handle orientation changes via ijkl
-  const float pitchLimit = 89 / (180.0f / PI);
+  const float pitchLimit = 90 / (180.0f / PI);
   int dx = (jkey ? -1 : 0) + (lkey ? 1 : 0);
   int dy = (ikey ? -1 : 0) + (kkey ? 1 : 0);
   yaw += X_SENSITIVITY * dx;
@@ -791,20 +894,181 @@ void processInput()
     yvel--;
   if(dkey)
     yvel++;
+  vel.v[0] = 0;
+  vel.v[2] = 0;
   if(xvel)
   {
-    player = vecadd(player, vecscale(target, PLAYER_SPEED * xvel));
+    vel.v[0] += xvel * PLAYER_SPEED * cosf(yaw);
+    vel.v[2] += xvel * PLAYER_SPEED * sinf(yaw);
   }
   if(yvel)
   {
-    player = vecadd(player, vecscale(right, PLAYER_SPEED * yvel));
+    vel.v[0] += yvel * PLAYER_SPEED * sinf(-yaw);
+    vel.v[2] += yvel * PLAYER_SPEED * cosf(-yaw);
   }
-  if(dx || dy || xvel || yvel)
+  if(dx || dy)
   {
-    //must update view matrix
-    vec3 up = cross(right, target);
-    target = vecadd(target, player);
-    setView(lookAt(player, target, up));
+    //player look direction changed, so view matrix must be updated
+    viewStale = true;
   }
+}
+
+typedef struct
+{
+  float x;
+  float y;
+  float z;
+  float l;  //x size
+  float h;  //y size
+  float w;  //z size
+} Hitbox;
+
+//6 directions: plus/minus x/y/z
+enum
+{
+  HB_MX,
+  HB_PX,
+  HB_MY,
+  HB_PY,
+  HB_MZ,
+  HB_PZ
+};
+
+//Move the hitbox given distance in given cardinal direction
+//Return true iff a collision occurred
+//Resulting position stored in *hb
+static bool moveHitbox(Hitbox* hb, int dir, float d)
+{
+  //make sure d is positive
+  if(d < 0)
+  {
+    dir--;
+    d = -d;
+  }
+  if(d > 0.5)
+  {
+    bool hit = moveHitbox(hb, dir, d - 0.5);
+    if(hit)
+      return true;
+    d = 0.5;
+  }
+  switch(dir)
+  {
+    case HB_MX:
+      hb->x -= d;
+      break;
+    case HB_PX:
+      hb->x += d;
+      break;
+    case HB_MY:
+      hb->y -= d;
+      break;
+    case HB_PY:
+      hb->y += d;
+      break;
+    case HB_MZ:
+      hb->z -= d;
+      break;
+    case HB_PZ:
+      hb->z += d;
+      break;
+    default:;
+  }
+  //scan for collision between hitbox and blocks
+  bool collide = false;
+  for(int bx = hb->x; bx <= hb->x + hb->l; bx++)
+  {
+    for(int by = hb->y; by <= hb->y + hb->h; by++)
+    {
+      for(int bz = hb->z; bz <= hb->z + hb->w; bz++)
+      {
+        if(getBlock(bx, by, bz))
+        {
+          collide = true;
+        }
+      }
+    }
+  }
+  if(collide)
+  {
+    float eps = 1e-5;
+    //depending on movement direction, nudge in opposite direction so not colliding
+    switch(dir)
+    {
+      case HB_MX:
+        hb->x = ((int) hb->x) + 1 + eps;
+        break;
+      case HB_PX:
+        hb->x = ((int) (hb->x + hb->l)) - hb->l - eps;
+        break;
+      case HB_MY:
+        hb->y = ((int) hb->y) + 1 + eps;
+        break;
+      case HB_PY:
+        hb->y = ((int) (hb->y + hb->h)) - hb->h - eps;
+        break;
+      case HB_MZ:
+        hb->z = ((int) hb->z) + 1 + eps;
+        break;
+      case HB_PZ:
+        hb->z = ((int) (hb->z + hb->w)) - hb->w - eps;
+        break;
+      default:;
+    }
+  }
+  return collide;
+}
+
+static void updatePhysics()
+{
+  vec3 old = player;
+  //gravitational acceleration
+  if(!onGround)
+  {
+    vel.v[1] -= GRAVITY;
+    if(vel.v[1] < -TERMINAL_VELOCITY)
+      vel.v[1] = -TERMINAL_VELOCITY;
+  }
+  Hitbox hb = {player.v[0] - PLAYER_WIDTH / 2, player.v[1] - PLAYER_EYE, player.v[2] - PLAYER_WIDTH / 2, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH};
+  if(vel.v[1] > 0)
+  {
+    bool hit = moveHitbox(&hb, HB_PY, vel.v[1]);
+    if(hit)
+      vel.v[1] = 0;
+  }
+  else if(vel.v[1] < 0)
+  {
+    bool hit = moveHitbox(&hb, HB_MY, -vel.v[1]);
+    if(hit)
+    {
+      vel.v[1] = 0;
+      onGround = true;
+    }
+  }
+  //move horizontally
+  moveHitbox(&hb, vel.v[0] > 0 ? HB_PX : HB_MX, fabsf(vel.v[0]));
+  moveHitbox(&hb, vel.v[2] > 0 ? HB_PZ : HB_MZ, fabsf(vel.v[2]));
+  //check if player is suspended in the air (clear onGround if so)
+  if(onGround)
+  {
+    if(!moveHitbox(&hb, HB_MY, 0.001))
+      onGround = false;
+  }
+  //copy position back to player vector
+  player.v[0] = hb.x + PLAYER_WIDTH / 2;
+  player.v[1] = hb.y + PLAYER_EYE;
+  player.v[2] = hb.z + PLAYER_WIDTH / 2;
+  //test whether player position actually changed this update
+  if(memcmp(&old, &player, 3 * sizeof(float)) != 0)
+    viewStale = true;
+}
+
+static void updateViewMat()
+{
+  vec3 target = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
+  vec3 right = {-sinf(yaw), 0, cosf(yaw)};
+  vec3 up = cross(right, target);
+  target = vecadd(target, player);
+  setView(lookAt(player, target, up));
 }
 
