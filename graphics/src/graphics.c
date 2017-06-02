@@ -88,6 +88,13 @@ void drawTriangle(int x1, int y1, int x2, int y2, int x3, int y3)
 
 void fillTriangle(int x1, int y1, int x2, int y2, int x3, int y3)
 {
+  int minx = min(min(x1, x2), x3);
+  int miny = min(min(y1, y2), y3);
+  int maxx = max(max(x1, x2), x3);
+  int maxy = max(max(y1, y2), y3);
+  //triangle too big to rasterize
+  if(maxx - minx > 320 || maxy - miny > 200)
+    return;
   int partition;
   /*
   if(y1 == y2)
@@ -579,18 +586,19 @@ void glVertex3fv(vec3 v)
     else
     {
       vec3 clip[4];
+      int invis = 0;
       for(int i = 0; i < verts; i++)
       {
         //Do clip testing on z only
         //Triangle rasterizer performs x/y clipping
         clip[i] = vshade(vertState[i]);
-        //if(clip[i].v[0] < -1 || clip[i].v[0] > 1 || clip[i].v[1] < -1 || clip[i].v[1] > 1 || clip[i].v[2] < -1 || clip[i].v[2] > 1)
-        if(clip[i].v[2] < -1 || clip[i].v[2] > 1)
+        if(clip[i].v[0] < -1 || clip[i].v[0] > 1 || clip[i].v[1] < -1 || clip[i].v[1] > 1 || clip[i].v[2] < -1 || clip[i].v[2] > 1)
         {
-          //at least one vertex is outside clip space, so don't draw the primitive
-          goto done;
+          invis++;
         }
       }
+      if(invis == verts)
+        goto done;
       for(int i = 0; i < verts; i++)
       {
         screen[i] = viewport(clip[i]);
@@ -653,8 +661,8 @@ void glClear(byte c)
 
 void glDepth(int d)
 {
-  if(d > 255)
-    d = 255;
+  if(d > 254)
+    d = 254;
   if(d < 0)
     d = 0;
   depthVal = d;

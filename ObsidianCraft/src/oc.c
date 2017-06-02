@@ -71,9 +71,9 @@ static bool jkey;
 static bool kkey;
 static bool lkey;
 
-#define chunksX 4
-#define chunksY 4
-#define chunksZ 4
+#define chunksX 6
+#define chunksY 3
+#define chunksZ 6
 
 static void pumpEvents();
 static void terrainGen();
@@ -83,20 +83,20 @@ static void updatePhysics();
 static void updateViewMat();
 
 //player movement configuration
-#define PLAYER_SPEED 0.3        //horizontal movement speed
-#define JUMP_SPEED 0.5          //vertical takeoff speed of jump
-#define GRAVITY 0.06             //gravitational acceleration (blocks per frame per frame)
+#define PLAYER_SPEED 0.15         //horizontal movement speed
+#define JUMP_SPEED 0.5            //vertical takeoff speed of jump
+#define GRAVITY 0.06              //gravitational acceleration (blocks per frame per frame)
 #define TERMINAL_VELOCITY 100
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
-#define PLAYER_WIDTH 0.4
+#define PLAYER_WIDTH 0.8
 #define X_SENSITIVITY 0.14
 #define Y_SENSITIVITY 0.14
 
 //3D configuration
 #define NEAR 0.01f
-#define FAR 64.0f
-#define FOV 75.0f       //fovy (degrees)
+#define FAR 48.0f
+#define FOV 85.0f       //fovy (degrees)
 
 inline bool isTransparent(byte b)
 {
@@ -179,7 +179,7 @@ void renderChunk(int x, int y, int z)
     float dy = player.v[1] - (y * 16 + 8);
     float dz = player.v[2] - (z * 16 + 8);
     float distSquared = dx * dx + dy * dy + dz * dz;
-    if(distSquared > ((FAR + 14) * (FAR + 14)))
+    if(distSquared > ((FAR + 8) * (FAR + 8)))
       return;
   }
   Chunk* c = getChunk(x, y, z);
@@ -213,39 +213,52 @@ void renderChunk(int x, int y, int z)
         float by = cy + j;
         float bz = cz + k;
         byte block = getBlockC(c, i, j, k);
-        //byte block = getBlock(bx, by, bz);
-        //if a block is certainly not in the player's view, ignore it
-        //compute single depth value for whole block (using view space, not perspective)
-        //determine the nearest corner to player (for most aggressive depth value)
-        vec3 face = {bx, by, bz};
-        if(player.v[0] <= bx + 1)
-          face.v[0] += 1;
-        if(player.v[1] <= by + 1)
-          face.v[1] += 1;
-        if(player.v[2] <= bz + 1)
-          face.v[2] += 1;
-        //take the nearest corner and run it through the full projection
-        vec4 viewSpace = matvec3(viewMat, face);
-        vec4 clip = matvec4(projMat, viewSpace);
-        //must divide by w
-        float invw = 1.0f / clip.v[3];
-        clip.v[0] *= invw;
-        clip.v[1] *= invw;
-        clip.v[2] *= invw;
-        //clip blocks that are > 1 block outside the edge of the viewport
-        //conveniently, invw is the clipspace size of a block at the distance of the block
-        //z still clips to exactly -1,1
-        float clipVal = 1.4 + invw;
-        if(clip.v[0] < -clipVal  || clip.v[0] > clipVal ||
-            clip.v[1] < -clipVal || clip.v[1] > clipVal || 
-            clip.v[2] <= -1 || clip.v[2] >= 1)
+        vec3 cube[8] = {
+          {{bx, by, bz}},
+          {{bx + 1, by, bz}},
+          {{bx, by + 1, bz}},
+          {{bx + 1, by + 1, bz}},
+          {{bx, by, bz + 1}},
+          {{bx + 1, by, bz + 1}},
+          {{bx, by + 1, bz + 1}},
+          {{bx + 1, by + 1, bz + 1}}
+        };
+        //take the best clip coordinate (min absolute value) of each dimension
+        float minX = 4;
+        float minY = 4;
+        float minZ = 4;
+        float minDepth = 64;
+        for(int corner = 0; corner < 8; corner++)
         {
-          //skip block, as nearest corner to player is outside frustum
-          continue;
+          vec4 viewSpace = matvec3(viewMat, cube[corner]);
+          minDepth = min(minDepth, -viewSpace.v[2]);
+          vec4 clip = matvec4(projMat, viewSpace);
+          float invw = 1.0f / clip.v[3];
+          clip.v[0] *= invw;
+          clip.v[1] *= invw;
+          clip.v[2] *= invw;
+          minX = min(minX, fabsf(clip.v[0]));
+          minY = min(minY, fabsf(clip.v[1]));
+          minZ = min(minZ, fabsf(clip.v[2]));
         }
-        //in depth value, far plane is 64, so anything that
-        //would overflow the byte has already been clipped
-        glDepth(-viewSpace.v[2] * 3.9);
+        //cull blocks that are fully outside the viewport (and far enough away for this test to work)
+        //take 1-norm distance between player and block
+        if(fabsf(player.v[0] - bx) + fabsf(player.v[1] - by) + fabsf(player.v[2] - bz) > 6)
+        {
+          if(minX > 1.5 || minY > 1.5 || minZ > 1)
+          {
+            //cube is fully invisible
+            continue;
+          }
+        }
+        minDepth += 2;
+        /*
+        if(minDepth < 8)
+          glDepth(minDepth * 10);
+        else
+          glDepth(8 * 10 + (minDepth - 8) * 4);
+          */
+        glDepth(powf(minDepth, 0.6) * 20);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -1054,6 +1067,19 @@ static void updatePhysics()
     if(!moveHitbox(&hb, HB_MY, 0.001))
       onGround = false;
   }
+  //clamp player to world boundaries (can't fall out of world)
+  if(hb.x < 0)
+    hb.x = 0;
+  if(hb.x > chunksX * 16 - PLAYER_WIDTH)
+    hb.x = chunksX * 16 - PLAYER_WIDTH;
+  //bedrock is at y = 1, so clamp there
+  if(hb.y < 1)
+    hb.y = 1;
+  //don't clamp on sky limit, because gravity will bring player back
+  if(hb.z < 0)
+    hb.z = 0;
+  if(hb.z > chunksZ * 16 - PLAYER_WIDTH)
+    hb.z = chunksZ * 16 - PLAYER_WIDTH;
   //copy position back to player vector
   player.v[0] = hb.x + PLAYER_WIDTH / 2;
   player.v[1] = hb.y + PLAYER_EYE;

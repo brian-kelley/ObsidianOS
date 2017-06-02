@@ -159,3 +159,8 @@ long long __divdi3(long long dividend, long long divisor)
   }
 }
 
+float __powisf2(float f, int power)
+{
+  return powf(f, power);
+}
+
