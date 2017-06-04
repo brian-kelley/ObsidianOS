@@ -567,8 +567,399 @@ void glVertex3f(float x, float y, float z)
   glVertex3fv(v);
 }
 
-void nearClipTri1(vec3 v1, vec3 v2, vec3 v3);
-void nearClipTri2(vec3 v1, vec3 v2, vec3 v3);
+//all triangles with > 0 vertices past far plane are completely culled
+//other triangles are clipped in this order:
+//z = 1
+//x = -1
+//x = 1
+//y = -1
+//y = 1
+
+void drawTri(vec3 v1, vec3 v2, vec3 v3);
+void clipTriNear(vec3 v1, vec3 v2, vec3 v3);
+void clipTriLeft(vec3 v1, vec3 v2, vec3 v3);
+void clipTriRight(vec3 v1, vec3 v2, vec3 v3);
+void clipTriTop(vec3 v1, vec3 v2, vec3 v3);
+void clipTriBottom(vec3 v1, vec3 v2, vec3 v3);
+
+//Each clip-draw function clips one triangle against one plane
+
+void clipTriNear(vec3 v1, vec3 v2, vec3 v3)
+{
+  //get the number of vertices that are beyond the near plane
+  int numBeyond = 0;
+  if(v1.v[2] > 1)
+    numBeyond++;
+  if(v2.v[2] > 1)
+    numBeyond++;
+  if(v3.v[2] > 1)
+    numBeyond++;
+  switch(numBeyond)
+  {
+    case 0:
+      {
+        //draw the full triangle normally
+        point vp1 = viewport(v1);
+        point vp2 = viewport(v2);
+        point vp3 = viewport(v3);
+        fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+        break;
+      }
+    case 1:
+      {
+        //swap vertices so v1 is nearer than near plane, and other two are not
+        if(v2.v[2] > 1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[2] > 1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find the intersection point of the two edges connecting to nearest, and z=1
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (1 - v1.v[2]) / (v2.v[2] - v1.v[2])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (1 - v1.v[2]) / (v3.v[2] - v1.v[2])));
+        //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
+        clipTriLeft(inter1, v2, v3);
+        clipTriLeft(inter1, inter2, v3);
+        break;
+      }
+    case 2:
+      {
+        //get v1 as the vertex that is not discarded
+        if(v2.v[2] <= 1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[2] <= 1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v2, vecscale(vecsub(v1, v2), (1 - v2.v[2]) / (v1.v[2] - v2.v[2])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v3, vecscale(vecsub(v3, v1), (1 - v3.v[2]) / (v1.v[2] - v3.v[2])));
+        clipTriLeft(v1, inter1, inter2);
+        break;
+      }
+    case 3: //nothing to do, no part of triangle is visible
+    default:;
+  }
+}
+
+void clipTriLeft(vec3 v1, vec3 v2, vec3 v3)
+{
+  //get the number of vertices that are beyond the near plane
+  int numBeyond = 0;
+  if(v1.v[0] < -1)
+    numBeyond++;
+  if(v2.v[0] < -1)
+    numBeyond++;
+  if(v3.v[0] < -1)
+    numBeyond++;
+  switch(numBeyond)
+  {
+    case 0:
+      {
+        //draw the full triangle normally
+        point vp1 = viewport(v1);
+        point vp2 = viewport(v2);
+        point vp3 = viewport(v3);
+        fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+        break;
+      }
+    case 1:
+      {
+        //swap vertices so v1 is nearer than near plane, and other two are not
+        if(v2.v[0] < -1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[0] < -1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find the intersection point of the two edges connecting to nearest, and z=1
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (-1 - v1.v[0]) / (v2.v[0] - v1.v[0])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (-1 - v1.v[0]) / (v3.v[0] - v1.v[0])));
+        //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
+        clipTriRight(inter1, v2, v3);
+        clipTriRight(inter1, inter2, v3);
+        break;
+      }
+    case 2:
+      {
+        //get v1 as the vertex that is not discarded
+        if(v2.v[0] >= -1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[0] >= -1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v2, vecscale(vecsub(v1, v2), (-1 - v2.v[0]) / (v1.v[0] - v2.v[0])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v3, vecscale(vecsub(v1, v3), (-1 - v3.v[0]) / (v1.v[0] - v3.v[0])));
+        //now viewport v1, inter1 and inter2
+        clipTriRight(v1, inter1, inter2);
+        break;
+      }
+    case 3: //nothing to do, no part of triangle is visible
+    default:;
+  }
+}
+
+void clipTriRight(vec3 v1, vec3 v2, vec3 v3)
+{
+  //get the number of vertices that are beyond the near plane
+  int numBeyond = 0;
+  if(v1.v[0] > 1)
+    numBeyond++;
+  if(v2.v[0] > 1)
+    numBeyond++;
+  if(v3.v[0] > 1)
+    numBeyond++;
+  switch(numBeyond)
+  {
+    case 0:
+      {
+        //draw the full triangle normally
+        point vp1 = viewport(v1);
+        point vp2 = viewport(v2);
+        point vp3 = viewport(v3);
+        fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+        break;
+      }
+    case 1:
+      {
+        if(v2.v[0] > 1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[0] > 1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find the intersection point of the two edges connecting to nearest, and z=1
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v2, vecscale(vecsub(v1, v2), (v2.v[0] - 1) / (v1.v[0] - v2.v[0])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v3, vecscale(vecsub(v1, v3), (v3.v[0] - 1) / (v1.v[0] - v3.v[0])));
+        //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
+        clipTriTop(inter1, v2, v3);
+        clipTriTop(inter1, inter2, v3);
+        break;
+      }
+    case 2:
+      {
+        //get v1 as the vertex that is not discarded
+        if(v2.v[0] <= 1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[0] <= 1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (1 - v1.v[0]) / (v2.v[0] - v1.v[0])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (1 - v1.v[0]) / (v3.v[0] - v1.v[0])));
+        //now viewport v1, inter1 and inter2
+        clipTriTop(v1, inter1, inter2);
+        break;
+      }
+    case 3: //nothing to do, no part of triangle is visible
+    default:;
+  }
+}
+
+void clipTriTop(vec3 v1, vec3 v2, vec3 v3)
+{
+  //get the number of vertices that are beyond the near plane
+  int numBeyond = 0;
+  if(v1.v[1] < -1)
+    numBeyond++;
+  if(v2.v[1] < -1)
+    numBeyond++;
+  if(v3.v[1] < -1)
+    numBeyond++;
+  switch(numBeyond)
+  {
+    case 0:
+      {
+        //draw the full triangle normally
+        point vp1 = viewport(v1);
+        point vp2 = viewport(v2);
+        point vp3 = viewport(v3);
+        fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+        break;
+      }
+    case 1:
+      {
+        if(v2.v[1] < -1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[1] < -1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find the intersection point of the two edges connecting to nearest, and z=1
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (v1.v[0] + 1) / (v1.v[1] - v2.v[1])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (v1.v[0] + 1) / (v1.v[1] - v3.v[1])));
+        //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
+        clipTriBottom(inter1, v2, v3);
+        clipTriBottom(inter1, inter2, v3);
+        break;
+      }
+    case 2:
+      {
+        //get v1 as the vertex that is not discarded
+        if(v2.v[1] >= -1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[1] >= -1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (v1.v[1] + 1) / (v1.v[1] - v2.v[1])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (v1.v[1] + 1) / (v1.v[1] - v3.v[1])));
+        //now viewport v1, inter1 and inter2
+        clipTriBottom(v1, inter1, inter2);
+        break;
+      }
+    case 3: //nothing to do, no part of triangle is visible
+    default:;
+  }
+}
+
+void clipTriBottom(vec3 v1, vec3 v2, vec3 v3)
+{
+  //get the number of vertices that are beyond the near plane
+  int numBeyond = 0;
+  if(v1.v[1] > 1)
+    numBeyond++;
+  if(v2.v[1] > 1)
+    numBeyond++;
+  if(v3.v[1] > 1)
+    numBeyond++;
+  switch(numBeyond)
+  {
+    case 0:
+      {
+        //draw the full triangle normally
+        point vp1 = viewport(v1);
+        point vp2 = viewport(v2);
+        point vp3 = viewport(v3);
+        fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+        break;
+      }
+    case 1:
+      {
+        if(v2.v[1] > 1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[1] > 1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v2, vecscale(vecsub(v1, v2), (v2.v[1] - 1) / (v1.v[1] - v2.v[1])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v3, vecscale(vecsub(v1, v3), (v3.v[1] - 1) / (v1.v[1] - v3.v[1])));
+        //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
+        point vp1 = viewport(v2);
+        point vp2 = viewport(v3);
+        point vp3 = viewport(inter1);
+        point vp4 = viewport(inter2);
+        fillTriangle(vp3.x, vp3.y, vp1.x, vp1.y, vp2.x, vp2.y);
+        fillTriangle(vp3.x, vp3.y, vp4.x, vp4.y, vp2.x, vp2.y);
+        break;
+      }
+    case 2:
+      {
+        //get v1 as the vertex that is not discarded
+        if(v2.v[1] <= 1)
+        {
+          vec3 temp = v1;
+          v1 = v2;
+          v2 = temp;
+        }
+        else if(v3.v[1] <= 1)
+        {
+          vec3 temp = v1;
+          v1 = v3;
+          v3 = temp;
+        }
+        //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
+        //inter1 is point between v1 and v2
+        vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (1 - v1.v[1]) / (v2.v[1] - v1.v[1])));
+        //inter2 is point between v1 and v3
+        vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (1 - v1.v[1]) / (v3.v[1] - v1.v[1])));
+        //now viewport v1, inter1 and inter2
+        point vp1 = viewport(inter1);
+        point vp2 = viewport(inter2);
+        point vp3 = viewport(v1);
+        fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+        break;
+      }
+    case 3: //nothing to do, no part of triangle is visible
+    default:;
+  }
+}
 
 void drawTri(vec3 v1, vec3 v2, vec3 v3)
 {
@@ -577,96 +968,7 @@ void drawTri(vec3 v1, vec3 v2, vec3 v3)
   if(v1.v[2] < -1 || v2.v[2] < -1 || v3.v[2] < -1)
     return;
   //skip if all vertices are outside clip space
-  bool v1near = v1.v[2] > 1;
-  bool v2near = v2.v[2] > 1;
-  bool v3near = v3.v[2] > 1;
-  int numNear = 0;
-  if(v1near)
-    numNear++;
-  if(v2near)
-    numNear++;
-  if(v3near)
-    numNear++;
-  if(numNear == 3)
-  {
-    //nothing is visible
-    return;
-  }
-  else if(numNear == 1)
-  {
-    nearClipTri1(v1, v2, v3);
-  }
-  else if(numNear == 2)
-  {
-    nearClipTri2(v1, v2, v3);
-  }
-  else
-  {
-    point p1 = viewport(v1);
-    point p2 = viewport(v2);
-    point p3 = viewport(v3);
-    fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-  }
-}
-
-//clip a triangle against near plane, and draw the result
-//will result in drawing two triangles
-//precondition: exactly one of v1, v2, v3 has a z > 1
-void nearClipTri1(vec3 v1, vec3 v2, vec3 v3)
-{
-  //swap vertices so v1 is nearer than near plane, and other two are not
-  if(v2.v[2] > 1)
-  {
-    vec3 temp = v1;
-    v1 = v2;
-    v2 = temp;
-  }
-  else if(v3.v[2] > 1)
-  {
-    vec3 temp = v1;
-    v1 = v3;
-    v3 = temp;
-  }
-  //find the intersection point of the two edges connecting to nearest, and z=1
-  //inter1 is point between v1 and v2
-  vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (v1.v[2] - 1) / (v1.v[2] - v2.v[2])));
-  //inter2 is point between v1 and v3
-  vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (v1.v[2] - 1) / (v1.v[2] - v3.v[2])));
-  //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
-  point vp1 = viewport(v2);
-  point vp2 = viewport(v3);
-  point vp3 = viewport(inter1);
-  point vp4 = viewport(inter2);
-  fillTriangle(vp3.x, vp3.y, vp1.x, vp1.y, vp2.x, vp2.y);
-  fillTriangle(vp4.x, vp4.y, vp1.x, vp1.y, vp2.x, vp2.y);
-}
-
-//same as above, but for when two of three vertices are nearer than near plane
-void nearClipTri2(vec3 v1, vec3 v2, vec3 v3)
-{
-  //get v1 as the vertex that is not discarded
-  if(v2.v[2] > 1)
-  {
-    vec3 temp = v1;
-    v1 = v2;
-    v2 = temp;
-  }
-  else if(v3.v[2] > 1)
-  {
-    vec3 temp = v1;
-    v1 = v3;
-    v3 = temp;
-  }
-  //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
-  //inter1 is point between v1 and v2
-  vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (v1.v[2] - 1) / (v1.v[2] - v2.v[2])));
-  //inter2 is point between v1 and v3
-  vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (v1.v[2] - 1) / (v1.v[2] - v3.v[2])));
-  //now viewport v1, inter1 and inter2
-  point vp1 = viewport(inter1);
-  point vp2 = viewport(inter2);
-  point vp3 = viewport(v1);
-  fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+  clipTriNear(v1, v2, v3);
 }
 
 void glVertex3fv(vec3 v)
