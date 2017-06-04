@@ -567,14 +567,118 @@ void glVertex3f(float x, float y, float z)
   glVertex3fv(v);
 }
 
+void nearClipTri1(vec3 v1, vec3 v2, vec3 v3);
+void nearClipTri2(vec3 v1, vec3 v2, vec3 v3);
+
+void drawTri(vec3 v1, vec3 v2, vec3 v3)
+{
+  //skip if has any vertices outside far plane
+  //blocks are small, so this should have no noticeable effect
+  if(v1.v[2] < -1 || v2.v[2] < -1 || v3.v[2] < -1)
+    return;
+  //skip if all vertices are outside clip space
+  bool v1near = v1.v[2] > 1;
+  bool v2near = v2.v[2] > 1;
+  bool v3near = v3.v[2] > 1;
+  int numNear = 0;
+  if(v1near)
+    numNear++;
+  if(v2near)
+    numNear++;
+  if(v3near)
+    numNear++;
+  if(numNear == 3)
+  {
+    //nothing is visible
+    return;
+  }
+  else if(numNear == 1)
+  {
+    nearClipTri1(v1, v2, v3);
+  }
+  else if(numNear == 2)
+  {
+    nearClipTri2(v1, v2, v3);
+  }
+  else
+  {
+    point p1 = viewport(v1);
+    point p2 = viewport(v2);
+    point p3 = viewport(v3);
+    fillTriangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+  }
+}
+
+//clip a triangle against near plane, and draw the result
+//will result in drawing two triangles
+//precondition: exactly one of v1, v2, v3 has a z > 1
+void nearClipTri1(vec3 v1, vec3 v2, vec3 v3)
+{
+  //swap vertices so v1 is nearer than near plane, and other two are not
+  if(v2.v[2] > 1)
+  {
+    vec3 temp = v1;
+    v1 = v2;
+    v2 = temp;
+  }
+  else if(v3.v[2] > 1)
+  {
+    vec3 temp = v1;
+    v1 = v3;
+    v3 = temp;
+  }
+  //find the intersection point of the two edges connecting to nearest, and z=1
+  //inter1 is point between v1 and v2
+  vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (v1.v[2] - 1) / (v1.v[2] - v2.v[2])));
+  //inter2 is point between v1 and v3
+  vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (v1.v[2] - 1) / (v1.v[2] - v3.v[2])));
+  //now viewport + draw 2 triangles: (inter1, v2, v3) and (inter2, v2, v3)
+  point vp1 = viewport(v2);
+  point vp2 = viewport(v3);
+  point vp3 = viewport(inter1);
+  point vp4 = viewport(inter2);
+  fillTriangle(vp3.x, vp3.y, vp1.x, vp1.y, vp2.x, vp2.y);
+  fillTriangle(vp4.x, vp4.y, vp1.x, vp1.y, vp2.x, vp2.y);
+}
+
+//same as above, but for when two of three vertices are nearer than near plane
+void nearClipTri2(vec3 v1, vec3 v2, vec3 v3)
+{
+  //get v1 as the vertex that is not discarded
+  if(v2.v[2] > 1)
+  {
+    vec3 temp = v1;
+    v1 = v2;
+    v2 = temp;
+  }
+  else if(v3.v[2] > 1)
+  {
+    vec3 temp = v1;
+    v1 = v3;
+    v3 = temp;
+  }
+  //find intersection points inter1 and inter2 between v1 and v2, and v1 and v3
+  //inter1 is point between v1 and v2
+  vec3 inter1 = vecadd(v1, vecscale(vecsub(v2, v1), (v1.v[2] - 1) / (v1.v[2] - v2.v[2])));
+  //inter2 is point between v1 and v3
+  vec3 inter2 = vecadd(v1, vecscale(vecsub(v3, v1), (v1.v[2] - 1) / (v1.v[2] - v3.v[2])));
+  //now viewport v1, inter1 and inter2
+  point vp1 = viewport(inter1);
+  point vp2 = viewport(inter2);
+  point vp3 = viewport(v1);
+  fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+}
+
 void glVertex3fv(vec3 v)
 {
   vertState[numVerts++] = v;
   int verts = vertsPerElement[geomType];
+  int nearClipped = 0;
   if(numVerts == verts)
   {
     //run vshader and draw the geometry, then flush vert buffer
     //vertices in screen space
+    vec3 clip[4];
     point screen[4];
     if(!enabled3D)
     {
@@ -585,37 +689,30 @@ void glVertex3fv(vec3 v)
     }
     else
     {
-      vec3 clip[4];
-      int invis = 0;
       for(int i = 0; i < verts; i++)
       {
         //Do clip testing on z only
         //Triangle rasterizer performs x/y clipping
         clip[i] = vshade(vertState[i]);
-        if(clip[i].v[0] < -1 || clip[i].v[0] > 1 || clip[i].v[1] < -1 || clip[i].v[1] > 1 || clip[i].v[2] < -1 || clip[i].v[2] > 1)
-        {
-          invis++;
-        }
-      }
-      if(invis == verts)
-        goto done;
-      for(int i = 0; i < verts; i++)
-      {
-        screen[i] = viewport(clip[i]);
       }
     }
     if(geomType == GL_LINES)
     {
+      screen[0] = viewport(clip[0]);
+      screen[1] = viewport(clip[1]);
       drawLine(screen[0].x, screen[0].y, screen[1].x, screen[1].y);
     }
     else if(geomType == GL_TRIANGLES)
     {
       if(drawMode == DRAW_FILL)
       {
-        fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
+        drawTri(clip[0], clip[1], clip[2]);
       }
       else
       {
+        screen[0] = viewport(clip[0]);
+        screen[1] = viewport(clip[1]);
+        screen[2] = viewport(clip[2]);
         drawTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
       }
     }
@@ -623,18 +720,21 @@ void glVertex3fv(vec3 v)
     {
       if(drawMode == DRAW_FILL)
       {
-        fillTriangle(screen[0].x, screen[0].y, screen[1].x, screen[1].y, screen[2].x, screen[2].y);
-        fillTriangle(screen[0].x, screen[0].y, screen[2].x, screen[2].y, screen[3].x, screen[3].y);
+        drawTri(clip[0], clip[1], clip[2]);
+        drawTri(clip[0], clip[2], clip[3]);
       }
       else
       {
+        screen[0] = viewport(clip[0]);
+        screen[1] = viewport(clip[1]);
+        screen[2] = viewport(clip[2]);
+        screen[3] = viewport(clip[3]);
         drawLine(screen[0].x, screen[0].y, screen[1].x, screen[1].y);
         drawLine(screen[1].x, screen[1].y, screen[2].x, screen[2].y);
         drawLine(screen[2].x, screen[2].y, screen[3].x, screen[3].y);
         drawLine(screen[0].x, screen[0].y, screen[3].x, screen[3].y);
       }
     }
-done:
     numVerts = 0;
   }
 }

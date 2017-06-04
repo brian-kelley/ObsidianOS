@@ -2,10 +2,12 @@
 
 vec3 cross(vec3 lhs, vec3 rhs)
 {
-  return ((vec3) {
+  vec3 c = {
     lhs.v[1] * rhs.v[2] - lhs.v[2] * rhs.v[1],
     -lhs.v[0] * rhs.v[2] + lhs.v[2] * rhs.v[0],
-    lhs.v[0] * rhs.v[1] - lhs.v[1] * rhs.v[0]});
+    lhs.v[0] * rhs.v[1] - lhs.v[1] * rhs.v[0]
+  };
+  return c;
 }
 
 float dot(vec3 lhs, vec3 rhs)
@@ -15,7 +17,8 @@ float dot(vec3 lhs, vec3 rhs)
 
 mat4 identity()
 {
-  return ((mat4) {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}});
+  mat4 i = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
+  return i;
 }
 
 //view matrix
@@ -23,7 +26,6 @@ mat4 lookAt(vec3 camera, vec3 target, vec3 up)
 {
   mat4 m = identity();
   //view matrix first rotates world so that 
-  up = normalize(up);
   vec3 D = normalize(vecsub(camera, target));
   vec3 R = normalize(cross(up, D));
   vec3 U = cross(D, R);
@@ -90,7 +92,7 @@ mat4 rotate(vec3 axis, float angle)
   m.v[2][2] = w * w + (u * u + v * v) * cost;
   return m;
 }
-
+ 
 mat4 translate(vec3 disp)
 {
   //add the displacement to the w column
@@ -167,22 +169,26 @@ vec3 normalize(vec3 v)
   if(v.v[0] == 0 && v.v[1] == 0 && v.v[2] == 0)
     return v;
   float m = mag(v);
-  return ((vec3) {{v.v[0] / m, v.v[1] / m, v.v[2] / m}});
+  vec3 n = {{v.v[0] / m, v.v[1] / m, v.v[2] / m}};
+  return n;
 }
 
 vec3 vecneg(vec3 v)
 {
-  return ((vec3) {{-v.v[0], -v.v[1], -v.v[2]}});
+  vec3 nv = {{-v.v[0], -v.v[1], -v.v[2]}};
+  return nv;
 }
 
 vec3 vecadd(vec3 lhs, vec3 rhs)
 {
-  return ((vec3) {{lhs.v[0] + rhs.v[0], lhs.v[1] + rhs.v[1], lhs.v[2] + rhs.v[2]}});
+  vec3 sum = {{lhs.v[0] + rhs.v[0], lhs.v[1] + rhs.v[1], lhs.v[2] + rhs.v[2]}};
+  return sum;
 }
 
 vec3 vecsub(vec3 lhs, vec3 rhs)
 {
-  return ((vec3) {{lhs.v[0] - rhs.v[0], lhs.v[1] - rhs.v[1], lhs.v[2] - rhs.v[2]}});
+  vec3 diff = {{lhs.v[0] - rhs.v[0], lhs.v[1] - rhs.v[1], lhs.v[2] - rhs.v[2]}};
+  return diff;
 }
 
 vec3 vecscale(vec3 v, float scale)
@@ -195,11 +201,13 @@ vec3 vecscale(vec3 v, float scale)
 
 vec3 toVec3(vec4 v)
 {
-  return ((vec3) {{v.v[0], v.v[1], v.v[2]}});
+  vec3 v3 = {{v.v[0], v.v[1], v.v[2]}};
+  return v3;
 }
 
 vec4 toVec4(vec3 v)
 {
-  return ((vec4) {{v.v[0], v.v[1], v.v[2], 1}});
+  vec4 v4 = {{v.v[0], v.v[1], v.v[2], 1}};
+  return v4;
 }
 

@@ -97,16 +97,19 @@ cosl:
 tan:
     fld qword [esp + 4]
     fptan
+    fstp st0
     ret
 
 tanf:
     fld dword [esp + 4]
     fptan
+    fstp st0
     ret
 
 tanl:
     fld tword [esp + 4]
     fptan
+    fstp st0
     ret
 
 sqrt:

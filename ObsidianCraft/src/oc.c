@@ -94,9 +94,9 @@ static void updateViewMat();
 #define Y_SENSITIVITY 0.14
 
 //3D configuration
-#define NEAR 0.01f
+#define NEAR 0.001f
 #define FAR 48.0f
-#define FOV 85.0f       //fovy (degrees)
+#define FOV 75.0f
 
 inline bool isTransparent(byte b)
 {
@@ -227,11 +227,10 @@ void renderChunk(int x, int y, int z)
         float minX = 4;
         float minY = 4;
         float minZ = 4;
-        float minDepth = 64;
+        float minDepth = -1;
         for(int corner = 0; corner < 8; corner++)
         {
           vec4 viewSpace = matvec3(viewMat, cube[corner]);
-          minDepth = min(minDepth, -viewSpace.v[2]);
           vec4 clip = matvec4(projMat, viewSpace);
           float invw = 1.0f / clip.v[3];
           clip.v[0] *= invw;
@@ -240,25 +239,19 @@ void renderChunk(int x, int y, int z)
           minX = min(minX, fabsf(clip.v[0]));
           minY = min(minY, fabsf(clip.v[1]));
           minZ = min(minZ, fabsf(clip.v[2]));
+          minDepth = max(minDepth, clip.v[2]);
         }
         //cull blocks that are fully outside the viewport (and far enough away for this test to work)
         //take 1-norm distance between player and block
         if(fabsf(player.v[0] - bx) + fabsf(player.v[1] - by) + fabsf(player.v[2] - bz) > 6)
         {
-          if(minX > 1.5 || minY > 1.5 || minZ > 1)
+          if(minX > 1 || minY > 1 || minZ > 1)
           {
             //cube is fully invisible
             continue;
           }
         }
-        minDepth += 2;
-        /*
-        if(minDepth < 8)
-          glDepth(minDepth * 10);
-        else
-          glDepth(8 * 10 + (minDepth - 8) * 4);
-          */
-        glDepth(powf(minDepth, 0.6) * 20);
+        glDepth(powf((minDepth + 1) / 2, 2) * 254);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -895,8 +888,6 @@ void processInput()
     pitch = -pitchLimit;
   else if(pitch > pitchLimit)
     pitch = pitchLimit;
-  vec3 target = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
-  vec3 right = {-sinf(yaw), 0, cosf(yaw)};
   int xvel = 0;
   int yvel = 0;
   if(wkey)
@@ -1075,7 +1066,7 @@ static void updatePhysics()
   //bedrock is at y = 1, so clamp there
   if(hb.y < 1)
     hb.y = 1;
-  //don't clamp on sky limit, because gravity will bring player back
+  //don't need to clamp on sky limit, because gravity will always bring player back
   if(hb.z < 0)
     hb.z = 0;
   if(hb.z > chunksZ * 16 - PLAYER_WIDTH)
@@ -1085,16 +1076,17 @@ static void updatePhysics()
   player.v[1] = hb.y + PLAYER_EYE;
   player.v[2] = hb.z + PLAYER_WIDTH / 2;
   //test whether player position actually changed this update
-  if(memcmp(&old, &player, 3 * sizeof(float)) != 0)
+  if(memcmp(&old, &player, 3 * sizeof(float)))
     viewStale = true;
 }
 
 static void updateViewMat()
 {
-  vec3 target = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
+  vec3 lookdir = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
   vec3 right = {-sinf(yaw), 0, cosf(yaw)};
-  vec3 up = cross(right, target);
-  target = vecadd(target, player);
-  setView(lookAt(player, target, up));
+  vec3 up = cross(right, lookdir);
+  vec3 cam = vecadd(player, vecscale(lookdir, 0.7));
+  vec3 target = vecadd(cam, lookdir);
+  setView(lookAt(cam, target, up));
 }
 
