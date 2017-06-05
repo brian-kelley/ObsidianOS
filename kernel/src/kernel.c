@@ -231,6 +231,17 @@ void cubeDemo()
 
 extern void ocMain();
 
+void printMat(mat4 m)
+{
+  puts("mat4");
+  printf("%.3f  %.3f  %.3f  %.3f\n", m.v[0][0], m.v[0][1], m.v[0][2], m.v[0][3]);
+  printf("%.3f  %.3f  %.3f  %.3f\n", m.v[1][0], m.v[1][1], m.v[1][2], m.v[1][3]);
+  printf("%.3f  %.3f  %.3f  %.3f\n", m.v[2][0], m.v[2][1], m.v[2][2], m.v[2][3]);
+  printf("%.3f  %.3f  %.3f  %.3f\n", m.v[3][0], m.v[3][1], m.v[3][2], m.v[3][3]);
+}
+
+extern mat4 fullMat;
+
 void kernel_main()
 {
   initTime();
@@ -241,6 +252,26 @@ void kernel_main()
   initKeyboard();
   resetTermCursor();
   printMemStats();
+  /*
+  vec3 eye = {{0, 0, 0}};
+  vec3 target = {{0, 0, -1}};
+  vec3 up = {{0, 1, 0}};
+
+  setModel(identity());
+  setView(lookAt(eye, target, up));
+  setProj(perspective(90.0f / (180.0f / PI), 0.1, 100));
+
+  vec3 v = {{0, 0, -100}};
+  vec3 cam = toVec3(matvec3(viewMat, v));
+  vec3 clip = vshade(v);
+  printf("World space: (%.2f %.2f %.2f)\n", v.v[0], v.v[1], v.v[2]);
+  printf("View space: (%.2f %.2f %.2f)\n", cam.v[0], cam.v[1], cam.v[2]);
+  printf("Clip space: (%.4f %.4f %.4f)\n", clip.v[0], clip.v[1], clip.v[2]);
+
+  printf("Whole mat:\n");
+  printMat(fullMat);
+  while(1);
+  */
   renderBuf = malloc(64000);
 #ifdef DOUBLE_BUFFERED
   depthBuf = malloc(64000);

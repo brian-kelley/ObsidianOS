@@ -39,7 +39,9 @@ mat4 lookAt(vec3 camera, vec3 target, vec3 up)
   m.v[2][1] = D.v[1];
   m.v[2][2] = D.v[2];
   //now translate from eye point to origin
+  //vec3 trans = vecneg(vecsub(camera, D));
   vec3 trans = vecneg(camera);
+  //return matmat(translate(trans), m);
   return matmat(m, translate(trans));
 }
 
@@ -59,7 +61,8 @@ mat4 ortho(float left, float right, float bottom, float top, float near, float f
 mat4 perspective(float fov, float near, float far)
 {
   //this assumes that top = -bottom and left = -right
-  mat4 p = identity();
+  mat4 p;
+  memset(&p, 0, sizeof(mat4));
   float top = tan(fov / 2) * near;
   float right = top * VIEWPORT_X / VIEWPORT_Y;
   p.v[0][0] = near / right;

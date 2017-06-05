@@ -139,7 +139,7 @@ for line in open(build + "sections.txt").readlines():
 imageFileSize = os.stat(build + "system.bin").st_size
 imageSectors = (imageFileSize + 511) / 512
 
-print("On-disk system image is " + hex(imageFileSize) + " bytes or " + str(imageSectors) + " sectors.")
+print("On-disk system image is " + str((imageFileSize + 1023) / 1024) + " KB or " + str(imageSectors) + " sectors.")
 print("In-memory system image is " + hex(imageSize) + " bytes (free memory starts at " + hex(imageSize + 0x500) + ")")
 
 # Write into temporary bootloader assembly file with those values

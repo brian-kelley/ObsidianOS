@@ -52,7 +52,7 @@ static byte blockColor[16][5] = {
   {0x02, 0x79, 0x77, 0xC0, 0xBF},     //Leaf
   {0x37, 0x21, 0x21, 0x01, 0x68},     //Water
   {0x44, 0x45, 0x8C, 0x8B, 0xD3},     //Sand
-  {0x0F, 0x0F, 0x0F, 0x0F, 0x0F},                    //Glass (colorless)
+  {0x0F, 0x0F, 0x0F, 0x0F, 0x0F},     //Glass (colorless)
   {0x43, 0x42, 0x06, 0x73, 0x72},     //Chest
   {0x42, 0x41, 0x8B, 0x8A, 0x89},     //Granite
   {0x1F, 0x1F, 0x1E, 0x1E, 0x1D},     //Quartz
@@ -71,9 +71,9 @@ static bool jkey;
 static bool kkey;
 static bool lkey;
 
-#define chunksX 6
-#define chunksY 3
-#define chunksZ 6
+#define chunksX 4
+#define chunksY 4
+#define chunksZ 4
 
 static void pumpEvents();
 static void terrainGen();
@@ -94,7 +94,7 @@ static void updateViewMat();
 #define Y_SENSITIVITY 0.14
 
 //3D configuration
-#define NEAR 0.001f
+#define NEAR 0.01f
 #define FAR 48.0f
 #define FOV 75.0f
 
@@ -170,6 +170,8 @@ void ocMain()
   }
 }
 
+extern void drawTri(vec3 v1, vec3 v2, vec3 v3);
+
 void renderChunk(int x, int y, int z)
 {
   //immediately skip chunk if it is too far from player
@@ -224,40 +226,56 @@ void renderChunk(int x, int y, int z)
           {{bx + 1, by + 1, bz + 1}}
         };
         //take the best clip coordinate (min absolute value) of each dimension
-        float minX = 4;
-        float minY = 4;
-        float minZ = 4;
-        float minDepth = -1;
+        int clippedNear = 0;
+        int clippedFar = 0;
+        int clippedLeft = 0;
+        int clippedRight = 0;
+        int clippedTop = 0;
+        int clippedBottom = 0;
+        //z = 1 is the far plane in clip space, so everything visible has z < 1
+        float minDepth = 1;
+        float blockDepth = 255;
         for(int corner = 0; corner < 8; corner++)
         {
           vec4 viewSpace = matvec3(viewMat, cube[corner]);
+          blockDepth = min(blockDepth, -viewSpace.v[2]);
           vec4 clip = matvec4(projMat, viewSpace);
           float invw = 1.0f / clip.v[3];
           clip.v[0] *= invw;
           clip.v[1] *= invw;
           clip.v[2] *= invw;
-          minX = min(minX, fabsf(clip.v[0]));
-          minY = min(minY, fabsf(clip.v[1]));
-          minZ = min(minZ, fabsf(clip.v[2]));
-          minDepth = max(minDepth, clip.v[2]);
-        }
-        //cull blocks that are fully outside the viewport (and far enough away for this test to work)
-        //take 1-norm distance between player and block
-        if(fabsf(player.v[0] - bx) + fabsf(player.v[1] - by) + fabsf(player.v[2] - bz) > 6)
-        {
-          if(minX > 1 || minY > 1 || minZ > 1)
+          if(clip.v[2] > 1)
           {
-            //cube is fully invisible
-            continue;
+            clippedFar++;
+            break;
           }
+          if(clip.v[0] < -1)
+            clippedLeft++;
+          if(clip.v[0] > 1)
+            clippedRight++;
+          if(clip.v[1] < -1)
+            clippedBottom++;
+          if(clip.v[1] > 1)
+            clippedTop++;
+          if(clip.v[2] < -1)
+            clippedNear++;
+          minDepth = min(minDepth, clip.v[2]);
         }
-        glDepth(powf((minDepth + 1) / 2, 2) * 254);
+        //If block has any vertices past far plane, skip it entirely
+        //Otherwise, cube is fully invisible if (iff?) all 8 corners are clipped by the same frustum plane
+        if(clippedFar > 0 || clippedLeft == 8 || clippedRight == 8 || clippedTop == 8 || clippedBottom == 8 || clippedNear == 8)
+          continue;
+        blockDepth += 2;
+        if(blockDepth <= 8)
+          glDepth(blockDepth * 12);
+        else
+          glDepth(96 + (blockDepth - 8) * 3.8);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
           glDrawMode(DRAW_FILL);
         glColor1i(blockColor[block][1]);
-        if(player.v[0] < bx + 1)
+        if(player.v[0] < bx)
         {
           //might need to draw low X face
           byte neighbor = getBlock(bx - 1, by, bz);
@@ -271,7 +289,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx, by, bz + 1);
           }
         }
-        if(player.v[0] > bx)
+        if(player.v[0] > bx + 1)
         {
           byte neighbor = getBlock(bx + 1, by, bz);
           if(isTransparent(neighbor))
@@ -282,7 +300,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx + 1, by, bz + 1);
           }
         }
-        if(player.v[1] < by + 1)
+        if(player.v[1] < by)
         {
           byte neighbor = getBlock(bx, by - 1, bz);
           if(isTransparent(neighbor))
@@ -294,7 +312,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx, by, bz + 1);
           }
         }
-        if(player.v[1] > by)
+        if(player.v[1] > by + 1)
         {
           byte neighbor = getBlock(bx, by + 1, bz);
           if(isTransparent(neighbor))
@@ -307,7 +325,7 @@ void renderChunk(int x, int y, int z)
           }
         }
         glColor1i(blockColor[block][2]);
-        if(player.v[2] < bz + 1)
+        if(player.v[2] < bz)
         {
           byte neighbor = getBlock(bx, by, bz - 1);
           if(isTransparent(neighbor))
@@ -318,7 +336,7 @@ void renderChunk(int x, int y, int z)
             glVertex3f(bx, by + 1, bz);
           }
         }
-        if(player.v[2] > bz)
+        if(player.v[2] > bz + 1)
         {
           byte neighbor = getBlock(bx, by, bz + 1);
           if(isTransparent(neighbor))
@@ -1085,8 +1103,7 @@ static void updateViewMat()
   vec3 lookdir = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
   vec3 right = {-sinf(yaw), 0, cosf(yaw)};
   vec3 up = cross(right, lookdir);
-  vec3 cam = vecadd(player, vecscale(lookdir, 0.7));
-  vec3 target = vecadd(cam, lookdir);
-  setView(lookAt(cam, target, up));
+  vec3 target = vecadd(player, lookdir);
+  setView(lookAt(player, target, up));
 }
 
