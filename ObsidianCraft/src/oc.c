@@ -87,20 +87,20 @@ static void updatePhysics();
 static void updateViewMat();
 
 //player movement configuration
-#define PLAYER_SPEED 0.05         //horizontal movement speed
+#define PLAYER_SPEED 0.15         //horizontal movement speed
 #define JUMP_SPEED 0.5            //vertical takeoff speed of jump
 #define GRAVITY 0.06              //gravitational acceleration (blocks per frame per frame)
 #define TERMINAL_VELOCITY 100
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
-#define X_SENSITIVITY 0.07
-#define Y_SENSITIVITY 0.07
+#define X_SENSITIVITY 0.17
+#define Y_SENSITIVITY 0.17
 
 //3D configuration
 #define NEAR 0.2f
 #define FAR 48.0f
-#define FOV 55.0f
+#define FOV 75.0f
 
 inline bool isTransparent(byte b)
 {
@@ -131,14 +131,14 @@ void ocMain()
   yaw = 0;
   pitch = 0;
   //spawn player in horizontal center of world, at top
-  /*
   player.v[0] = chunksX * 16 / 2;
   player.v[1] = chunksY * 16;
   player.v[2] = chunksZ * 16 / 2;
-  */
+  /*
   player.v[0] = 0;
   player.v[1] = 5;
   player.v[2] = 0;
+  */
   onGround = false;
   vel.v[0] = 0;
   vel.v[1] = 0;
@@ -161,11 +161,12 @@ void ocMain()
       updateViewMat();
       viewStale = false;
     }
-    glDebug();
+    //glDebug();
     glClear(sky);
-    glEnableDepthTest(false);
+    glEnableDepthTest(true);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
+    /*
     glColor1i(0x2A);
     glDrawMode(DRAW_FILL);
     glBegin(GL_TRIANGLES);
@@ -209,7 +210,7 @@ void ocMain()
     debugVertex3f(1, 1, 1);
     debugVertex3f(-1, 1, 1);
     glEnd();
-    /*
+    */
     for(int i = 0; i < chunksX; i++)
     {
       for(int j = 0; j < chunksY; j++)
@@ -220,7 +221,6 @@ void ocMain()
         }
       }
     }
-    */
     glFlush();
     //hit 30 fps (if there is spare time this frame)
     sleepMS(34 - (clock() - cstart));

@@ -594,7 +594,15 @@ void clipTriBottom(vec3 v1, vec3 v2, vec3 v3);
 
 vec3 intersect(vec3 pt1, vec3 pt2, int dim, float val)
 {
-  return vecadd(pt1, vecscale(vecsub(pt2, pt1), (val - pt1.v[dim]) / (pt2.v[dim] - pt1.v[dim])));
+  if(fabsf(pt1.v[dim] - pt2.v[dim]) < 1e-6)
+  {
+    //can't do intersection formula, so just return the midpt
+    return vecscale(vecadd(pt1, pt2), 0.5);
+  }
+  else
+  {
+    return vecadd(pt1, vecscale(vecsub(pt2, pt1), (val - pt1.v[dim]) / (pt2.v[dim] - pt1.v[dim])));
+  }
 }
 
 #define VEC_SWAP(pt1, pt2) \
@@ -653,7 +661,8 @@ void clipTriNear(vec3 v1, vec3 v2, vec3 v3)
         clipTriLeft(v1, inter1, inter2);
         break;
       }
-    case 3: //nothing to do, no part of triangle is visible
+    //case 3: //nothing to do, no part of triangle is visible
+    case 3:
     default:;
   }
 }
