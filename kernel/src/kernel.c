@@ -251,8 +251,9 @@ void kernel_main()
   //initFatDriver();
   initKeyboard();
   resetTermCursor();
-  printMemStats();
+
   /*
+  printMemStats();
   vec3 eye = {{0, 0, 0}};
   vec3 target = {{0, 0, -1}};
   vec3 up = {{0, 1, 0}};
@@ -261,7 +262,7 @@ void kernel_main()
   setView(lookAt(eye, target, up));
   setProj(perspective(90.0f / (180.0f / PI), 0.1, 100));
 
-  vec3 v = {{0, 0, -100}};
+  vec3 v = {{-320.0 / 200, 1, -1}};
   vec3 cam = toVec3(matvec3(viewMat, v));
   vec3 clip = vshade(v);
   printf("World space: (%.2f %.2f %.2f)\n", v.v[0], v.v[1], v.v[2]);
@@ -272,6 +273,7 @@ void kernel_main()
   printMat(fullMat);
   while(1);
   */
+  
   renderBuf = malloc(64000);
 #ifdef DOUBLE_BUFFERED
   depthBuf = malloc(64000);
@@ -284,10 +286,9 @@ void kernel_main()
     switch(ev.type)
     {
       case KEY_EVENT:
-        //putchar('K');
         if(ev.e.key.pressed)
         {
-          //terminalKeyListener(ev.e.key.scancode);
+          terminalKeyListener(ev.e.key.scancode);
         }
         break;
       case MOTION_EVENT:

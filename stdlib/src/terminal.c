@@ -284,6 +284,10 @@ void parseCommand(char* start)
     clearTerminal(false);
   else if(strcmp("date", cmd) == 0)
     dateCommand();    //see time.c
+  else if(strcmp("clock", cmd) == 0)
+    graphicalClock();
+  else if(strcmp("craft", cmd) == 0)
+    ocMain();
   else if(strcmp("uptime", cmd) == 0)
     printf("%.4f minutes\n", clock() / (CLOCKS_PER_SEC * 60.0));
   else if(strcmp("demo", cmd) == 0)

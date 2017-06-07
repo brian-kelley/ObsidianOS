@@ -3,9 +3,10 @@
 
 #include "globalDefines.h"
 #include "stdio.h"
+#include "assert.h"
 #include "geometry.h"
 
-#define drawPixel(x, y) if((depthBuf[x + y * 320] > depthVal || !depthTest) && x >= 0 && x < 320 && y >= 0 && y < 200) \
+#define drawPixel(x, y) if((depthBuf[x + y * 320] > depthVal || !depthTest)) \
 { \
   renderBuf[x + y * 320] = color; \
   depthBuf[x + y * 320] = depthVal; \
@@ -73,6 +74,9 @@ void glFlush();
 void enable2D();
 //Do model-view-projection transformations on all vertices
 void enable3D();
+void glText(const char* text, int x, int y, byte bg);
+
+void glDebug();
 
 #endif
 

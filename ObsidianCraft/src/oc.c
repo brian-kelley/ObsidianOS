@@ -1,5 +1,8 @@
 #include "oc.h"
 
+//Whether to noclip
+#define NOCLIP
+
 //Seed (TODO: configure or randomize w/ time())
 #define SEED 11
 
@@ -8,7 +11,7 @@ static Stack* inv;
 //Eventually, have at least a 4x4x4 chunks (64^3 blocks) world
 static Chunk* chunks;
 //Player position
-static vec3 player;
+vec3 player;
 //Player velocity
 static vec3 vel;
 //Whether view mat must be updated this frame
@@ -17,6 +20,7 @@ static bool viewStale = true;
 static bool onGround = false;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
+vec3 lookdir;
 /* Block list:
    AIR (0),
    STONE (1),    //Light grey
@@ -83,20 +87,20 @@ static void updatePhysics();
 static void updateViewMat();
 
 //player movement configuration
-#define PLAYER_SPEED 0.15         //horizontal movement speed
+#define PLAYER_SPEED 0.05         //horizontal movement speed
 #define JUMP_SPEED 0.5            //vertical takeoff speed of jump
 #define GRAVITY 0.06              //gravitational acceleration (blocks per frame per frame)
 #define TERMINAL_VELOCITY 100
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
-#define X_SENSITIVITY 0.14
-#define Y_SENSITIVITY 0.14
+#define X_SENSITIVITY 0.07
+#define Y_SENSITIVITY 0.07
 
 //3D configuration
-#define NEAR 0.01f
+#define NEAR 0.2f
 #define FAR 48.0f
-#define FOV 75.0f
+#define FOV 55.0f
 
 inline bool isTransparent(byte b)
 {
@@ -125,11 +129,16 @@ void ocMain()
   terrainGen();
   initChunks();
   yaw = 0;
-  pitch = -PI / 2 + 0.1;
+  pitch = 0;
   //spawn player in horizontal center of world, at top
+  /*
   player.v[0] = chunksX * 16 / 2;
   player.v[1] = chunksY * 16;
   player.v[2] = chunksZ * 16 / 2;
+  */
+  player.v[0] = 0;
+  player.v[1] = 5;
+  player.v[2] = 0;
   onGround = false;
   vel.v[0] = 0;
   vel.v[1] = 0;
@@ -139,7 +148,8 @@ void ocMain()
   skey = false;
   dkey = false;
   setModel(identity());
-  setProj(perspective(FOV / (180.0f / PI), NEAR, FAR));
+  //setProj(perspective(FOV / (180.0f / PI), NEAR, FAR));
+  setProj(perspective(FOV / (180.0f / PI), NEAR, 1000));
   while(1)
   {
     clock_t cstart = clock();
@@ -151,9 +161,55 @@ void ocMain()
       updateViewMat();
       viewStale = false;
     }
+    glDebug();
     glClear(sky);
+    glEnableDepthTest(false);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
+    glColor1i(0x2A);
+    glDrawMode(DRAW_FILL);
+    glBegin(GL_TRIANGLES);
+    glVertex3f(5, 5, 5);
+    glVertex3f(15, 5, 5);
+    glVertex3f(15, 15, 5);
+    glEnd();
+    glColor1i(0);
+    glDrawMode(DRAW_WIREFRAME);
+    glBegin(GL_QUADS);
+
+#define debugVertex3f(dx, dy, dz) glVertex3f((dx) + 5 * lookdir.v[0] + player.v[0], (dy) + 5 * lookdir.v[1] + player.v[1], (dz) + 5 * lookdir.v[2] + player.v[2])
+
+    debugVertex3f(-1, -1, -1);
+    debugVertex3f(1, -1, -1);
+    debugVertex3f(1, 1, -1);
+    debugVertex3f(-1, 1, -1);
+
+    debugVertex3f(-1, -1, -1);
+    debugVertex3f(-1, 1, -1);
+    debugVertex3f(-1, 1, 1);
+    debugVertex3f(-1, -1, 1);
+
+    debugVertex3f(-1, -1, -1);
+    debugVertex3f(1, -1, -1);
+    debugVertex3f(1, -1, 1);
+    debugVertex3f(-1, -1, 1);
+
+    debugVertex3f(-1, -1, 1);
+    debugVertex3f(1, -1, 1);
+    debugVertex3f(1, 1, 1);
+    debugVertex3f(-1, 1, 1);
+
+    debugVertex3f(1, -1, -1);
+    debugVertex3f(1, 1, -1);
+    debugVertex3f(1, 1, 1);
+    debugVertex3f(1, -1, 1);
+
+    debugVertex3f(-1, 1, -1);
+    debugVertex3f(1, 1, -1);
+    debugVertex3f(1, 1, 1);
+    debugVertex3f(-1, 1, 1);
+    glEnd();
+    /*
     for(int i = 0; i < chunksX; i++)
     {
       for(int j = 0; j < chunksY; j++)
@@ -164,13 +220,12 @@ void ocMain()
         }
       }
     }
+    */
     glFlush();
     //hit 30 fps (if there is spare time this frame)
     sleepMS(34 - (clock() - cstart));
   }
 }
-
-extern void drawTri(vec3 v1, vec3 v2, vec3 v3);
 
 void renderChunk(int x, int y, int z)
 {
@@ -232,8 +287,6 @@ void renderChunk(int x, int y, int z)
         int clippedRight = 0;
         int clippedTop = 0;
         int clippedBottom = 0;
-        //z = 1 is the far plane in clip space, so everything visible has z < 1
-        float minDepth = 1;
         float blockDepth = 255;
         for(int corner = 0; corner < 8; corner++)
         {
@@ -259,7 +312,6 @@ void renderChunk(int x, int y, int z)
             clippedTop++;
           if(clip.v[2] < -1)
             clippedNear++;
-          minDepth = min(minDepth, clip.v[2]);
         }
         //If block has any vertices past far plane, skip it entirely
         //Otherwise, cube is fully invisible if (iff?) all 8 corners are clipped by the same frustum plane
@@ -1011,6 +1063,9 @@ static bool moveHitbox(Hitbox* hb, int dir, float d)
       }
     }
   }
+#ifdef NOCLIP
+  collide = false;
+#endif
   if(collide)
   {
     float eps = 1e-5;
@@ -1044,14 +1099,15 @@ static bool moveHitbox(Hitbox* hb, int dir, float d)
 static void updatePhysics()
 {
   vec3 old = player;
+  Hitbox hb = {player.v[0] - PLAYER_WIDTH / 2, player.v[1] - PLAYER_EYE, player.v[2] - PLAYER_WIDTH / 2, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH};
   //gravitational acceleration
+#ifndef NOCLIP
   if(!onGround)
   {
     vel.v[1] -= GRAVITY;
     if(vel.v[1] < -TERMINAL_VELOCITY)
       vel.v[1] = -TERMINAL_VELOCITY;
   }
-  Hitbox hb = {player.v[0] - PLAYER_WIDTH / 2, player.v[1] - PLAYER_EYE, player.v[2] - PLAYER_WIDTH / 2, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH};
   if(vel.v[1] > 0)
   {
     bool hit = moveHitbox(&hb, HB_PY, vel.v[1]);
@@ -1067,6 +1123,7 @@ static void updatePhysics()
       onGround = true;
     }
   }
+#endif
   //move horizontally
   moveHitbox(&hb, vel.v[0] > 0 ? HB_PX : HB_MX, fabsf(vel.v[0]));
   moveHitbox(&hb, vel.v[2] > 0 ? HB_PZ : HB_MZ, fabsf(vel.v[2]));
@@ -1076,6 +1133,7 @@ static void updatePhysics()
     if(!moveHitbox(&hb, HB_MY, 0.001))
       onGround = false;
   }
+#ifndef NOCLIP
   //clamp player to world boundaries (can't fall out of world)
   if(hb.x < 0)
     hb.x = 0;
@@ -1089,6 +1147,7 @@ static void updatePhysics()
     hb.z = 0;
   if(hb.z > chunksZ * 16 - PLAYER_WIDTH)
     hb.z = chunksZ * 16 - PLAYER_WIDTH;
+#endif
   //copy position back to player vector
   player.v[0] = hb.x + PLAYER_WIDTH / 2;
   player.v[1] = hb.y + PLAYER_EYE;
@@ -1100,7 +1159,7 @@ static void updatePhysics()
 
 static void updateViewMat()
 {
-  vec3 lookdir = {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)};
+  lookdir = ((vec3) {cosf(pitch) * cosf(yaw), sinf(pitch), cosf(pitch) * sinf(yaw)});
   vec3 right = {-sinf(yaw), 0, cosf(yaw)};
   vec3 up = cross(right, lookdir);
   vec3 target = vecadd(player, lookdir);

@@ -41,6 +41,7 @@ void dateCommand();
 //busy wait for given seconds/milliseconds
 void sleepS(int s);
 void sleepMS(int ms);
+void graphicalClock();
 
 #endif
 

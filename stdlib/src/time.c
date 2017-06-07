@@ -1,4 +1,5 @@
 #include "time.h"
+#include "graphics.h"
 
 //Timezone, in hours offset from UTC/GMT
 //TODO: Let user configure in a nice way
@@ -460,5 +461,66 @@ void sleepMS(int ms)
   clock_t start = clock();
   clock_t end = start + ticks;
   while(clock() < end);
+}
+
+void graphicalClock()
+{
+  byte* fb = (byte*) 0xA0000;
+  time_t t = time(NULL);
+  while(1)
+  {
+    memset(fb, 0, 64000);
+    if(haveEvent())
+    {
+      Event e = getNextEvent();
+      if(e.type == KEY_EVENT && e.e.key.pressed)
+        return;
+    }
+    struct tm* timeStruct = localtime(&t);
+    int sec = timeStruct->tm_sec;
+    int minute = timeStruct->tm_min;
+    int hour = timeStruct->tm_hour;
+    float secTheta = PI / 2 - (2 * PI) / 60 * (sec - 1);
+    float minTheta = PI / 2 - (2 * PI) / 60 * (minute - 1);
+    float hourTheta = PI / 2 - (2 * PI) / 12 * (hour + minute / 60.0f);
+    glClear(0);
+    glColor1i(0x1F);
+    drawLine(160, 100, 160 + 50 * cos(secTheta), 100 - 50 * sin(secTheta));
+    glColor1i(0x1D);
+    drawLine(160, 100, 160 + 50 * cos(minTheta), 100 - 50 * sin(minTheta));
+    glColor1i(0x1B);
+    drawLine(160, 100, 160 + 30 * cos(hourTheta), 100 - 30 * sin(hourTheta));
+    //add 60 tick marks
+    glColor1i(0xF);
+    for(int i = 0; i < 60; i++)
+    {
+      float theta = PI / 2 - i * (2 * PI / 60);
+      int x1 = 160 + 60 * cos(theta);
+      int y1 = 100 + 60 * sin(theta);
+      int x2, y2;
+      if(i % 5)
+      {
+        x2 = 160 + 63 * cos(theta);
+        y2 = 100 + 63 * sin(theta);
+      }
+      else
+      {
+        x2 = 160 + 65 * cos(theta);
+        y2 = 100 + 65 * sin(theta);
+      }
+      drawLine(x1, y1, x2, y2);
+    }
+    for(int i = 1; i <= 12; i++)
+    {
+      int tx = 160 + 80 * cos(PI / 2 - i * (2 * PI) / 12) - 4;
+      int ty = 100 - 80 * sin(PI / 2 - i * (2 * PI) / 12) - 4;
+      char buf[4];
+      sprintf(buf, "%i", i);
+      glText(buf, tx, ty, 0);
+    }
+    glFlush();
+    time_t temp = t;
+    while(time(&t) == temp);
+  }
 }
 
