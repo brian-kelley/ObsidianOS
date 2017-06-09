@@ -1,10 +1,10 @@
 #include "oc.h"
 
 //Whether to noclip
-#define NOCLIP
+//#define NOCLIP
 
 //Seed (TODO: configure or randomize w/ time())
-#define SEED 11
+#define SEED 12
 
 //Have 10x6 inventory
 static Stack* inv;

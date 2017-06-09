@@ -597,7 +597,8 @@ vec3 intersect(vec3 pt1, vec3 pt2, int dim, float val)
   if(fabsf(pt1.v[dim] - pt2.v[dim]) < 1e-6)
   {
     //can't do intersection formula, so just return the midpt
-    return vecscale(vecadd(pt1, pt2), 0.5);
+    //return vecscale(vecadd(pt1, pt2), 0.5);
+    return pt1;
   }
   else
   {
