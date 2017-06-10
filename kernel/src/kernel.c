@@ -207,7 +207,7 @@ void cubeDemo()
   setModel(identity());
   //fov, in degrees
   float fov = 90;
-  setProj(perspective(fov / (180.0f / PI), 0.1, 100));
+  setProj(fov, 0.1, 100);
   //camera at origin, upright, pointing towards -Z
   int i = 1;
   while(1)
@@ -262,15 +262,6 @@ void kernel_main()
   setView(lookAt(eye, target, up));
   setProj(perspective(90.0f / (180.0f / PI), 0.1, 100));
 
-  vec3 v = {{-320.0 / 200, 1, -1}};
-  vec3 cam = toVec3(matvec3(viewMat, v));
-  vec3 clip = vshade(v);
-  printf("World space: (%.2f %.2f %.2f)\n", v.v[0], v.v[1], v.v[2]);
-  printf("View space: (%.2f %.2f %.2f)\n", cam.v[0], cam.v[1], cam.v[2]);
-  printf("Clip space: (%.4f %.4f %.4f)\n", clip.v[0], clip.v[1], clip.v[2]);
-
-  printf("Whole mat:\n");
-  printMat(fullMat);
   while(1);
   */
   

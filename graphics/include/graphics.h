@@ -34,7 +34,7 @@ extern mat4 viewMat;
 extern mat4 projMat;
 void setModel(mat4 m);
 void setView(mat4 v);
-void setProj(mat4 p);
+void setProj(float fovyDeg, float near, float far);
 
 //do model, view, projection transformations
 vec3 vshade(vec3 vertex);
@@ -77,6 +77,9 @@ void enable3D();
 void glText(const char* text, int x, int y, byte bg);
 
 void glDebug();
+
+//internal
+void drawClipped(vec3 v1, vec3 v2, vec3 v3);
 
 #endif
 

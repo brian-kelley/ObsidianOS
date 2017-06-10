@@ -1,7 +1,7 @@
 #include "oc.h"
 
 //Whether to noclip
-//#define NOCLIP
+#define NOCLIP
 
 //Seed (TODO: configure or randomize w/ time())
 #define SEED 12
@@ -87,20 +87,20 @@ static void updatePhysics();
 static void updateViewMat();
 
 //player movement configuration
-#define PLAYER_SPEED 0.15         //horizontal movement speed
+#define PLAYER_SPEED 0.05         //horizontal movement speed
 #define JUMP_SPEED 0.5            //vertical takeoff speed of jump
 #define GRAVITY 0.06              //gravitational acceleration (blocks per frame per frame)
 #define TERMINAL_VELOCITY 100
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
-#define X_SENSITIVITY 0.17
-#define Y_SENSITIVITY 0.17
+#define X_SENSITIVITY 0.07
+#define Y_SENSITIVITY 0.07
 
 //3D configuration
 #define NEAR 0.2f
-#define FAR 48.0f
-#define FOV 75.0f
+#define FAR 64.0f
+#define FOV 80.0f
 
 inline bool isTransparent(byte b)
 {
@@ -131,14 +131,14 @@ void ocMain()
   yaw = 0;
   pitch = 0;
   //spawn player in horizontal center of world, at top
+  /*
   player.v[0] = chunksX * 16 / 2;
   player.v[1] = chunksY * 16;
   player.v[2] = chunksZ * 16 / 2;
-  /*
-  player.v[0] = 0;
-  player.v[1] = 5;
-  player.v[2] = 0;
   */
+  player.v[0] = 0;
+  player.v[1] = 0;
+  player.v[2] = 0;
   onGround = false;
   vel.v[0] = 0;
   vel.v[1] = 0;
@@ -148,8 +148,7 @@ void ocMain()
   skey = false;
   dkey = false;
   setModel(identity());
-  //setProj(perspective(FOV / (180.0f / PI), NEAR, FAR));
-  setProj(perspective(FOV / (180.0f / PI), NEAR, 1000));
+  setProj(FOV, NEAR, FAR);
   while(1)
   {
     clock_t cstart = clock();
@@ -166,58 +165,19 @@ void ocMain()
     glEnableDepthTest(true);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
-    /*
-    glColor1i(0x2A);
-    glDrawMode(DRAW_FILL);
+    glColor1i(0x2B);
     glBegin(GL_TRIANGLES);
-    glVertex3f(5, 5, 5);
-    glVertex3f(15, 5, 5);
-    glVertex3f(15, 15, 5);
+    glVertex3f(1, 0, 0);
+    glVertex3f(1, 1, 0);
+    glVertex3f(2, 0, 0);
     glEnd();
-    glColor1i(0);
-    glDrawMode(DRAW_WIREFRAME);
-    glBegin(GL_QUADS);
-
-#define debugVertex3f(dx, dy, dz) glVertex3f((dx) + 5 * lookdir.v[0] + player.v[0], (dy) + 5 * lookdir.v[1] + player.v[1], (dz) + 5 * lookdir.v[2] + player.v[2])
-
-    debugVertex3f(-1, -1, -1);
-    debugVertex3f(1, -1, -1);
-    debugVertex3f(1, 1, -1);
-    debugVertex3f(-1, 1, -1);
-
-    debugVertex3f(-1, -1, -1);
-    debugVertex3f(-1, 1, -1);
-    debugVertex3f(-1, 1, 1);
-    debugVertex3f(-1, -1, 1);
-
-    debugVertex3f(-1, -1, -1);
-    debugVertex3f(1, -1, -1);
-    debugVertex3f(1, -1, 1);
-    debugVertex3f(-1, -1, 1);
-
-    debugVertex3f(-1, -1, 1);
-    debugVertex3f(1, -1, 1);
-    debugVertex3f(1, 1, 1);
-    debugVertex3f(-1, 1, 1);
-
-    debugVertex3f(1, -1, -1);
-    debugVertex3f(1, 1, -1);
-    debugVertex3f(1, 1, 1);
-    debugVertex3f(1, -1, 1);
-
-    debugVertex3f(-1, 1, -1);
-    debugVertex3f(1, 1, -1);
-    debugVertex3f(1, 1, 1);
-    debugVertex3f(-1, 1, 1);
-    glEnd();
-    */
     for(int i = 0; i < chunksX; i++)
     {
       for(int j = 0; j < chunksY; j++)
       {
         for(int k = 0; k < chunksZ; k++)
         {
-          renderChunk(i, j, k);
+          //renderChunk(i, j, k);
         }
       }
     }

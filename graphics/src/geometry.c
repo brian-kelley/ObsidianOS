@@ -214,3 +214,59 @@ vec4 toVec4(vec3 v)
   return v4;
 }
 
+//Thanks http://www.cubic.org/docs/3dclip.htm for math
+float planeLineDistance(vec3 v, Plane p)
+{
+  return v.v[0] * p.a + v.v[1] * p.b + v.v[2] * p.c - p.d;
+}
+
+vec3 linePlaneIntersect(vec3 p1, vec3 p2, Plane plane)
+{
+  float d1 = planeLineDistance(p1, plane);
+  float d2 = planeLineDistance(p2, plane);
+  float s = d1 / (d1 - d2);
+  vec3 inter;
+  inter.v[0] = p1.v[0] + s * (p2.v[0] - p1.v[0]);
+  inter.v[1] = p1.v[1] + s * (p2.v[1] - p1.v[1]);
+  inter.v[2] = p1.v[2] + s * (p2.v[2] - p1.v[2]);
+  return inter;
+}
+
+//near (-z), left (-x), right (+x), top (+y), bottom (-y)
+void getFrustumPlanes(Plane* frustum, float fovyRad, float near)
+{
+  //get the angles from straight ahead to frustum: tx is horizontal, ty is vertical
+  float ty = fovyRad / 2;
+  float tx = atanf((320.0f / 200.0f) * tanf(ty));
+  //use sin/cos to easily get normalized normals for frustum planes
+  float sx = sinf(tx);
+  float cx = cosf(tx);
+  float sy = sinf(ty);
+  float cy = cosf(ty);
+  //near
+  frustum[0].a = 0;
+  frustum[0].b = 0;
+  frustum[0].c = -1;
+  frustum[0].d = -near;
+  //left
+  frustum[1].a = cx;
+  frustum[1].b = 0;
+  frustum[1].c = -sx;
+  frustum[1].d = 0;
+  //right
+  frustum[2].a = -cx;
+  frustum[2].b = 0;
+  frustum[2].c = -sx;
+  frustum[2].d = 0;
+  //top
+  frustum[3].a = 0;
+  frustum[3].b = cy;
+  frustum[3].c = -sy;
+  frustum[3].d = 0;
+  //bottom
+  frustum[4].a = 0;
+  frustum[4].b = -cy;
+  frustum[4].c = -sy;
+  frustum[4].d = 0;
+}
+

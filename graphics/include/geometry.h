@@ -31,6 +31,17 @@ typedef struct
   float v[2];
 } vec2;
 
+//Plane: ax + by + cz = d
+//(a, b, c) should be the normalized normal vector
+//d is the displacement from origin
+typedef struct
+{
+  float a;
+  float b;
+  float c;
+  float d;
+} Plane;
+
 typedef struct
 {
   int x;
@@ -67,6 +78,18 @@ vec3 vecsub(vec3 lhs, vec3 rhs);
 vec3 vecscale(vec3 v, float scale);
 vec3 toVec3(vec4 v);
 vec4 toVec4(vec3 v);
+
+//get the minimum distance from p to v
+//if rv > 0, v is "in front of" plane
+//if rv = 0, v is on plane
+//if rv < 0, v is "behind" plane
+float planeLineDistance(vec3 v, Plane p);
+//precondition: p1, p2 on different sides of plane and neither are on the plane
+vec3 linePlaneIntersect(vec3 p1, vec3 p2, Plane plane);
+//load the 5 planes constituting the frustum (in view space) - omit far
+//frustum is populated with:
+//near (-z), left (-x), right (+x), top (+y), bottom (-y)
+void getFrustumPlanes(Plane* frustum, float fovyRad, float near);
 
 #endif
 

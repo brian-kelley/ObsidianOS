@@ -497,6 +497,7 @@ void swapVertices(int* x1, int* y1, int* x2, int* y2)
 //////////////////
 
 mat4 fullMat;
+static Plane frustum[5];
 
 static void updateMatrices()
 {
@@ -515,10 +516,11 @@ void setView(mat4 v)
   updateMatrices();
 }
 
-void setProj(mat4 p)
+void setProj(float fovyDeg, float near, float far)
 {
-  projMat = p;
+  projMat = perspective((fovyDeg / 2) / (180.0f / PI), near, far);
   updateMatrices();
+  getFrustumPlanes(frustum, (fovyDeg / (180.0f / PI)), near);
 }
 
 vec3 vshade(vec3 vertex)
@@ -583,13 +585,6 @@ void glVertex3f(float x, float y, float z)
 //y = -1
 //y = 1
 
-void drawTri(vec3 v1, vec3 v2, vec3 v3);
-void clipTriNear(vec3 v1, vec3 v2, vec3 v3);
-void clipTriLeft(vec3 v1, vec3 v2, vec3 v3);
-void clipTriRight(vec3 v1, vec3 v2, vec3 v3);
-void clipTriTop(vec3 v1, vec3 v2, vec3 v3);
-void clipTriBottom(vec3 v1, vec3 v2, vec3 v3);
-
 //Each clip-draw function clips one triangle against one plane
 
 vec3 intersect(vec3 pt1, vec3 pt2, int dim, float val)
@@ -613,325 +608,84 @@ vec3 intersect(vec3 pt1, vec3 pt2, int dim, float val)
   pt2 = temp; \
 }
 
-void clipTriNear(vec3 v1, vec3 v2, vec3 v3)
+//Fill a triangle, and clip against frustum
+//v1, v2, v3 in view space
+//Pass clipPlane = 0 to start (is recursive)
+//Pass clipPlane = 5 to do perspective trans and rasterize
+//Precondition: already culled triangles beyond the far plane
+static void drawClippedTri(vec3 v1, vec3 v2, vec3 v3, int clipPlane)
 {
-  int numBeyond = 0;
-  if(v1.v[2] < -1)
-    numBeyond++;
-  if(v2.v[2] < -1)
-    numBeyond++;
-  if(v3.v[2] < -1)
-    numBeyond++;
-  switch(numBeyond)
+  if(clipPlane == 5)
+  {
+    vec4 proj1 = matvec3(projMat, v1);
+    vec4 proj2 = matvec3(projMat, v2);
+    vec4 proj3 = matvec3(projMat, v3);
+    point vp1 = viewport(vecscale(toVec3(proj1), 1.0f / proj1.v[3]));
+    point vp2 = viewport(vecscale(toVec3(proj2), 1.0f / proj2.v[3]));
+    point vp3 = viewport(vecscale(toVec3(proj3), 1.0f / proj3.v[3]));
+    fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
+    return;
+  }
+  Plane toClip = frustum[clipPlane];
+  //test vertices against *toClip
+  //note: distance > 0 means "in front" or in same direction as plane normal,
+  //which means the point is on the visible side of the plane
+  int behind = 0;
+  float d1 = planeLineDistance(v1, toClip);
+  float d2 = planeLineDistance(v2, toClip);
+  float d3 = planeLineDistance(v3, toClip);
+  if(d1 < 0)
+    behind++;
+  if(d2 < 0)
+    behind++;
+  if(d3 < 0)
+    behind++;
+  switch(behind)
   {
     case 0:
-      {
-        clipTriLeft(v1, v2, v3);
-        break;
-      }
+      //triangle does not intersect plane at all
+      drawClippedTri(v1, v2, v3, clipPlane + 1);
+      break;
     case 1:
       {
-        //swap vertices so v1 is the only discarded vertex
-        if(v2.v[2] < -1)
+        //one vertex invisible
+        //compute two intersection points and draw 2 triangles
+        //get v1 as the invisible vertex
+        if(d2 < 0)
         {
           VEC_SWAP(v1, v2);
         }
-        else if(v3.v[2] < -1)
+        else if(d3 < 0)
         {
           VEC_SWAP(v1, v3);
         }
-        vec3 inter1 = intersect(v1, v2, 2, -1);
-        vec3 inter2 = intersect(v1, v3, 2, -1);
-        clipTriLeft(inter1, v2, v3);
-        clipTriLeft(inter1, v3, inter2);
+        vec3 inter1 = linePlaneIntersect(v1, v2, toClip);
+        vec3 inter2 = linePlaneIntersect(v1, v3, toClip);
+        drawClippedTri(inter1, v2, v3, clipPlane + 1);
+        drawClippedTri(inter1, v3, inter2, clipPlane + 1);
         break;
       }
     case 2:
       {
-        //get v1 as the only non-discarded vertex
-        if(v2.v[2] >= -1)
+        //2 vertices invisible
+        //compute two intersection points and draw one triangle
+        //get v1 as the only visible vertex
+        if(d2 > 0)
         {
           VEC_SWAP(v1, v2);
         }
-        else if(v3.v[2] >= -1)
+        else if(d3 > 0)
         {
           VEC_SWAP(v1, v3);
         }
-        vec3 inter1 = intersect(v1, v2, 2, -1);
-        vec3 inter2 = intersect(v1, v3, 2, -1);
-        clipTriLeft(v1, inter1, inter2);
+        vec3 inter1 = linePlaneIntersect(v1, v2, toClip);
+        vec3 inter2 = linePlaneIntersect(v1, v3, toClip);
+        drawClippedTri(v1, inter1, inter2, clipPlane + 1);
         break;
       }
-    //case 3: //nothing to do, no part of triangle is visible
     case 3:
     default:;
   }
-}
-
-void clipTriLeft(vec3 v1, vec3 v2, vec3 v3)
-{
-  int numBeyond = 0;
-  if(v1.v[0] < -1)
-    numBeyond++;
-  if(v2.v[0] < -1)
-    numBeyond++;
-  if(v3.v[0] < -1)
-    numBeyond++;
-  switch(numBeyond)
-  {
-    case 0:
-      {
-        clipTriRight(v1, v2, v3);
-        break;
-      }
-    case 1:
-      {
-        //swap vertices so v1 is nearer than near plane, and other two are not
-        if(v2.v[0] < -1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[0] < -1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 0, -1);
-        vec3 inter2 = intersect(v1, v3, 0, -1);
-        clipTriRight(inter1, v2, v3);
-        clipTriRight(inter1, inter2, v3);
-        break;
-      }
-    case 2:
-      {
-        //get v1 as the vertex that is not discarded
-        if(v2.v[0] >= -1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[0] >= -1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 0, -1);
-        vec3 inter2 = intersect(v1, v3, 0, -1);
-        clipTriRight(v1, inter1, inter2);
-        break;
-      }
-    case 3: //nothing to do, no part of triangle is visible
-    default:;
-  }
-}
-
-void clipTriRight(vec3 v1, vec3 v2, vec3 v3)
-{
-  int numBeyond = 0;
-  if(v1.v[0] > 1)
-    numBeyond++;
-  if(v2.v[0] > 1)
-    numBeyond++;
-  if(v3.v[0] > 1)
-    numBeyond++;
-  switch(numBeyond)
-  {
-    case 0:
-      {
-        clipTriTop(v1, v2, v3);
-        break;
-      }
-    case 1:
-      {
-        if(v2.v[0] > 1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[0] > 1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 0, 1);
-        vec3 inter2 = intersect(v1, v3, 0, 1);
-        clipTriTop(inter1, v2, v3);
-        clipTriTop(inter1, v3, inter2);
-        break;
-      }
-    case 2:
-      {
-        //get v1 as the vertex that is not discarded
-        if(v2.v[0] <= 1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[0] <= 1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 0, 1);
-        vec3 inter2 = intersect(v1, v3, 0, 1);
-        clipTriTop(v1, inter1, inter2);
-        break;
-      }
-    case 3: //nothing to do, no part of triangle is visible
-    default:;
-  }
-}
-
-void clipTriTop(vec3 v1, vec3 v2, vec3 v3)
-{
-  //get the number of vertices that are beyond the near plane
-  int numBeyond = 0;
-  if(v1.v[1] > 1)
-    numBeyond++;
-  if(v2.v[1] > 1)
-    numBeyond++;
-  if(v3.v[1] > 1)
-    numBeyond++;
-  switch(numBeyond)
-  {
-    case 0:
-      {
-        //draw the full triangle normally
-        clipTriBottom(v1, v2, v3);
-        break;
-      }
-    case 1:
-      {
-        if(v2.v[1] > 1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[1] > 1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 1, 1);
-        vec3 inter2 = intersect(v1, v3, 1, 1);
-        clipTriBottom(inter1, v2, v3);
-        clipTriBottom(inter1, inter2, v3);
-        break;
-      }
-    case 2:
-      {
-        //get v1 as the vertex that is not discarded
-        if(v2.v[1] <= 1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[1] <= 1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 1, 1);
-        vec3 inter2 = intersect(v1, v3, 1, 1);
-        clipTriBottom(v1, inter1, inter2);
-        break;
-      }
-    case 3: //nothing to do, no part of triangle is visible
-    default:;
-  }
-}
-
-extern vec3 lookdir;
-extern vec3 player;
-
-void clipTriBottom(vec3 v1, vec3 v2, vec3 v3)
-{
-  int numBeyond = 0;
-  if(v1.v[1] < -1)
-    numBeyond++;
-  if(v2.v[1] < -1)
-    numBeyond++;
-  if(v3.v[1] < -1)
-    numBeyond++;
-  switch(numBeyond)
-  {
-    case 0:
-      {
-        point vp1 = viewport(v1);
-        point vp2 = viewport(v2);
-        point vp3 = viewport(v3);
-        if(glDebugOn)
-        {
-          vp1 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), v1))));
-          vp2 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), v2))));
-          vp3 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), v3))));
-          drawTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
-        }
-        else
-          fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
-        break;
-      }
-    case 1:
-      {
-        if(v2.v[1] < -1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[1] < -1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 1, -1);
-        vec3 inter2 = intersect(v1, v3, 1, -1);
-        point vp1 = viewport(v2);
-        point vp2 = viewport(v3);
-        point vp3 = viewport(inter1);
-        point vp4 = viewport(inter2);
-        if(glDebugOn)
-        {
-          vp1 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), v2))));
-          vp2 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), v3))));
-          vp3 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), inter1))));
-          vp4 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), inter2))));
-          drawTriangle(vp3.x, vp3.y, vp1.x, vp1.y, vp2.x, vp2.y);
-          drawTriangle(vp3.x, vp3.y, vp4.x, vp4.y, vp2.x, vp2.y);
-        }
-        else
-        {
-          fillTriangle(vp3.x, vp3.y, vp1.x, vp1.y, vp2.x, vp2.y);
-          fillTriangle(vp3.x, vp3.y, vp4.x, vp4.y, vp2.x, vp2.y);
-        }
-        break;
-      }
-    case 2:
-      {
-        //get v1 as the vertex that is not discarded
-        if(v2.v[1] >= -1)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(v3.v[1] >= -1)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = intersect(v1, v2, 1, -1);
-        vec3 inter2 = intersect(v1, v3, 1, -1);
-        point vp1 = viewport(inter1);
-        point vp2 = viewport(inter2);
-        point vp3 = viewport(v1);
-        if(glDebugOn)
-        {
-          vp1 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), inter1))));
-          vp2 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), inter2))));
-          vp3 = viewport(vshade(vecadd(player, vecadd(vecscale(lookdir, 5), v1))));
-          drawTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
-        }
-        else
-          fillTriangle(vp1.x, vp1.y, vp2.x, vp2.y, vp3.x, vp3.y);
-        break;
-      }
-    case 3: //nothing to do, no part of triangle is visible
-    default:;
-  }
-}
-
-void drawTri(vec3 v1, vec3 v2, vec3 v3)
-{
-  //skip if has any vertices outside far plane
-  //blocks are small, so this should have no noticeable effect
-  if(v1.v[2] > 1 || v2.v[2] > 1 || v3.v[2] > 1)
-    return;
-  //skip if all vertices are outside clip space
-  clipTriNear(v1, v2, v3);
 }
 
 void glVertex3fv(vec3 v)
@@ -942,8 +696,8 @@ void glVertex3fv(vec3 v)
   {
     //run vshader and draw the geometry, then flush vert buffer
     //vertices in screen space
-    vec3 clip[4];
     point screen[4];
+    vec3 clip[4];
     if(!enabled3D)
     {
       for(int i = 0; i < verts; i++)
@@ -968,7 +722,12 @@ void glVertex3fv(vec3 v)
     {
       if(drawMode == DRAW_FILL)
       {
-        drawTri(clip[0], clip[1], clip[2]);
+        //do modelview transform only on vertstate[0:3]
+        //for now, ignore model
+        drawClippedTri(
+            toVec3(matvec3(viewMat, vertState[0])),
+            toVec3(matvec3(viewMat, vertState[1])),
+            toVec3(matvec3(viewMat, vertState[2])), 0);
       }
       else
       {
@@ -982,8 +741,14 @@ void glVertex3fv(vec3 v)
     {
       if(drawMode == DRAW_FILL)
       {
-        drawTri(clip[0], clip[1], clip[2]);
-        drawTri(clip[0], clip[2], clip[3]);
+        drawClippedTri(
+            toVec3(matvec3(viewMat, vertState[0])),
+            toVec3(matvec3(viewMat, vertState[1])),
+            toVec3(matvec3(viewMat, vertState[2])), 0);
+        drawClippedTri(
+            toVec3(matvec3(viewMat, vertState[0])),
+            toVec3(matvec3(viewMat, vertState[2])),
+            toVec3(matvec3(viewMat, vertState[3])), 0);
       }
       else
       {
