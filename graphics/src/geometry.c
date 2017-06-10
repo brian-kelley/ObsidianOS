@@ -239,10 +239,12 @@ void getFrustumPlanes(Plane* frustum, float fovyRad, float near)
 {
   //get the angles from straight ahead to frustum: tx is horizontal, ty is vertical
   float ty = fovyRad - 1e-4;
-  float tx = (320.0f / 200.0f) * ty - 1e-4;
+  float tx = atan((320.0f / 200.0f) * tan(ty)) - 1e-4;
   //float tx = atanf((320.0f / 200.0f) * tanf(ty)) - 1e-4;
-  tx /= 2;
-  ty /= 2;
+  //tx *= 0.995;
+  //ty *= 0.995;
+  //tx /= 2;
+  //ty /= 2;
   //use sin/cos to easily get normalized normals for frustum planes
   float sx = sinf(tx);
   float cx = cosf(tx);
@@ -252,7 +254,7 @@ void getFrustumPlanes(Plane* frustum, float fovyRad, float near)
   frustum[0].a = 0;
   frustum[0].b = 0;
   frustum[0].c = -1;
-  frustum[0].d = -near;
+  frustum[0].d = near; //-near / 2;
   //left
   frustum[1].a = cx;
   frustum[1].b = 0;

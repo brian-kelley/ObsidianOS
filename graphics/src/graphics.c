@@ -520,7 +520,7 @@ void setView(mat4 v)
 void setProj(float fovyDeg, float near, float far)
 {
   projFar = far;
-  projMat = perspective((fovyDeg / 2) / (180.0f / PI), near, far);
+  projMat = perspective(fovyDeg / (180.0f / PI), near, far);
   updateMatrices();
   getFrustumPlanes(frustum, ((fovyDeg / 2) / (180.0f / PI)), near);
 }

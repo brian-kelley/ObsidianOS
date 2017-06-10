@@ -1,7 +1,7 @@
 #include "oc.h"
 
-//Whether to noclip
-#define NOCLIP
+//Whether to noclip (no gravity, collisions or world boundaries)
+//#define NOCLIP
 
 //Seed (TODO: configure or randomize w/ time())
 #define SEED 12
@@ -75,9 +75,9 @@ static bool jkey;
 static bool kkey;
 static bool lkey;
 
-#define chunksX 4
-#define chunksY 4
-#define chunksZ 4
+#define chunksX 5
+#define chunksY 5
+#define chunksZ 5
 
 static void pumpEvents();
 static void terrainGen();
@@ -87,15 +87,15 @@ static void updatePhysics();
 static void updateViewMat();
 
 //player movement configuration
-#define PLAYER_SPEED 0.05         //horizontal movement speed
+#define PLAYER_SPEED 0.15         //horizontal movement speed
 #define JUMP_SPEED 0.5            //vertical takeoff speed of jump
 #define GRAVITY 0.06              //gravitational acceleration (blocks per frame per frame)
 #define TERMINAL_VELOCITY 100
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
-#define X_SENSITIVITY 0.07
-#define Y_SENSITIVITY 0.07
+#define X_SENSITIVITY 0.14
+#define Y_SENSITIVITY 0.14
 
 //3D configuration
 #define NEAR 0.2f
@@ -131,14 +131,14 @@ void ocMain()
   yaw = 0;
   pitch = 0;
   //spawn player in horizontal center of world, at top
-  /*
   player.v[0] = chunksX * 16 / 2;
   player.v[1] = chunksY * 16;
   player.v[2] = chunksZ * 16 / 2;
-  */
+  /*
   player.v[0] = 0;
   player.v[1] = 0;
   player.v[2] = 0;
+  */
   onGround = false;
   vel.v[0] = 0;
   vel.v[1] = 0;
@@ -165,19 +165,21 @@ void ocMain()
     glEnableDepthTest(true);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
+    /*
     glColor1i(0x2B);
     glBegin(GL_TRIANGLES);
     glVertex3f(-1, 0, 0);
     glVertex3f(1, 1, 0);
     glVertex3f(2, 0, 0);
     glEnd();
+    */
     for(int i = 0; i < chunksX; i++)
     {
       for(int j = 0; j < chunksY; j++)
       {
         for(int k = 0; k < chunksZ; k++)
         {
-          //renderChunk(i, j, k);
+          renderChunk(i, j, k);
         }
       }
     }
@@ -275,8 +277,8 @@ void renderChunk(int x, int y, int z)
         }
         //If block has any vertices past far plane, skip it entirely
         //Otherwise, cube is fully invisible if (iff?) all 8 corners are clipped by the same frustum plane
-        if(clippedFar > 0 || clippedLeft == 8 || clippedRight == 8 || clippedTop == 8 || clippedBottom == 8 || clippedNear == 8)
-          continue;
+        //if(clippedFar > 0 || clippedLeft == 8 || clippedRight == 8 || clippedTop == 8 || clippedBottom == 8 || clippedNear == 8)
+        //  continue;
         blockDepth += 2;
         if(blockDepth <= 8)
           glDepth(blockDepth * 12);
