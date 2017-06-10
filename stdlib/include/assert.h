@@ -1,7 +1,7 @@
 #ifndef ASSERT_H
 #define ASSERT_H
 
-#include "stdio.h"
+extern int printf(const char* fmt, ...);
 
 #define assert(cond) \
 { \

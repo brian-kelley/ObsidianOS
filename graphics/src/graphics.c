@@ -498,6 +498,7 @@ void swapVertices(int* x1, int* y1, int* x2, int* y2)
 
 mat4 fullMat;
 static Plane frustum[5];
+static float projFar;
 
 static void updateMatrices()
 {
@@ -518,9 +519,10 @@ void setView(mat4 v)
 
 void setProj(float fovyDeg, float near, float far)
 {
+  projFar = far;
   projMat = perspective((fovyDeg / 2) / (180.0f / PI), near, far);
   updateMatrices();
-  getFrustumPlanes(frustum, (fovyDeg / (180.0f / PI)), near);
+  getFrustumPlanes(frustum, ((fovyDeg / 2) / (180.0f / PI)), near);
 }
 
 vec3 vshade(vec3 vertex)
@@ -615,6 +617,11 @@ vec3 intersect(vec3 pt1, vec3 pt2, int dim, float val)
 //Precondition: already culled triangles beyond the far plane
 static void drawClippedTri(vec3 v1, vec3 v2, vec3 v3, int clipPlane)
 {
+  if(clipPlane == 0)
+  {
+    if(v1.v[2] < -projFar || v2.v[2] < -projFar || v3.v[3] < -projFar)
+      return;
+  }
   if(clipPlane == 5)
   {
     vec4 proj1 = matvec3(projMat, v1);
@@ -631,16 +638,39 @@ static void drawClippedTri(vec3 v1, vec3 v2, vec3 v3, int clipPlane)
   //note: distance > 0 means "in front" or in same direction as plane normal,
   //which means the point is on the visible side of the plane
   int behind = 0;
-  float d1 = planeLineDistance(v1, toClip);
-  float d2 = planeLineDistance(v2, toClip);
-  float d3 = planeLineDistance(v3, toClip);
-  if(d1 < 0)
-    behind++;
-  if(d2 < 0)
-    behind++;
-  if(d3 < 0)
-    behind++;
-  switch(behind)
+  float dist[3];
+  dist[0] = planeLineDistance(v1, toClip);
+  dist[1] = planeLineDistance(v2, toClip);
+  dist[2] = planeLineDistance(v3, toClip);
+  //sort vertices by dist, ascending
+  if(dist[0] > dist[1])
+  {
+    VEC_SWAP(v1, v2);
+    float temp = dist[0];
+    dist[0] = dist[1];
+    dist[1] = temp;
+  }
+  if(dist[1] > dist[2])
+  {
+    VEC_SWAP(v2, v3);
+    float temp = dist[1];
+    dist[1] = dist[2];
+    dist[2] = temp;
+  }
+  if(dist[0] > dist[1])
+  {
+    VEC_SWAP(v1, v2);
+    float temp = dist[0];
+    dist[0] = dist[1];
+    dist[1] = temp;
+  }
+  int beyond = 0;
+  for(int i = 0; i < 3; i++)
+  {
+    if(dist[i] < 0)
+      beyond++;
+  }
+  switch(beyond)
   {
     case 0:
       //triangle does not intersect plane at all
@@ -651,14 +681,6 @@ static void drawClippedTri(vec3 v1, vec3 v2, vec3 v3, int clipPlane)
         //one vertex invisible
         //compute two intersection points and draw 2 triangles
         //get v1 as the invisible vertex
-        if(d2 < 0)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(d3 < 0)
-        {
-          VEC_SWAP(v1, v3);
-        }
         vec3 inter1 = linePlaneIntersect(v1, v2, toClip);
         vec3 inter2 = linePlaneIntersect(v1, v3, toClip);
         drawClippedTri(inter1, v2, v3, clipPlane + 1);
@@ -670,17 +692,9 @@ static void drawClippedTri(vec3 v1, vec3 v2, vec3 v3, int clipPlane)
         //2 vertices invisible
         //compute two intersection points and draw one triangle
         //get v1 as the only visible vertex
-        if(d2 > 0)
-        {
-          VEC_SWAP(v1, v2);
-        }
-        else if(d3 > 0)
-        {
-          VEC_SWAP(v1, v3);
-        }
-        vec3 inter1 = linePlaneIntersect(v1, v2, toClip);
-        vec3 inter2 = linePlaneIntersect(v1, v3, toClip);
-        drawClippedTri(v1, inter1, inter2, clipPlane + 1);
+        vec3 inter1 = linePlaneIntersect(v1, v3, toClip);
+        vec3 inter2 = linePlaneIntersect(v2, v3, toClip);
+        drawClippedTri(v3, inter1, inter2, clipPlane + 1);
         break;
       }
     case 3:

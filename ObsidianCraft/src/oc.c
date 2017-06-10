@@ -100,7 +100,7 @@ static void updateViewMat();
 //3D configuration
 #define NEAR 0.2f
 #define FAR 64.0f
-#define FOV 80.0f
+#define FOV 90.0f
 
 inline bool isTransparent(byte b)
 {
@@ -167,7 +167,7 @@ void ocMain()
     memset(depthBuf, 0xFF, 64000);
     glColor1i(0x2B);
     glBegin(GL_TRIANGLES);
-    glVertex3f(1, 0, 0);
+    glVertex3f(-1, 0, 0);
     glVertex3f(1, 1, 0);
     glVertex3f(2, 0, 0);
     glEnd();

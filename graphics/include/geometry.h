@@ -4,6 +4,7 @@
 #include "globalDefines.h"
 #include "math.h"
 #include "stdio.h"
+#include "assert.h"
 
 //All angles in radians
 //Aspect ratio is always VIEWPORT_X / VIEWPORT_Y

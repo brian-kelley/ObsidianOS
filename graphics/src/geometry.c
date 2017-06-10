@@ -224,7 +224,9 @@ vec3 linePlaneIntersect(vec3 p1, vec3 p2, Plane plane)
 {
   float d1 = planeLineDistance(p1, plane);
   float d2 = planeLineDistance(p2, plane);
+  assert((d1 > 0) != (d2 > 0));
   float s = d1 / (d1 - d2);
+  assert(d1 != d2);
   vec3 inter;
   inter.v[0] = p1.v[0] + s * (p2.v[0] - p1.v[0]);
   inter.v[1] = p1.v[1] + s * (p2.v[1] - p1.v[1]);
@@ -236,8 +238,11 @@ vec3 linePlaneIntersect(vec3 p1, vec3 p2, Plane plane)
 void getFrustumPlanes(Plane* frustum, float fovyRad, float near)
 {
   //get the angles from straight ahead to frustum: tx is horizontal, ty is vertical
-  float ty = fovyRad / 2;
-  float tx = atanf((320.0f / 200.0f) * tanf(ty));
+  float ty = fovyRad - 1e-4;
+  float tx = (320.0f / 200.0f) * ty - 1e-4;
+  //float tx = atanf((320.0f / 200.0f) * tanf(ty)) - 1e-4;
+  tx /= 2;
+  ty /= 2;
   //use sin/cos to easily get normalized normals for frustum planes
   float sx = sinf(tx);
   float cx = cosf(tx);
