@@ -33,7 +33,7 @@ vec3 lookdir;
    LEAF (8)      //Medium green
    WATER (9)     //Blue
    SAND (10)     //Tan
-   GLASS (11)
+   GLASS (11)    //Transparent but with white edges
    CHEST (12)    //Lighter brown than log
    GRANITE (13)  //Pink
    QUARTZ (14)   //Pure white
@@ -85,6 +85,7 @@ static void initChunks();
 static void processInput();
 static void updatePhysics();
 static void updateViewMat();
+static bool getTargetBlock(int* x, int* y, int* z);
 
 //player movement configuration
 #define PLAYER_SPEED 0.15         //horizontal movement speed
@@ -94,13 +95,14 @@ static void updateViewMat();
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
+#define PLAYER_REACH 6            //how far away the player can place and destroy blocks
 #define X_SENSITIVITY 0.14
 #define Y_SENSITIVITY 0.14
 
 //3D configuration
-#define NEAR 0.2f
-#define FAR 64.0f
-#define FOV 90.0f
+#define NEAR 0.1f
+#define FAR 50.0f
+#define FOV 80.0f
 
 inline bool isTransparent(byte b)
 {
@@ -122,6 +124,40 @@ Chunk* getChunk(int x, int y, int z)
   return &chunks[x + y * chunksX + z * chunksX * chunksY];
 }
 
+//Draw a cubic shell of chunks, centered at x,y,z and with radius rad
+//rad = 0: just render chunk x,y,z
+static void renderShell(int rad, int x, int y, int z)
+{
+  //draw front and back
+  for(int i = x - rad; i <= x + rad; i++)
+  {
+    for(int j = y - rad; j <= y + rad; j++)
+    {
+      renderChunk(i, j, z + rad);
+      if(rad != 0)
+        renderChunk(i, j, z - rad);
+    }
+  }
+  //draw left and right
+  for(int i = z - rad + 1; i <= z + rad - 1; i++)
+  {
+    for(int j = y - rad; j <= y + rad; j++)
+    {
+      renderChunk(x - rad, j, i);
+      renderChunk(x + rad, j, i);
+    }
+  }
+  //draw top and bottom
+  for(int i = x - rad + 1; i <= x + rad - 1; i++)
+  {
+    for(int j = z - rad; j <= z + rad; j++)
+    {
+      renderChunk(i, y + rad, j);
+      renderChunk(i, y - rad, j);
+    }
+  }
+}
+
 void ocMain()
 {
   inv = malloc(60 * sizeof(Stack));
@@ -134,11 +170,6 @@ void ocMain()
   player.v[0] = chunksX * 16 / 2;
   player.v[1] = chunksY * 16;
   player.v[2] = chunksZ * 16 / 2;
-  /*
-  player.v[0] = 0;
-  player.v[1] = 0;
-  player.v[2] = 0;
-  */
   onGround = false;
   vel.v[0] = 0;
   vel.v[1] = 0;
@@ -165,23 +196,12 @@ void ocMain()
     glEnableDepthTest(true);
     //fill depth buf with maximum depth (255)
     memset(depthBuf, 0xFF, 64000);
-    /*
-    glColor1i(0x2B);
-    glBegin(GL_TRIANGLES);
-    glVertex3f(-1, 0, 0);
-    glVertex3f(1, 1, 0);
-    glVertex3f(2, 0, 0);
-    glEnd();
-    */
-    for(int i = 0; i < chunksX; i++)
+    //get chunk containing player
+    //fill cubic shells starting at player position and moving out
+    //this maximizes the chunks that are occlusion culled
+    for(int rad = 0; rad < (FAR + 15) / 16; rad++)
     {
-      for(int j = 0; j < chunksY; j++)
-      {
-        for(int k = 0; k < chunksZ; k++)
-        {
-          renderChunk(i, j, k);
-        }
-      }
+      renderShell(rad, player.v[0] / 16, player.v[1] / 16, player.v[2] / 16);
     }
     glFlush();
     //hit 30 fps (if there is spare time this frame)
@@ -189,18 +209,130 @@ void ocMain()
   }
 }
 
+static byte getDepth(float viewZ)
+{
+  viewZ += 1;
+  byte d;
+  if(viewZ <= 8)
+    d = viewZ * 12;
+  else
+    d = 96 + (viewZ - 8) * 3.8;
+  return d;
+}
+
+//Returns true if a cuboid (world space) is currently invisible to the player
+//  Uses frustum culling and occlusion culling
+//also if minDepth, sets *minDepth to the minimum depth of the eight corners (in view space)
+//  minDepth can be used as the depth value for drawing the cuboid
+static bool cullCuboid(float xlo, float xhi, float ylo, float yhi, float zlo, float zhi, byte* minDepth)
+{
+  //allow minDepth to be NULL, but still compute the depth value for local use
+  byte temp;
+  if(!minDepth)
+    minDepth = &temp;
+  vec3 cube[8] = {
+    {{xlo, ylo, zlo}},
+    {{xhi, ylo, zlo}},
+    {{xlo, yhi, zlo}},
+    {{xhi, yhi, zlo}},
+    {{xlo, ylo, zhi}},
+    {{xhi, ylo, zhi}},
+    {{xlo, yhi, zhi}},
+    {{xhi, yhi, zhi}}
+  };
+  //take the best clip coordinate (min absolute value) of each dimension
+  int clippedNear = 0;
+  int clippedFar = 0;
+  int clippedLeft = 0;
+  int clippedRight = 0;
+  int clippedTop = 0;
+  int clippedBottom = 0;
+  float blockDepth = 255;
+  vec4 clip[8];
+  for(int i = 0; i < 8; i++)
+  {
+    vec4 view = matvec3(viewMat, cube[i]);
+    clip[i] = matvec4(projMat, view);
+    float w = clip[i].v[3];
+    if(clip[i].v[2] > w)
+    {
+      clippedFar++;
+      break;
+    }
+    if(clip[i].v[0] < -w)
+      clippedLeft++;
+    if(clip[i].v[0] > w)
+      clippedRight++;
+    if(clip[i].v[1] < -w)
+      clippedBottom++;
+    if(clip[i].v[1] > w)
+      clippedTop++;
+    if(clip[i].v[2] < -w)
+      clippedNear++;
+    blockDepth = min(blockDepth, -view.v[2]);
+  }
+  *minDepth = getDepth(blockDepth);
+  //If block has any vertices past far plane, skip it entirely
+  //Otherwise, cube is fully invisible if (iff?) all 8 corners are clipped by the same frustum plane
+  if(clippedFar > 0 || clippedLeft == 8 || clippedRight == 8 || clippedTop == 8 || clippedBottom == 8 || clippedNear == 8)
+    return true;
+  //Now try occlusion culling
+  //Already have clip coordinates, so convert to viewport and get upper bounds on x,y
+  int minx = 320;
+  int maxx = 0;
+  int miny = 200;
+  int maxy = 0;
+  for(int i = 0; i < 8; i++)
+  {
+    vec3 ndc = vecscale(toVec3(clip[i]), 1.0f / clip[i].v[3]);
+    point p = viewport(ndc);
+    if(p.x < minx)
+      minx = p.x;
+    if(p.x > maxx)
+      maxx = p.x;
+    if(p.y < miny)
+      miny = p.y;
+    if(p.y > maxy)
+      maxy = p.y;
+  }
+  //clamp bounding box to screen
+  if(minx < 0)
+    minx = 0;
+  if(maxx > 320)
+    maxx = 320;
+  if(miny < 0)
+    miny = 0;
+  if(maxy > 200)
+    maxy = 200;
+  //now compare depth values in buffer to computed depth value
+  //note: max is an exclusive upper bound
+  int stride = 320 - (maxx - minx);
+  int ind = minx + miny * 320;
+  bool allBehind = true;
+  for(int y = miny; y < maxy; y++)
+  {
+    for(int x = minx; x < maxx; x++)
+    {
+      if(depthBuf[ind] > *minDepth)
+      {
+        allBehind = false;
+        break;
+      }
+      ind++;
+    }
+    ind += stride;
+  }
+  if(allBehind)
+    return true;
+  return false;
+}
+
 void renderChunk(int x, int y, int z)
 {
-  //immediately skip chunk if it is too far from player
-  {
-    //get distance to center of chunk
-    float dx = player.v[0] - (x * 16 + 8);
-    float dy = player.v[1] - (y * 16 + 8);
-    float dz = player.v[2] - (z * 16 + 8);
-    float distSquared = dx * dx + dy * dy + dz * dz;
-    if(distSquared > ((FAR + 8) * (FAR + 8)))
-      return;
-  }
+  //bounds check
+  if(x < 0 || x >= chunksX || y < 0 || y >= chunksY || z < 0 || z >= chunksZ)
+    return;
+  //frustum cull whole chunk if possible
   Chunk* c = getChunk(x, y, z);
   if(c->filled == 0)
   {
@@ -208,10 +340,12 @@ void renderChunk(int x, int y, int z)
     return;
   }
   //chunk offset position
-  glBegin(GL_QUADS);
   int cx = x * 16;
   int cy = y * 16;
   int cz = z * 16;
+  if(cullCuboid(cx, cx + 16, cy, cy + 16, cz, cz + 16, NULL))
+    return;
+  glBegin(GL_QUADS);
   glEnableDepthTest(true);
   //how many blocks have already been drawn
   for(int i = 0; i < 16; i++)
@@ -232,58 +366,10 @@ void renderChunk(int x, int y, int z)
         float by = cy + j;
         float bz = cz + k;
         byte block = getBlockC(c, i, j, k);
-        vec3 cube[8] = {
-          {{bx, by, bz}},
-          {{bx + 1, by, bz}},
-          {{bx, by + 1, bz}},
-          {{bx + 1, by + 1, bz}},
-          {{bx, by, bz + 1}},
-          {{bx + 1, by, bz + 1}},
-          {{bx, by + 1, bz + 1}},
-          {{bx + 1, by + 1, bz + 1}}
-        };
-        //take the best clip coordinate (min absolute value) of each dimension
-        int clippedNear = 0;
-        int clippedFar = 0;
-        int clippedLeft = 0;
-        int clippedRight = 0;
-        int clippedTop = 0;
-        int clippedBottom = 0;
-        float blockDepth = 255;
-        for(int corner = 0; corner < 8; corner++)
-        {
-          vec4 viewSpace = matvec3(viewMat, cube[corner]);
-          blockDepth = min(blockDepth, -viewSpace.v[2]);
-          vec4 clip = matvec4(projMat, viewSpace);
-          float invw = 1.0f / clip.v[3];
-          clip.v[0] *= invw;
-          clip.v[1] *= invw;
-          clip.v[2] *= invw;
-          if(clip.v[2] > 1)
-          {
-            clippedFar++;
-            break;
-          }
-          if(clip.v[0] < -1)
-            clippedLeft++;
-          if(clip.v[0] > 1)
-            clippedRight++;
-          if(clip.v[1] < -1)
-            clippedBottom++;
-          if(clip.v[1] > 1)
-            clippedTop++;
-          if(clip.v[2] < -1)
-            clippedNear++;
-        }
-        //If block has any vertices past far plane, skip it entirely
-        //Otherwise, cube is fully invisible if (iff?) all 8 corners are clipped by the same frustum plane
-        //if(clippedFar > 0 || clippedLeft == 8 || clippedRight == 8 || clippedTop == 8 || clippedBottom == 8 || clippedNear == 8)
-        //  continue;
-        blockDepth += 2;
-        if(blockDepth <= 8)
-          glDepth(blockDepth * 12);
-        else
-          glDepth(96 + (blockDepth - 8) * 3.8);
+        byte blockDepth;
+        if(cullCuboid(bx, bx + 1, by, by + 1, bz, bz + 1, &blockDepth))
+          continue;
+        glDepth(blockDepth);
         if(block == GLASS)
           glDrawMode(DRAW_WIREFRAME);
         else
@@ -1128,3 +1214,117 @@ static void updateViewMat()
   setView(lookAt(player, target, up));
 }
 
+static bool getTargetBlock(int* x, int* y, int* z)
+{
+  vec3 camPos = player;
+  vec3 camDir = lookdir;
+  vec3 blockIter = {{(int) camPos.v[0], (int) camPos.v[1], (int) camPos.v[2]}};
+  //iterate through blocks, finding the faces that player is looking through
+  while(true)
+  {
+    vec3 nextBlock = blockIter;
+    bool haveNext = false;
+    if(camDir.v[0] > 0)
+    {
+      //does camPos + t * camDir pass through the +x face?
+      //note: +x face is at blockIter.x + 1
+      //just solve for y, z at the point the ray gets to blockIter.x + 1
+      vec3 intersect = vecadd(camPos, vecscale(camDir, ((blockIter.v[0] + 1 - camPos.v[0]) / camDir.v[0])));
+      if(intersect.v[1] >= blockIter.v[1] && intersect.v[1] < blockIter.v[1] + 1 &&
+         intersect.v[2] >= blockIter.v[2] && intersect.v[2] < blockIter.v[2] + 1)
+      {
+        nextBlock.v[0] += 1;
+        haveNext = true;
+      }
+    }
+    if(camDir.v[0] < 0 && !haveNext)
+    {
+      //-x face
+      vec3 intersect = vecadd(camPos, vecscale(camDir, ((blockIter.v[0] - camPos.v[0]) / camDir.v[0])));
+      if(intersect.v[1] >= blockIter.v[1] && intersect.v[1] < blockIter.v[1] + 1 &&
+         intersect.v[2] >= blockIter.v[2] && intersect.v[2] < blockIter.v[2] + 1)
+      {
+        nextBlock.v[0] -= 1;
+        haveNext = true;
+      }
+    }
+    if(camDir.v[1] > 0 && !haveNext)
+    {
+      //+y face
+      vec3 intersect = vecadd(camPos, vecscale(camDir, (blockIter.v[1] + 1 - camPos.v[1]) / camDir.v[1]));
+      if(intersect.v[0] >= blockIter.v[0] && intersect.v[0] < blockIter.v[0] + 1 &&
+         intersect.v[2] >= blockIter.v[2] && intersect.v[2] < blockIter.v[2] + 1)
+      {
+        nextBlock.v[1] += 1;
+        haveNext = true;
+      }
+    }
+    if(camDir.v[1] < 0 && !haveNext)
+    {
+      //-y face
+      vec3 intersect = vecadd(camPos, vecscale(camDir, ((blockIter.v[1] - camPos.v[1]) / camDir.v[1])));
+      if(intersect.v[0] >= blockIter.v[0] && intersect.v[0] < blockIter.v[0] + 1 &&
+         intersect.v[2] >= blockIter.v[2] && intersect.v[2] < blockIter.v[2] + 1)
+      {
+        nextBlock.v[1] -= 1;
+        haveNext = true;
+      }
+    }
+    if(camDir.v[2] > 0 && !haveNext)
+    {
+      //+z face
+      vec3 intersect = vecadd(camPos, vecscale(camDir, ((blockIter.v[2] + 1 - camPos.v[2]) / camDir.v[2])));
+      if(intersect.v[0] >= blockIter.v[0] && intersect.v[0] < blockIter.v[0] + 1 &&
+         intersect.v[1] >= blockIter.v[1] && intersect.v[1] < blockIter.v[1] + 1)
+      {
+        nextBlock.v[2] += 1;
+        haveNext = true;
+      }
+    }
+    if(camDir.v[2] < 0 && !haveNext)
+    {
+      //-z face
+      vec3 intersect = vecadd(camPos, vecscale(camDir, ((blockIter.v[2] - camPos.v[2]) / camDir.v[2])));
+      if(intersect.v[0] >= blockIter.v[0] && intersect.v[0] < blockIter.v[0] + 1 &&
+         intersect.v[1] >= blockIter.v[1] && intersect.v[1] < blockIter.v[1] + 1)
+      {
+        nextBlock.v[2] -= 1;
+        haveNext = true;
+      }
+    }
+    if(!haveNext)
+    {
+      return false;
+    }
+    if(getBlock(nextBlock.v[0], nextBlock.v[1], nextBlock.v[2]))
+    {
+      //ray ended in a solid block
+      //go through all blocks that player fully or partially occupies, and if any of them match, return false
+      //otherwise set output parameters to block coords and return true
+      int xlo = floor(player.v[0] - PLAYER_WIDTH / 2);
+      int xhi = ceil(player.v[0] + PLAYER_WIDTH / 2);
+      int ylo = floor(player.v[1]);
+      int yhi = ceil(player.v[1] + PLAYER_HEIGHT);
+      int zlo = floor(player.v[2] - PLAYER_WIDTH / 2);
+      int zhi = ceil(player.v[2] + PLAYER_WIDTH / 2);
+      if(xlo <= blockIter.v[0] && blockIter.v[0] <= xhi &&
+         ylo <= blockIter.v[1] && blockIter.v[1] <= yhi &&
+         zlo <= blockIter.v[2] && blockIter.v[2] <= zhi)
+      {
+        return false;
+      }
+      *x = blockIter.v[0];
+      *y = blockIter.v[1];
+      *z = blockIter.v[2];
+      return true;
+    }
+    if(((nextBlock.v[0] - camPos.v[0]) * (nextBlock.v[0] - camPos.v[0]) +
+          (nextBlock.v[1] - camPos.v[1]) * (nextBlock.v[1] - camPos.v[1]) +
+          (nextBlock.v[2] - camPos.v[2]) * (nextBlock.v[2] - camPos.v[2])) > (PLAYER_REACH * PLAYER_REACH))
+    {
+      //no block in reach
+      return false;
+    }
+    blockIter = nextBlock;
+  }
+}
