@@ -6,8 +6,7 @@
 //Seed (TODO: configure or randomize w/ time())
 #define SEED 12
 
-//Have 10x6 inventory
-static Stack* inv;
+//Have INV_W x INV_H inventory grid
 //Eventually, have at least a 4x4x4 chunks (64^3 blocks) world
 static Chunk* chunks;
 //Player position
@@ -57,7 +56,7 @@ static byte blockColor[16][5] = {
   {0x17, 0x16, 0x15, 0x14, 0x13},     //Iron
   {0x0E, 0x2C, 0x44, 0x74, 0x8C},     //Gold
   {0x4C, 0x0B, 0x4D, 0x03, 0x7C},     //Diamond
-  {0x42, 0x06, 0x73, 0x72, 0x71},     //Log
+  {0x42, 0x06, 0x73, 0x42, 0x71},     //Log
   {0x02, 0x79, 0x77, 0xC0, 0xBF},     //Leaf
   {0x37, 0x21, 0x21, 0x01, 0x68},     //Water
   {0x44, 0x45, 0x8C, 0x8B, 0xD3},     //Sand
@@ -89,7 +88,6 @@ static bool fkey; //place block
 static void pumpEvents();
 static void terrainGen();
 static void initChunks();
-static void processInput();
 static void updatePhysics();
 static void updateViewMat();
 static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz);
@@ -107,8 +105,11 @@ static void drawInv();
 #define BREAK_TIME 18             //how many frames it takes to break a block
 #define X_SENSITIVITY 0.11
 #define Y_SENSITIVITY 0.11
+
+//Inventory
 #define INV_W 9
 #define INV_H 4
+static Stack inv[INV_W * INV_H];
 
 //3D configuration
 #define NEAR 0.1f
@@ -295,14 +296,8 @@ static void renderShell(int rad, int x, int y, int z)
 
 void ocMain()
 {
-  inv = malloc(INV_W * INV_H * sizeof(Stack));
-  for(int i = 0; i < INV_W * INV_H; i++)
-  {
-    inv[i].item = rand() % 16;
-    inv[i].count = rand() % 255;
-  }
-  invView = false;
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
+  invView = false;
   terrainGen();
   initChunks();
   yaw = 0;
@@ -324,11 +319,18 @@ void ocMain()
   setModel(identity());
   setProj(FOV, NEAR, FAR);
   breakFrames = 0;
+  for(int i = 0; i < INV_W * INV_H; i++)
+  {
+    //stacks of AIR are considered empty/clear
+    if(rand() % 2)
+      inv[i].item = 1 + rand() % 15;
+    inv[i].count = rand() % 256;
+  }
   while(1)
   {
+    //measure time spent in frame to synchronize at end
     clock_t cstart = clock();
     pumpEvents();
-    processInput();
     if(invView)
     {
       drawInv();
@@ -646,20 +648,21 @@ void renderChunk(int x, int y, int z)
 static void drawInv()
 {
   glEnableDepthTest(false);
-  glClear(0x1D);
-  const int cellSize = 24;
-  const int gridw = 9;
-  const int gridh = 4;
+  const int cellSize = 28;
+  const int gridw = INV_W;    //configured at top
+  const int gridh = INV_H;
   int gridx = (320 - cellSize * gridw) / 2;
   int gridy = (200 - cellSize * gridh) / 2;
+  glColor1i(0x1D);
+  fillRect(gridx, gridy, gridw * cellSize, gridh * cellSize);
   for(int i = 0; i < gridw; i++)
   {
     for(int j = 0; j < gridh; j++)
     {
       glColor1i(0x19);
       drawRect(gridx + i * cellSize, gridy + j * cellSize, cellSize, cellSize);
-      Stack* stack = &inv[i + j * INV_W];
-      if(stack->item != AIR)
+      Stack* stack = inv + (i + j * INV_W);
+      if(stack->item != AIR && stack->count != 0)
       {
         byte bg = 0x1D;
         if(stack->item != GLASS)
@@ -671,7 +674,7 @@ static void drawInv()
         glColor1i(0x19);
         char buf[8];
         sprintf(buf, "%i", stack->count);
-        glText(buf, gridx + i * cellSize + 4, gridy + j * cellSize + 4, 0x1D);
+        glText(buf, gridx + i * cellSize + 1, gridy + j * cellSize + (cellSize - 8), 0x1D);
       }
     }
   }
@@ -1179,53 +1182,6 @@ void initChunks()
   }
 }
 
-void processInput()
-{
-  //handle orientation changes via ijkl
-  const float pitchLimit = 90 / (180.0f / PI);
-  int dx = (jkey ? -1 : 0) + (lkey ? 1 : 0);
-  int dy = (ikey ? -1 : 0) + (kkey ? 1 : 0);
-  yaw += X_SENSITIVITY * dx;
-  //clamp yaw to 0:2pi (but preserve rotation beyond the bounds)
-  if(yaw < 0)
-    yaw += 2 * PI;
-  else if(yaw >= 2 * PI)
-    yaw -= 2 * PI;
-  pitch -= Y_SENSITIVITY * dy;
-  //clamp pitch to -pitchLimit:pitchLimit
-  if(pitch < -pitchLimit)
-    pitch = -pitchLimit;
-  else if(pitch > pitchLimit)
-    pitch = pitchLimit;
-  int xvel = 0;
-  int yvel = 0;
-  if(wkey)
-    xvel++;
-  if(skey)
-    xvel--;
-  if(akey)
-    yvel--;
-  if(dkey)
-    yvel++;
-  vel.v[0] = 0;
-  vel.v[2] = 0;
-  if(xvel)
-  {
-    vel.v[0] += xvel * PLAYER_SPEED * cosf(yaw);
-    vel.v[2] += xvel * PLAYER_SPEED * sinf(yaw);
-  }
-  if(yvel)
-  {
-    vel.v[0] += yvel * PLAYER_SPEED * sinf(-yaw);
-    vel.v[2] += yvel * PLAYER_SPEED * cosf(-yaw);
-  }
-  if(dx || dy)
-  {
-    //player look direction changed, so view matrix must be updated
-    viewStale = true;
-  }
-}
-
 typedef struct
 {
   float x;
@@ -1247,8 +1203,8 @@ enum
   HB_PZ
 };
 
-//Move the hitbox given distance in given cardinal direction
-//Return true iff a collision occurred
+//Attempt to move a hitbox the given distance in the given cardinal direction
+//Return true iff a collision occurred during this movement
 //Resulting position stored in *hb
 static bool moveHitbox(Hitbox* hb, int dir, float d)
 {
@@ -1337,6 +1293,49 @@ static bool moveHitbox(Hitbox* hb, int dir, float d)
 
 static void updatePhysics()
 {
+  //handle orientation changes via ijkl
+  const float pitchLimit = 90 / (180.0f / PI);
+  int dx = (jkey ? -1 : 0) + (lkey ? 1 : 0);
+  int dy = (ikey ? -1 : 0) + (kkey ? 1 : 0);
+  yaw += X_SENSITIVITY * dx;
+  //clamp yaw to 0:2pi (but preserve rotation beyond the bounds)
+  if(yaw < 0)
+    yaw += 2 * PI;
+  else if(yaw >= 2 * PI)
+    yaw -= 2 * PI;
+  pitch -= Y_SENSITIVITY * dy;
+  //clamp pitch to -pitchLimit:pitchLimit
+  if(pitch < -pitchLimit)
+    pitch = -pitchLimit;
+  else if(pitch > pitchLimit)
+    pitch = pitchLimit;
+  int xvel = 0;
+  int yvel = 0;
+  if(wkey)
+    xvel++;
+  if(skey)
+    xvel--;
+  if(akey)
+    yvel--;
+  if(dkey)
+    yvel++;
+  vel.v[0] = 0;
+  vel.v[2] = 0;
+  if(xvel)
+  {
+    vel.v[0] += xvel * PLAYER_SPEED * cosf(yaw);
+    vel.v[2] += xvel * PLAYER_SPEED * sinf(yaw);
+  }
+  if(yvel)
+  {
+    vel.v[0] += yvel * PLAYER_SPEED * sinf(-yaw);
+    vel.v[2] += yvel * PLAYER_SPEED * cosf(-yaw);
+  }
+  if(dx || dy)
+  {
+    //player look direction changed, so view matrix must be updated
+    viewStale = true;
+  }
   vec3 old = player;
   Hitbox hb = {player.v[0] - PLAYER_WIDTH / 2, player.v[1] - PLAYER_EYE, player.v[2] - PLAYER_WIDTH / 2, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH};
   //gravitational acceleration
