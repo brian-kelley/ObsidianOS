@@ -218,11 +218,11 @@ void initKeyboard()
   writeport(0xA1, 0);
   ioWait();
   idtAddress = (dword) idt;
+  //disable typematic
+  while(getKeyboardStatus() & KB_CANT_WRITE);
+  writeport(0x64, 0xF8);
   //clear keyboard's data buffer
-  while(keyboardHasOutput())
-  {
-    getKeyboardData();
-  }
+  flushKeyboardData();
   loadIDT();
   disableInterrupts();
   //load IDT then enable interrupts

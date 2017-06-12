@@ -20,6 +20,10 @@ static bool viewStale = true;
 static bool onGround = false;
 static float yaw;     //yaw (left-right), radians, left is increasing
 static float pitch;   //pitch (up-down), radians, ahead is 0, up is positive
+static int breakFrames; //how many frames player has been breaking (breakX, breakY, breakZ)
+static int breakX;
+static int breakY;
+static int breakZ;
 vec3 lookdir;
 /* Block list:
    AIR (0),
@@ -66,14 +70,16 @@ static byte blockColor[16][5] = {
 //Sky color
 static byte sky = 0x35;
 
-static bool wkey;
-static bool akey;
-static bool skey;
-static bool dkey;
-static bool ikey;
-static bool jkey;
-static bool kkey;
-static bool lkey;
+static bool wkey; //move forward
+static bool akey; //move left
+static bool skey; //move backward
+static bool dkey; //move right
+static bool ikey; //look up
+static bool jkey; //look left
+static bool kkey; //look down
+static bool lkey; //look right
+static bool rkey; //break block
+static bool fkey; //place block
 
 #define chunksX 5
 #define chunksY 5
@@ -85,7 +91,7 @@ static void initChunks();
 static void processInput();
 static void updatePhysics();
 static void updateViewMat();
-static bool getTargetBlock(int* x, int* y, int* z);
+static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz);
 
 //player movement configuration
 #define PLAYER_SPEED 0.15         //horizontal movement speed
@@ -95,9 +101,10 @@ static bool getTargetBlock(int* x, int* y, int* z);
 #define PLAYER_HEIGHT 1.8
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
-#define PLAYER_REACH 6            //how far away the player can place and destroy blocks
-#define X_SENSITIVITY 0.14
-#define Y_SENSITIVITY 0.14
+#define PLAYER_REACH 5            //how far away the player can place and destroy blocks
+#define BREAK_TIME 18             //how many frames it takes to break a block
+#define X_SENSITIVITY 0.11
+#define Y_SENSITIVITY 0.11
 
 //3D configuration
 #define NEAR 0.1f
@@ -122,6 +129,130 @@ Chunk* getChunk(int x, int y, int z)
     while(1);
   }
   return &chunks[x + y * chunksX + z * chunksX * chunksY];
+}
+
+//any block outside of the world is treated as air
+byte getBlock(int x, int y, int z)
+{
+  if(blockInBounds(x, y, z))
+    return getBlockC(getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
+  return AIR;
+}
+
+void setBlock(byte b, int x, int y, int z)
+{
+  if(blockInBounds(x, y, z))
+    setBlockC(b, getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
+}
+
+byte getBlockC(Chunk* c, int cx, int cy, int cz)
+{
+  int ind = cx + (cy << 4) + (cz << 8);
+  byte b = c->vals[ind >> 1];
+  return ind & 1 ? (b >> 4) : (b & 0xF);
+}
+
+void setBlockC(byte newBlock, Chunk* c, int cx, int cy, int cz)
+{
+  int ind = cx + (cy << 4) + (cz << 8);
+  byte b = c->vals[ind >> 1];
+  if(ind & 1)
+  {
+    b &= 0x0F;
+    b |= (newBlock << 4);
+  }
+  else
+  {
+    b &= 0xF0;
+    b |= newBlock;
+  }
+  //write back new value
+  c->vals[ind >> 1] = b;
+}
+
+static void setVisible(bool value, int x, int y, int z)
+{
+  if(!blockInBounds(x, y, z))
+    return;
+  Chunk* c = getChunk(x / 16, y / 16, z / 16);
+  x %= 16;
+  y %= 16;
+  z %= 16;
+  int ind = x + y * 16 + z * 256;
+  byte b = c->visible[ind >> 3];
+  b &= ~(1 << (ind & 0x7));
+  if(value)
+    b |= (1 << (ind & 0x7));
+  c->visible[ind >> 3] = b;
+}
+
+static void updateVisible(int x, int y, int z)
+{
+  //a block is visible if and only if it is not air AND at least one neighbor is transparent
+  byte val = getBlock(x, y, z) != AIR && (
+      isTransparent(getBlock(x - 1, y, z)) ||
+      isTransparent(getBlock(x + 1, y, z)) ||
+      isTransparent(getBlock(x, y - 1, z)) ||
+      isTransparent(getBlock(x, y + 1, z)) ||
+      isTransparent(getBlock(x, y, z - 1)) ||
+      isTransparent(getBlock(x, y, z + 1)));
+  setVisible(val, x, y, z);
+}
+
+static void breakBlock(int x, int y, int z)
+{
+  int cx = x / 16;
+  int cy = y / 16;
+  int cz = z / 16;
+  Chunk* chunk = getChunk(cx, cy, cz);
+  //can't break bedrock
+  if(getBlockC(chunk, x % 16, y % 16, z % 16) == BEDROCK)
+    return;
+  //set the block in chunk to air
+  setBlockC(AIR, chunk, x % 16, y % 16, z % 16);
+  setVisible(false, x, y, z);
+  //set all non-air neighbors to visible
+  if(getBlock(x - 1, y, z))
+    setVisible(true, x - 1, y, z);
+  if(getBlock(x + 1, y, z))
+    setVisible(true, x + 1, y, z);
+  if(getBlock(x, y - 1, z))
+    setVisible(true, x, y - 1, z);
+  if(getBlock(x, y + 1, z))
+    setVisible(true, x, y + 1, z);
+  if(getBlock(x, y, z - 1))
+    setVisible(true, x, y, z - 1);
+  if(getBlock(x, y, z + 1))
+    setVisible(true, x, y, z + 1);
+  chunk->filled--;
+}
+
+static void placeBlock(byte b, int x, int y, int z)
+{
+  int cx = x / 16;
+  int cy = y / 16;
+  int cz = z / 16;
+  Chunk* chunk = getChunk(cx, cy, cz);
+  setBlockC(b, chunk, x % 16, y % 16, z % 16);
+  //set new block to visible
+  setVisible(true, x, y, z);
+  chunk->filled++;
+  //if block is opaque, check if neighbors are now hidden
+  if(!isTransparent(b))
+  {
+    if(!getBlock(x - 1, y, z))
+      updateVisible(x - 1, y, z);
+    if(!getBlock(x + 1, y, z))
+      updateVisible(x + 1, y, z);
+    if(!getBlock(x, y - 1, z))
+      updateVisible(x, y - 1, z);
+    if(!getBlock(x, y + 1, z))
+      updateVisible(x, y + 1, z);
+    if(!getBlock(x, y, z - 1))
+      updateVisible(x, y, z - 1);
+    if(!getBlock(x, y, z + 1))
+      updateVisible(x, y, z + 1);
+  }
 }
 
 //Draw a cubic shell of chunks, centered at x,y,z and with radius rad
@@ -178,20 +309,58 @@ void ocMain()
   akey = false;
   skey = false;
   dkey = false;
+  rkey = false;
+  fkey = false;
   setModel(identity());
   setProj(FOV, NEAR, FAR);
+  breakFrames = 0;
   while(1)
   {
     clock_t cstart = clock();
     pumpEvents();
     processInput();
     updatePhysics();
+    int targx = breakX;
+    int targy = breakY;
+    int targz = breakZ;
+    int placex = -1;
+    int placey = -1;
+    int placez = -1;
+    bool hit = false;
     if(viewStale)
     {
       updateViewMat();
       viewStale = false;
+      //view updated, now check for block target
     }
-    //glDebug();
+    hit = getTargetBlock(&targx, &targy, &targz, &placex, &placey, &placez);
+    //if(!rkey || !hit || (breakFrames > 0 && (targx != breakX || targy != breakY || targz != breakZ)))
+    if(!rkey || !hit)
+    {
+      //cancel breaking block if it was previously happening
+      breakFrames = 0;
+    }
+    else if(rkey && hit)
+    {
+      //start breaking block currently pointed at
+      breakX = targx;
+      breakY = targy;
+      breakZ = targz;
+      breakFrames++;
+      if(breakFrames == BREAK_TIME)
+      {
+        breakBlock(targx, targy, targz);
+        breakFrames = 0;
+      }
+    }
+    if(hit && fkey)
+    {
+      //only out-of-bounds block player can reach is the top of world
+      if(placey < chunksY * 16)
+        placeBlock(DIAMOND, placex, placey, placez);
+      //only place block on rising edge of f
+      fkey = false;
+    }
     glClear(sky);
     glEnableDepthTest(true);
     //fill depth buf with maximum depth (255)
@@ -203,6 +372,10 @@ void ocMain()
     {
       renderShell(rad, player.v[0] / 16, player.v[1] / 16, player.v[2] / 16);
     }
+    glEnableDepthTest(false);
+    glColor1i(0xF);
+    fillRect(160, 96, 1, 9);
+    fillRect(156, 100, 9, 1);
     glFlush();
     //hit 30 fps (if there is spare time this frame)
     sleepMS(34 - (clock() - cstart));
@@ -453,45 +626,6 @@ void renderChunk(int x, int y, int z)
   glEnd();
 }
 
-//any block outside of the world is treated as air
-byte getBlock(int x, int y, int z)
-{
-  if(blockInBounds(x, y, z))
-    return getBlockC(getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
-  return AIR;
-}
-
-void setBlock(byte b, int x, int y, int z)
-{
-  if(blockInBounds(x, y, z))
-    setBlockC(b, getChunk(x / 16, y / 16, z / 16), x % 16, y % 16, z % 16);
-}
-
-byte getBlockC(Chunk* c, int cx, int cy, int cz)
-{
-  int ind = cx + (cy << 4) + (cz << 8);
-  byte b = c->vals[ind >> 1];
-  return ind & 1 ? (b >> 4) : (b & 0xF);
-}
-
-void setBlockC(byte newBlock, Chunk* c, int cx, int cy, int cz)
-{
-  int ind = cx + (cy << 4) + (cz << 8);
-  byte b = c->vals[ind >> 1];
-  if(ind & 1)
-  {
-    b &= 0x0F;
-    b |= (newBlock << 4);
-  }
-  else
-  {
-    b &= 0xF0;
-    b |= newBlock;
-  }
-  //write back new value
-  c->vals[ind >> 1] = b;
-}
-
 void pumpEvents()
 {
   while(haveEvent())
@@ -521,6 +655,10 @@ void pumpEvents()
               kkey = k.pressed; break;
             case KEY_L:
               lkey = k.pressed; break;
+            case KEY_R:
+              rkey = k.pressed; break;
+            case KEY_F:
+              fkey = k.pressed; break;
             case KEY_SPACE:
               if(k.pressed && onGround)
               {
@@ -976,8 +1114,7 @@ void initChunks()
                     isTransparent(getBlock(bx, by, bz + 1)))
                 {
                   //set bit in c->visible
-                  int ind = i + j * 16 + k * 256;
-                  c->visible[ind >> 3] |= (1 << (ind & 0x7));
+                  setVisible(true, bx, by, bz);
                 }
               }
             }
@@ -1214,7 +1351,10 @@ static void updateViewMat()
   setView(lookAt(player, target, up));
 }
 
-static bool getTargetBlock(int* x, int* y, int* z)
+//returns true if the player is looking at a block within reach
+//*bx, *by, *bz is set to the block that can be broken
+//*px, *py, *pz is set to position where player can place a block
+static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz)
 {
   vec3 camPos = player;
   vec3 camDir = lookdir;
@@ -1301,10 +1441,11 @@ static bool getTargetBlock(int* x, int* y, int* z)
       //ray ended in a solid block
       //go through all blocks that player fully or partially occupies, and if any of them match, return false
       //otherwise set output parameters to block coords and return true
+      /*
       int xlo = floor(player.v[0] - PLAYER_WIDTH / 2);
       int xhi = ceil(player.v[0] + PLAYER_WIDTH / 2);
-      int ylo = floor(player.v[1]);
-      int yhi = ceil(player.v[1] + PLAYER_HEIGHT);
+      int ylo = floor(player.v[1] - PLAYER_EYE);
+      int yhi = ceil(player.v[1] + PLAYER_HEIGHT - PLAYER_EYE);
       int zlo = floor(player.v[2] - PLAYER_WIDTH / 2);
       int zhi = ceil(player.v[2] + PLAYER_WIDTH / 2);
       if(xlo <= blockIter.v[0] && blockIter.v[0] <= xhi &&
@@ -1313,9 +1454,13 @@ static bool getTargetBlock(int* x, int* y, int* z)
       {
         return false;
       }
-      *x = blockIter.v[0];
-      *y = blockIter.v[1];
-      *z = blockIter.v[2];
+      */
+      *px = blockIter.v[0];
+      *py = blockIter.v[1];
+      *pz = blockIter.v[2];
+      *bx = nextBlock.v[0];
+      *by = nextBlock.v[1];
+      *bz = nextBlock.v[2];
       return true;
     }
     if(((nextBlock.v[0] - camPos.v[0]) * (nextBlock.v[0] - camPos.v[0]) +
