@@ -24,6 +24,7 @@ static int breakFrames; //how many frames player has been breaking (breakX, brea
 static int breakX;
 static int breakY;
 static int breakZ;
+static bool invView;
 vec3 lookdir;
 /* Block list:
    AIR (0),
@@ -92,6 +93,7 @@ static void processInput();
 static void updatePhysics();
 static void updateViewMat();
 static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz);
+static void drawInv();
 
 //player movement configuration
 #define PLAYER_SPEED 0.15         //horizontal movement speed
@@ -105,6 +107,8 @@ static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz)
 #define BREAK_TIME 18             //how many frames it takes to break a block
 #define X_SENSITIVITY 0.11
 #define Y_SENSITIVITY 0.11
+#define INV_W 9
+#define INV_H 4
 
 //3D configuration
 #define NEAR 0.1f
@@ -291,7 +295,13 @@ static void renderShell(int rad, int x, int y, int z)
 
 void ocMain()
 {
-  inv = malloc(60 * sizeof(Stack));
+  inv = malloc(INV_W * INV_H * sizeof(Stack));
+  for(int i = 0; i < INV_W * INV_H; i++)
+  {
+    inv[i].item = rand() % 16;
+    inv[i].count = rand() % 255;
+  }
+  invView = false;
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
   terrainGen();
   initChunks();
@@ -319,63 +329,70 @@ void ocMain()
     clock_t cstart = clock();
     pumpEvents();
     processInput();
-    updatePhysics();
-    int targx = breakX;
-    int targy = breakY;
-    int targz = breakZ;
-    int placex = -1;
-    int placey = -1;
-    int placez = -1;
-    bool hit = false;
-    if(viewStale)
+    if(invView)
     {
-      updateViewMat();
-      viewStale = false;
-      //view updated, now check for block target
+      drawInv();
     }
-    hit = getTargetBlock(&targx, &targy, &targz, &placex, &placey, &placez);
-    //if(!rkey || !hit || (breakFrames > 0 && (targx != breakX || targy != breakY || targz != breakZ)))
-    if(!rkey || !hit)
+    else
     {
-      //cancel breaking block if it was previously happening
-      breakFrames = 0;
-    }
-    else if(rkey && hit)
-    {
-      //start breaking block currently pointed at
-      breakX = targx;
-      breakY = targy;
-      breakZ = targz;
-      breakFrames++;
-      if(breakFrames == BREAK_TIME)
+      updatePhysics();
+      int targx = breakX;
+      int targy = breakY;
+      int targz = breakZ;
+      int placex = -1;
+      int placey = -1;
+      int placez = -1;
+      bool hit = false;
+      if(viewStale)
       {
-        breakBlock(targx, targy, targz);
+        updateViewMat();
+        viewStale = false;
+        //view updated, now check for block target
+      }
+      hit = getTargetBlock(&targx, &targy, &targz, &placex, &placey, &placez);
+      //if(!rkey || !hit || (breakFrames > 0 && (targx != breakX || targy != breakY || targz != breakZ)))
+      if(!rkey || !hit)
+      {
+        //cancel breaking block if it was previously happening
         breakFrames = 0;
       }
+      else if(rkey && hit)
+      {
+        //start breaking block currently pointed at
+        breakX = targx;
+        breakY = targy;
+        breakZ = targz;
+        breakFrames++;
+        if(breakFrames == BREAK_TIME)
+        {
+          breakBlock(targx, targy, targz);
+          breakFrames = 0;
+        }
+      }
+      if(hit && fkey)
+      {
+        //only out-of-bounds block player can reach is the top of world
+        if(placey < chunksY * 16)
+          placeBlock(DIAMOND, placex, placey, placez);
+        //only place block on rising edge of f
+        fkey = false;
+      }
+      glClear(sky);
+      glEnableDepthTest(true);
+      //fill depth buf with maximum depth (255)
+      memset(depthBuf, 0xFF, 64000);
+      //get chunk containing player
+      //fill cubic shells starting at player position and moving out
+      //this maximizes the chunks that are occlusion culled
+      for(int rad = 0; rad < (FAR + 15) / 16; rad++)
+      {
+        renderShell(rad, player.v[0] / 16, player.v[1] / 16, player.v[2] / 16);
+      }
+      glEnableDepthTest(false);
+      glColor1i(0xF);
+      fillRect(160, 96, 1, 9);
+      fillRect(156, 100, 9, 1);
     }
-    if(hit && fkey)
-    {
-      //only out-of-bounds block player can reach is the top of world
-      if(placey < chunksY * 16)
-        placeBlock(DIAMOND, placex, placey, placez);
-      //only place block on rising edge of f
-      fkey = false;
-    }
-    glClear(sky);
-    glEnableDepthTest(true);
-    //fill depth buf with maximum depth (255)
-    memset(depthBuf, 0xFF, 64000);
-    //get chunk containing player
-    //fill cubic shells starting at player position and moving out
-    //this maximizes the chunks that are occlusion culled
-    for(int rad = 0; rad < (FAR + 15) / 16; rad++)
-    {
-      renderShell(rad, player.v[0] / 16, player.v[1] / 16, player.v[2] / 16);
-    }
-    glEnableDepthTest(false);
-    glColor1i(0xF);
-    fillRect(160, 96, 1, 9);
-    fillRect(156, 100, 9, 1);
     glFlush();
     //hit 30 fps (if there is spare time this frame)
     sleepMS(34 - (clock() - cstart));
@@ -626,6 +643,40 @@ void renderChunk(int x, int y, int z)
   glEnd();
 }
 
+static void drawInv()
+{
+  glEnableDepthTest(false);
+  glClear(0x1D);
+  const int cellSize = 24;
+  const int gridw = 9;
+  const int gridh = 4;
+  int gridx = (320 - cellSize * gridw) / 2;
+  int gridy = (200 - cellSize * gridh) / 2;
+  for(int i = 0; i < gridw; i++)
+  {
+    for(int j = 0; j < gridh; j++)
+    {
+      glColor1i(0x19);
+      drawRect(gridx + i * cellSize, gridy + j * cellSize, cellSize, cellSize);
+      Stack* stack = &inv[i + j * INV_W];
+      if(stack->item != AIR)
+      {
+        byte bg = 0x1D;
+        if(stack->item != GLASS)
+        {
+          bg = blockColor[stack->item][1];
+          glColor1i(bg);
+          fillRect(gridx + i * cellSize + 4, gridy + j * cellSize + 4, cellSize - 9, cellSize - 9);
+        }
+        glColor1i(0x19);
+        char buf[8];
+        sprintf(buf, "%i", stack->count);
+        glText(buf, gridx + i * cellSize + 4, gridy + j * cellSize + 4, 0x1D);
+      }
+    }
+  }
+}
+
 void pumpEvents()
 {
   while(haveEvent())
@@ -659,6 +710,9 @@ void pumpEvents()
               rkey = k.pressed; break;
             case KEY_F:
               fkey = k.pressed; break;
+            case KEY_E:
+              if(k.pressed)
+                invView = !invView; break;
             case KEY_SPACE:
               if(k.pressed && onGround)
               {

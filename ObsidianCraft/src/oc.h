@@ -29,7 +29,7 @@ enum Block
 
 typedef struct
 {
-  byte item;
+  byte item;  //If == 0, no item
   byte count;
 } Stack; 
 

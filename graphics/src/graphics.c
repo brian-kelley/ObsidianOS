@@ -120,17 +120,40 @@ void fillTriangle(int x1, int y1, int x2, int y2, int x3, int y3)
 
 void drawRect(int x, int y, int w, int h)
 {
-  int i;
-  for(i = x; i <= x + w; i++)
+  for(int i = x; i <= x + w; i++)
   {
-    drawPixel(i, y);
-    drawPixel(i, y + h);
+    renderBuf[i + y * 320] = color;
+    renderBuf[i + (y + h) * 320] = color;
   }
-  for(i = y + 1; i <= y + h; i++)
+  for(int i = y + 1; i <= y + h - 1; i++)
   {
-    drawPixel(x, i);
-    drawPixel(x + w, i);
+    renderBuf[x + i * 320] = color;
+    renderBuf[x + w + i * 320] = color;
   }
+  /*
+  byte* iter = &renderBuf[x + y * 320];
+  int strideIn = w;
+  int strideOut = 320 - w;
+  for(int i = 0; i < w; i++)
+  {
+    *iter = color;
+    iter++;
+  }
+  *iter = color;
+  for(int i = 0; i <= h; i++)
+  {
+    iter += strideOut;
+    *iter = color;
+    iter += strideIn;
+    *iter = color;
+  }
+  iter += strideOut;
+  for(int i = 0; i <= w; i++)
+  {
+    *iter = color;
+    iter++;
+  }
+  */
 }
 
 void fillRect(int x, int y, int w, int h)
