@@ -25,6 +25,8 @@ static int breakY;
 static int breakZ;
 static bool invView;
 static int hotbarChoice;
+static int invCursorX;
+static int invCursorY;
 vec3 lookdir;
 /* Block list:
    AIR (0),
@@ -763,6 +765,11 @@ static void drawInv(bool hotbarOnly)
   //finally, draw lighter square around cell to indicate hotbar selection
   glColor1i(0x1E);
   drawRect(gridx + hotbarChoice * cellSize, gridy + (INV_H - 1) * cellSize, cellSize, cellSize);
+  if(invView)
+  {
+    //also draw a lighter square for inv cursor
+    drawRect(gridx + invCursorX * cellSize, gridy + invCursorY * cellSize, cellSize, cellSize);
+  }
 }
 
 static void setHotbarChoice(int choice)
@@ -789,7 +796,19 @@ void pumpEvents()
             case KEY_A:
               akey = k.pressed; break;
             case KEY_S:
-              skey = k.pressed; break;
+              {
+                skey = k.pressed;
+                if(invView && k.pressed)
+                {
+                  //swap item under inv cursor and hotbar slot
+                  int invInd = invCursorX + invCursorY * INV_W;
+                  int hotbarInd = hotbarChoice + INV_W * (INV_H - 1);
+                  Stack temp = inv[invInd];
+                  inv[invInd] = inv[hotbarInd];
+                  inv[hotbarInd] = temp;
+                }
+              }
+              break;
             case KEY_D:
               dkey = k.pressed; break;
             case KEY_I:
@@ -808,6 +827,12 @@ void pumpEvents()
               if(k.pressed)
               {
                 invView = !invView;
+                if(invView)
+                {
+                  //start cursor in the middle
+                  invCursorX = INV_W / 2;
+                  invCursorY = INV_H / 2;
+                }
               }
               break;
             case KEY_1:
@@ -830,18 +855,44 @@ void pumpEvents()
               if(k.pressed) setHotbarChoice(8); break;
             case KEY_0:
               if(k.pressed) setHotbarChoice(9); break;
-            case KEY_NUMPAD_4:
+            case KEY_NUMPAD_4:  //actually left arrow
               if(k.pressed)
               {
-                //rotate hotbar choice left
-                hotbarChoice = (hotbarChoice - 1 + INV_W) % INV_W;
+                if(invView)
+                {
+                  invCursorX = (invCursorX - 1 + INV_W) % INV_W;
+                }
+                else
+                {
+                  //rotate hotbar choice left
+                  hotbarChoice = (hotbarChoice - 1 + INV_W) % INV_W;
+                }
               }
               break;
-            case KEY_NUMPAD_6:
+            case KEY_NUMPAD_6:  //actually right arrow
               if(k.pressed)
               {
-                //rotate hotbar choice right
-                hotbarChoice = (hotbarChoice + 1) % INV_W;
+                if(invView)
+                {
+                  invCursorX = (invCursorX + 1) % INV_W;
+                }
+                else
+                {
+                  //rotate hotbar choice right
+                  hotbarChoice = (hotbarChoice + 1) % INV_W;
+                }
+              }
+              break;
+            case KEY_NUMPAD_2:  //actually down arrow
+              if(k.pressed && invView)
+              {
+                invCursorY = (invCursorY + 1) % (INV_H - 1);
+              }
+              break;
+            case KEY_NUMPAD_8:  //actually up arrow
+              if(k.pressed && invView)
+              {
+                invCursorY = (invCursorY - 1 + (INV_H - 1)) % (INV_H - 1);
               }
               break;
             case KEY_SPACE:
