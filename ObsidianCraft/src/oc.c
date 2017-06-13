@@ -24,6 +24,7 @@ static int breakX;
 static int breakY;
 static int breakZ;
 static bool invView;
+static int hotbarChoice;
 vec3 lookdir;
 /* Block list:
    AIR (0),
@@ -91,7 +92,7 @@ static void initChunks();
 static void updatePhysics();
 static void updateViewMat();
 static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz, bool* canPlace);
-static void drawInv();
+static void drawInv(bool hotbarOnly);
 
 //player movement configuration
 #define PLAYER_SPEED 0.15         //horizontal movement speed
@@ -102,7 +103,7 @@ static void drawInv();
 #define PLAYER_EYE 1.5
 #define PLAYER_WIDTH 0.8
 #define PLAYER_REACH 5            //how far away the player can place and destroy blocks
-#define BREAK_TIME 18             //how many frames it takes to break a block
+#define BREAK_TIME 15             //how many frames it takes to break a block
 #define X_SENSITIVITY 0.11
 #define Y_SENSITIVITY 0.11
 
@@ -294,10 +295,66 @@ static void renderShell(int rad, int x, int y, int z)
   }
 }
 
+static void addToInv(byte b)
+{
+  //first, try to find a non-empty stack matching b (prioritize hotbar)
+  int hotbarStart = INV_W * (INV_H - 1);
+  for(int i = hotbarStart; i < INV_W * INV_H; i++)
+  {
+    if(inv[i].item == b && inv[i].count > 0 && inv[i].count < 255)
+    {
+      inv[i].count++;
+      return;
+    }
+  }
+  for(int i = 0; i < hotbarStart; i++)
+  {
+    if(inv[i].item == b && inv[i].count > 0 && inv[i].count < 255)
+    {
+      inv[i].count++;
+      return;
+    }
+  }
+  //otherwise, find an empty slot to make a new stack (also prioritize hotbar)
+  for(int i = hotbarStart; i < INV_W * INV_H; i++)
+  {
+    if(inv[i].item == AIR || inv[i].count == 0)
+    {
+      inv[i].item = b;
+      inv[i].count = 1;
+      return;
+    }
+  }
+  for(int i = 0; i < hotbarStart; i++)
+  {
+    if(inv[i].item == AIR || inv[i].count == 0)
+    {
+      inv[i].item = b;
+      inv[i].count = 1;
+      return;
+    }
+  }
+  //otherwise, no room for item and it is destroyed
+}
+
+static bool removeFromInv()
+{
+  //can only remove from active hotbar slot
+  int ind = hotbarChoice + (INV_W * (INV_H - 1));
+  byte b = inv[ind].item;
+  if(inv[ind].count > 0)
+  {
+    inv[ind].count--;
+    return true;
+  }
+  return false;
+}
+
 void ocMain()
 {
   chunks = malloc(chunksX * chunksY * chunksZ * sizeof(Chunk));
   invView = false;
+  hotbarChoice = 0;
   terrainGen();
   initChunks();
   yaw = 0;
@@ -322,9 +379,8 @@ void ocMain()
   for(int i = 0; i < INV_W * INV_H; i++)
   {
     //stacks of AIR are considered empty/clear
-    if(rand() % 2)
-      inv[i].item = 1 + rand() % 15;
-    inv[i].count = rand() % 256;
+    inv[i].item = 0;
+    inv[i].count = 0;
   }
   while(1)
   {
@@ -333,7 +389,7 @@ void ocMain()
     pumpEvents();
     if(invView)
     {
-      drawInv();
+      drawInv(false);
     }
     else
     {
@@ -368,7 +424,9 @@ void ocMain()
         breakFrames++;
         if(breakFrames == BREAK_TIME)
         {
+          byte mined = getBlock(targx, targy, targz);
           breakBlock(targx, targy, targz);
+          addToInv(mined);
           breakFrames = 0;
         }
       }
@@ -376,7 +434,15 @@ void ocMain()
       {
         //only out-of-bounds block player can reach is the top of world
         if(placey < chunksY * 16)
-          placeBlock(DIAMOND, placex, placey, placez);
+        {
+          //if current hotbar slot is empty, can't place
+          int hotbarInd = INV_W * (INV_H - 1) + hotbarChoice;
+          byte item = inv[hotbarInd].item;
+          if(removeFromInv())
+          {
+            placeBlock(item, placex, placey, placez);
+          }
+        }
         //only place block on rising edge of f
         fkey = false;
       }
@@ -395,6 +461,7 @@ void ocMain()
       glColor1i(0xF);
       fillRect(160, 96, 1, 9);
       fillRect(156, 100, 9, 1);
+      drawInv(true);
     }
     glFlush();
     //hit 30 fps (if there is spare time this frame)
@@ -646,31 +713,45 @@ void renderChunk(int x, int y, int z)
   glEnd();
 }
 
-static void drawInv()
+//Glass texture is the only non-solid color (when in inventory)
+static void drawGlassTexture(int x, int y, int cellSize)
+{
+  glColor1i(0x1E);
+  drawRect(x + 2, y + 2, cellSize - 5, cellSize - 5);
+}
+
+static void drawInv(bool hotbarOnly)
 {
   glEnableDepthTest(false);
   const int cellSize = 28;
   const int gridw = INV_W;    //configured at top
   const int gridh = INV_H;
   int gridx = (320 - cellSize * gridw) / 2;
-  int gridy = (200 - cellSize * gridh) / 2;
+  int gridy = (200 - 5) - cellSize * gridh;    //only 10 px of padding at bottom
   glColor1i(0x1D);
-  fillRect(gridx, gridy, gridw * cellSize, gridh * cellSize);
+  if(hotbarOnly)
+    fillRect(gridx, gridy + (gridh - 1) * cellSize, gridw * cellSize, cellSize);
+  else
+    fillRect(gridx, gridy, gridw * cellSize, gridh * cellSize);
+  int jlo = hotbarOnly ? gridh - 1 : 0;
   for(int i = 0; i < gridw; i++)
   {
-    for(int j = 0; j < gridh; j++)
+    for(int j = jlo; j < gridh; j++)
     {
       glColor1i(0x19);
       drawRect(gridx + i * cellSize, gridy + j * cellSize, cellSize, cellSize);
       Stack* stack = inv + (i + j * INV_W);
       if(stack->item != AIR && stack->count != 0)
       {
-        byte bg = 0x1D;
         if(stack->item != GLASS)
         {
-          bg = blockColor[stack->item][1];
-          glColor1i(bg);
+          byte itemColor = blockColor[stack->item][1];
+          glColor1i(itemColor);
           fillRect(gridx + i * cellSize + 4, gridy + j * cellSize + 4, cellSize - 9, cellSize - 9);
+        }
+        else
+        {
+          drawGlassTexture(gridx + i * cellSize, gridy + j * cellSize, cellSize);
         }
         glColor1i(0x19);
         char buf[8];
@@ -679,6 +760,15 @@ static void drawInv()
       }
     }
   }
+  //finally, draw lighter square around cell to indicate hotbar selection
+  glColor1i(0x1E);
+  drawRect(gridx + hotbarChoice * cellSize, gridy + (INV_H - 1) * cellSize, cellSize, cellSize);
+}
+
+static void setHotbarChoice(int choice)
+{
+  if(choice >= 0 && choice < INV_W)
+    hotbarChoice = choice;
 }
 
 void pumpEvents()
@@ -716,7 +806,44 @@ void pumpEvents()
               fkey = k.pressed; break;
             case KEY_E:
               if(k.pressed)
-                invView = !invView; break;
+              {
+                invView = !invView;
+              }
+              break;
+            case KEY_1:
+              if(k.pressed) setHotbarChoice(0); break;
+            case KEY_2:
+              if(k.pressed) setHotbarChoice(1); break;
+            case KEY_3:
+              if(k.pressed) setHotbarChoice(2); break;
+            case KEY_4:
+              if(k.pressed) setHotbarChoice(3); break;
+            case KEY_5:
+              if(k.pressed) setHotbarChoice(4); break;
+            case KEY_6:
+              if(k.pressed) setHotbarChoice(5); break;
+            case KEY_7:
+              if(k.pressed) setHotbarChoice(6); break;
+            case KEY_8:
+              if(k.pressed) setHotbarChoice(7); break;
+            case KEY_9:
+              if(k.pressed) setHotbarChoice(8); break;
+            case KEY_0:
+              if(k.pressed) setHotbarChoice(9); break;
+            case KEY_NUMPAD_4:
+              if(k.pressed)
+              {
+                //rotate hotbar choice left
+                hotbarChoice = (hotbarChoice - 1 + INV_W) % INV_W;
+              }
+              break;
+            case KEY_NUMPAD_6:
+              if(k.pressed)
+              {
+                //rotate hotbar choice right
+                hotbarChoice = (hotbarChoice + 1) % INV_W;
+              }
+              break;
             case KEY_SPACE:
               if(k.pressed && onGround)
               {
@@ -1495,12 +1622,12 @@ static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz,
       //ray ended in a solid block
       //go through all blocks that player fully or partially occupies, and if any of them match, return false
       //otherwise set output parameters to block coords and return true
-      int xlo = floor(player.v[0] - PLAYER_WIDTH / 2);
-      int xhi = ceil(player.v[0] + PLAYER_WIDTH / 2);
-      int ylo = floor(player.v[1] - PLAYER_EYE);
-      int yhi = ceil(player.v[1] + PLAYER_HEIGHT - PLAYER_EYE);
-      int zlo = floor(player.v[2] - PLAYER_WIDTH / 2);
-      int zhi = ceil(player.v[2] + PLAYER_WIDTH / 2);
+      int xlo = player.v[0] - PLAYER_WIDTH / 2;
+      int xhi = player.v[0] + PLAYER_WIDTH / 2;
+      int ylo = player.v[1] - PLAYER_EYE;
+      int yhi = player.v[1] + (PLAYER_HEIGHT - PLAYER_EYE);
+      int zlo = player.v[2] - PLAYER_WIDTH / 2;
+      int zhi = player.v[2] + PLAYER_WIDTH / 2;
       if(xlo <= blockIter.v[0] && blockIter.v[0] <= xhi &&
          ylo <= blockIter.v[1] && blockIter.v[1] <= yhi &&
          zlo <= blockIter.v[2] && blockIter.v[2] <= zhi)
