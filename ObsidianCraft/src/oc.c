@@ -90,7 +90,7 @@ static void terrainGen();
 static void initChunks();
 static void updatePhysics();
 static void updateViewMat();
-static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz);
+static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz, bool* canPlace);
 static void drawInv();
 
 //player movement configuration
@@ -344,14 +344,15 @@ void ocMain()
       int placex = -1;
       int placey = -1;
       int placez = -1;
-      bool hit = false;
       if(viewStale)
       {
         updateViewMat();
         viewStale = false;
         //view updated, now check for block target
       }
-      hit = getTargetBlock(&targx, &targy, &targz, &placex, &placey, &placez);
+      bool hit = false;
+      bool canPlace = false;
+      hit = getTargetBlock(&targx, &targy, &targz, &placex, &placey, &placez, &canPlace);
       //if(!rkey || !hit || (breakFrames > 0 && (targx != breakX || targy != breakY || targz != breakZ)))
       if(!rkey || !hit)
       {
@@ -371,7 +372,7 @@ void ocMain()
           breakFrames = 0;
         }
       }
-      if(hit && fkey)
+      if(hit && fkey && canPlace)
       {
         //only out-of-bounds block player can reach is the top of world
         if(placey < chunksY * 16)
@@ -1407,7 +1408,7 @@ static void updateViewMat()
 //returns true if the player is looking at a block within reach
 //*bx, *by, *bz is set to the block that can be broken
 //*px, *py, *pz is set to position where player can place a block
-static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz)
+static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz, bool* canPlace)
 {
   vec3 camPos = player;
   vec3 camDir = lookdir;
@@ -1494,7 +1495,6 @@ static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz)
       //ray ended in a solid block
       //go through all blocks that player fully or partially occupies, and if any of them match, return false
       //otherwise set output parameters to block coords and return true
-      /*
       int xlo = floor(player.v[0] - PLAYER_WIDTH / 2);
       int xhi = ceil(player.v[0] + PLAYER_WIDTH / 2);
       int ylo = floor(player.v[1] - PLAYER_EYE);
@@ -1505,9 +1505,12 @@ static bool getTargetBlock(int* bx, int* by, int* bz, int* px, int* py, int* pz)
          ylo <= blockIter.v[1] && blockIter.v[1] <= yhi &&
          zlo <= blockIter.v[2] && blockIter.v[2] <= zhi)
       {
-        return false;
+        *canPlace = false;
       }
-      */
+      else
+      {
+        *canPlace = true;
+      }
       *px = blockIter.v[0];
       *py = blockIter.v[1];
       *pz = blockIter.v[2];
