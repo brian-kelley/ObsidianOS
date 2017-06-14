@@ -112,6 +112,7 @@ static void drawInv(bool hotbarOnly);
 //Inventory
 #define INV_W 9
 #define INV_H 4
+#define STACK_MAX 99
 static Stack inv[INV_W * INV_H];
 
 //3D configuration
@@ -303,7 +304,7 @@ static void addToInv(byte b)
   int hotbarStart = INV_W * (INV_H - 1);
   for(int i = hotbarStart; i < INV_W * INV_H; i++)
   {
-    if(inv[i].item == b && inv[i].count > 0 && inv[i].count < 255)
+    if(inv[i].item == b && inv[i].count > 0 && inv[i].count < STACK_MAX)
     {
       inv[i].count++;
       return;
@@ -311,7 +312,7 @@ static void addToInv(byte b)
   }
   for(int i = 0; i < hotbarStart; i++)
   {
-    if(inv[i].item == b && inv[i].count > 0 && inv[i].count < 255)
+    if(inv[i].item == b && inv[i].count > 0 && inv[i].count < STACK_MAX)
     {
       inv[i].count++;
       return;
@@ -427,9 +428,12 @@ void ocMain()
         if(breakFrames == BREAK_TIME)
         {
           byte mined = getBlock(targx, targy, targz);
-          breakBlock(targx, targy, targz);
-          addToInv(mined);
-          breakFrames = 0;
+          if(mined != BEDROCK && mined != WATER)
+          {
+            breakBlock(targx, targy, targz);
+            addToInv(mined);
+            breakFrames = 0;
+          }
         }
       }
       if(hit && fkey && canPlace)
@@ -725,7 +729,7 @@ static void drawGlassTexture(int x, int y, int cellSize)
 static void drawInv(bool hotbarOnly)
 {
   glEnableDepthTest(false);
-  const int cellSize = 28;
+  const int cellSize = 18;
   const int gridw = INV_W;    //configured at top
   const int gridh = INV_H;
   int gridx = (320 - cellSize * gridw) / 2;
@@ -749,7 +753,7 @@ static void drawInv(bool hotbarOnly)
         {
           byte itemColor = blockColor[stack->item][1];
           glColor1i(itemColor);
-          fillRect(gridx + i * cellSize + 4, gridy + j * cellSize + 4, cellSize - 9, cellSize - 9);
+          fillRect(gridx + i * cellSize + 2, gridy + j * cellSize + 2, cellSize - 4, cellSize - 4);
         }
         else
         {
