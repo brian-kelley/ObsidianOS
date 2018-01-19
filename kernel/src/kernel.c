@@ -260,6 +260,43 @@ void oscilloscopeDemo()
   }
 }
 
+void spirographDemo()
+{
+  enable2D();
+  clearScreen(0);
+  memset(renderBuf, 0, 320 * 200);
+  double r = 80;
+  double theta = 0;
+  setColor(0x0F);
+  int n = 20;
+  setColor(0xA);
+  double dt = 9 * PI * 2 / n;
+  for(int i = 0; i < n; i++)
+  {
+    int x1 = 160 + r * cos(theta);
+    int y1 = 100 + r * sin(theta);
+    theta += dt;
+    int x2 = 160 + r * cos(theta);
+    int y2 = 100 + r * sin(theta);
+    drawLine(x1, y1, x2, y2);
+  }
+  setColor(0xB);
+  theta = 0;
+  n = 10;
+  dt = 7 * PI * 2 / n;
+  for(int i = 0; i < n; i++)
+  {
+    int x1 = 160 + r * cos(theta);
+    int y1 = 100 + r * sin(theta);
+    theta += dt;
+    int x2 = 160 + r * cos(theta);
+    int y2 = 100 + r * sin(theta);
+    drawLine(x1, y1, x2, y2);
+  }
+  glFlush();
+  while(1);
+}
+
 extern void ocMain();
 
 void printMat(mat4 m)
@@ -290,7 +327,8 @@ void kernel_main()
 #endif
 
   //cubeDemo();
-  oscilloscopeDemo();
+  //oscilloscopeDemo();
+  spirographDemo();
 
   //ocMain();
   while(1)
