@@ -223,7 +223,38 @@ void cubeDemo()
       setView(lookAt(camPos, target, up));
     }
     glClear(0x0);
-    drawCube(-1, -1, -1, 2);
+    drawCube(-2, -2, -2, 4);
+    glFlush();
+    while(clock() < start + 17);
+  }
+}
+
+void oscilloscopeDemo()
+{
+  enable2D();
+  double t = 0;
+  while(true)
+  {
+    clearScreen(0);
+    memset(renderBuf, 0, 320 * 200);
+    clock_t start = clock();
+    //draw a cross
+    setColor(0x0F);
+    drawLine(0, 100, 319, 100);
+    drawLine(160, 0, 160, 199);
+    for(int i = 0; i < 319; i++)
+    {
+      setColor(0x0A);
+      double ampl = 80 * 1 / (1 + ((i - 160.0) / 40) * ((i - 160.0) / 40));
+      int y1 = 100 + ampl * sin(t + ((double) i - 160) * 0.2);
+      int y2 = 100 + ampl * sin(t + (((double) i + 1) - 160) * 0.2);
+      drawLine(i, y1, i + 1, y2);
+    }
+    t += 0.15;
+    if(t >= 2 * PI)
+    {
+      t = t - 2 * PI;
+    }
     glFlush();
     while(clock() < start + 17);
   }
@@ -247,29 +278,21 @@ void kernel_main()
   initTime();
   initTerminal();
   initFPU();
+
   ataInit();
   //initFatDriver();
   initKeyboard();
   resetTermCursor();
-
-  /*
-  printMemStats();
-  vec3 eye = {{0, 0, 0}};
-  vec3 target = {{0, 0, -1}};
-  vec3 up = {{0, 1, 0}};
-
-  setModel(identity());
-  setView(lookAt(eye, target, up));
-  setProj(perspective(90.0f / (180.0f / PI), 0.1, 100));
-
-  while(1);
-  */
   
   renderBuf = malloc(64000);
 #ifdef DOUBLE_BUFFERED
   depthBuf = malloc(64000);
 #endif
-  ocMain();
+
+  //cubeDemo();
+  oscilloscopeDemo();
+
+  //ocMain();
   while(1)
   {
     Event ev = getNextEvent();

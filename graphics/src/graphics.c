@@ -97,21 +97,8 @@ void fillTriangle(int x1, int y1, int x2, int y2, int x3, int y3)
   //triangle too big to rasterize
   if(maxx - minx > 320 || maxy - miny > 200)
     return;
-  int partition;
-  /*
-  if(y1 == y2)
-  {
-    fillFlatTopTriangle(x1, y1, x2, y2, x3, y3);
-    return;
-  }
-  if(y2 == y3)
-  {
-    fillFlatBottomTriangle(x1, y1, x2, y2, x3, y3);
-    return;
-  }
-  */
   sortVerticesByY(&x1, &y1, &x2, &y2, &x3, &y3);
-  partition = fillFlatBottomTriangle(x1, y1, x2, y2, x3, y3);
+  int partition = fillFlatBottomTriangle(x1, y1, x2, y2, x3, y3);
   if(x2 < x3)
     fillFlatTopTriangle(partition, y2, x2, y2, x3, y3);
   else
@@ -130,30 +117,6 @@ void drawRect(int x, int y, int w, int h)
     renderBuf[x + i * 320] = color;
     renderBuf[x + w + i * 320] = color;
   }
-  /*
-  byte* iter = &renderBuf[x + y * 320];
-  int strideIn = w;
-  int strideOut = 320 - w;
-  for(int i = 0; i < w; i++)
-  {
-    *iter = color;
-    iter++;
-  }
-  *iter = color;
-  for(int i = 0; i <= h; i++)
-  {
-    iter += strideOut;
-    *iter = color;
-    iter += strideIn;
-    *iter = color;
-  }
-  iter += strideOut;
-  for(int i = 0; i <= w; i++)
-  {
-    *iter = color;
-    iter++;
-  }
-  */
 }
 
 void fillRect(int x, int y, int w, int h)
@@ -811,6 +774,7 @@ void glColor1i(byte c)
 void enable2D()
 {
   enabled3D = false;
+  depthTest = false;
 }
 
 void enable3D()
