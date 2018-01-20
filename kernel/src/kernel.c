@@ -260,37 +260,61 @@ void oscilloscopeDemo()
   }
 }
 
+//Euclidean algorithm for gcd
+int gcd(int a, int b)
+{
+  if(a < b)
+  {
+    int temp = a;
+    a = b;
+    b = temp;
+  }
+  int c = a % b;
+  if(c == 0)
+    return b;
+  else if(c == 1)
+    return 1;
+  return gcd(b, c);
+}
+
 void spirographDemo()
 {
   enable2D();
-  clearScreen(0);
-  memset(renderBuf, 0, 320 * 200);
-  double r = 80;
+  clearScreen(0xF);
+  memset(renderBuf, 0xF, 320 * 200);
   double theta = 0;
-  setColor(0x0F);
+  setColor(0x00);
   int n = 20;
-  setColor(0xA);
-  double dt = 9 * PI * 2 / n;
-  for(int i = 0; i < n; i++)
+  setColor(0x5);
+  double dt = 2 * PI / 200;
+  double R = 60;
+  double r = 46;
+  double d = 80;
+  //need to roll around the circle at least lcm(R * r)
+  int rolls = r / gcd(R, r);
+  while(theta < rolls * 2 * PI)
   {
-    int x1 = 160 + r * cos(theta);
-    int y1 = 100 + r * sin(theta);
+    //using hypotrochoid formula from wikipedia
+    int x1 = 160 + (R - r) * cos(theta) + d * cos((R - r) * theta / r);
+    int y1 = 100 + (R - r) * sin(theta) - d * sin((R - r) * theta / r);
     theta += dt;
-    int x2 = 160 + r * cos(theta);
-    int y2 = 100 + r * sin(theta);
+    int x2 = 160 + (R - r) * cos(theta) + d * cos((R - r) * theta / r);
+    int y2 = 100 + (R - r) * sin(theta) - d * sin((R - r) * theta / r);
     drawLine(x1, y1, x2, y2);
   }
-  setColor(0xB);
   theta = 0;
-  n = 10;
-  dt = 7 * PI * 2 / n;
-  for(int i = 0; i < n; i++)
+  setColor(0x4);
+  d = 42;
+  r = 38;
+  rolls = r / gcd(R, r);
+  while(theta < rolls * 2 * PI)
   {
-    int x1 = 160 + r * cos(theta);
-    int y1 = 100 + r * sin(theta);
+    //using hypotrochoid formula from wikipedia
+    int x1 = 160 + (R - r) * cos(theta) + d * cos((R - r) * theta / r);
+    int y1 = 100 + (R - r) * sin(theta) - d * sin((R - r) * theta / r);
     theta += dt;
-    int x2 = 160 + r * cos(theta);
-    int y2 = 100 + r * sin(theta);
+    int x2 = 160 + (R - r) * cos(theta) + d * cos((R - r) * theta / r);
+    int y2 = 100 + (R - r) * sin(theta) - d * sin((R - r) * theta / r);
     drawLine(x1, y1, x2, y2);
   }
   glFlush();
