@@ -27,6 +27,7 @@ void drawTriangle(int x1, int y1, int x2, int y2, int x3, int y3);
 void fillTriangle(int x1, int y1, int x2, int y2, int x3, int y3);
 void drawRect(int x, int y, int w, int h);
 void fillRect(int x, int y, int w, int h);
+void drawBezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, int steps);
 
 //3D support
 extern mat4 modelMat;

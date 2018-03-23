@@ -3,7 +3,6 @@
 //Whether to noclip (no gravity, collisions or world boundaries)
 //#define NOCLIP
 
-//Seed (TODO: configure or randomize w/ time())
 #define SEED 12
 
 //Have INV_W x INV_H inventory grid
@@ -586,6 +585,8 @@ static bool cullCuboid(float xlo, float xhi, float ylo, float yhi, float zlo, fl
       }
       ind++;
     }
+    if(!allBehind)
+      break;
     ind += stride;
   }
   if(allBehind)
@@ -613,7 +614,6 @@ void renderChunk(int x, int y, int z)
     return;
   glBegin(GL_QUADS);
   glEnableDepthTest(true);
-  //how many blocks have already been drawn
   for(int i = 0; i < 16; i++)
   {
     for(int j = 0; j < 16; j++)

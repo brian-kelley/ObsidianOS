@@ -130,6 +130,29 @@ void fillRect(int x, int y, int w, int h)
   }
 }
 
+void drawBezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, int steps)
+{
+  float dt = 1.0 / steps;
+  int prevx = p0.v[0];
+  int prevy = p0.v[1];
+  float t = dt;
+  for(int i = 1; i < steps; i++)
+  {
+    float t2 = t*t;
+    float t12 = (1-t)*(1-t);
+    float u1 = (1-t)*t12;
+    float u2 = 3*t12*t;
+    float u3 = 3*(1-t)*t2;
+    float u4 = t2*t;
+    int nextx = u1 * p0.v[0] + u2 * p1.v[0] + u3 * p2.v[0] + u4 * p3.v[0];
+    int nexty = u1 * p0.v[1] + u2 * p1.v[1] + u3 * p2.v[1] + u4 * p3.v[1];
+    drawLine(prevx, prevy, nextx, nexty);
+    prevx = nextx;
+    prevy = nexty;
+    t += dt;
+  }
+}
+
 // point 1 is peak
 int fillFlatBottomTriangle(int x1, int y1, int x2, int y2, int x3, int y3)
 {

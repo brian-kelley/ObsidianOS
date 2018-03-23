@@ -321,6 +321,19 @@ void spirographDemo()
   while(1);
 }
 
+void bezierDemo()
+{
+  enable2D();
+  clearScreen(0x0);
+  vec2 p0 = ((vec2) {{10, 10}});
+  vec2 p1 = ((vec2) {{310, 190}});
+  vec2 p2 = ((vec2) {{10, 140}});
+  vec2 p3 = ((vec2) {{210, 10}});
+  setColor(0x1);
+  drawBezier(p0, p1, p2, p3, 200);
+  glFlush();
+}
+
 extern void ocMain();
 
 void printMat(mat4 m)
@@ -352,8 +365,9 @@ void kernel_main()
 
   //cubeDemo();
   //oscilloscopeDemo();
-  spirographDemo();
+  //spirographDemo();
 
+  bezierDemo();
   //ocMain();
   while(1)
   {
